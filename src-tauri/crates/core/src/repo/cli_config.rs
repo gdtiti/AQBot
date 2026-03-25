@@ -117,6 +117,16 @@ fn run_version_command(cmd: &str, arg: &str) -> Option<String> {
         })
 }
 
+fn check_command_exists(cmd: &str) -> bool {
+    std::process::Command::new("which")
+        .arg(cmd)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
 fn check_cursor_installed() -> bool {
     #[cfg(target_os = "macos")]
     {

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useConversationStore, useProviderStore, useSettingsStore, useSearchStore, useMcpStore } from '@/stores';
 import { useUIStore } from '@/stores/uiStore';
 import { findModelByIds, supportsReasoning } from '@/lib/modelCapabilities';
+import { McpServerIcon } from '@/components/shared/McpServerIcon';
 import { VoiceCall } from './VoiceCall';
 import { ConversationSettingsModal } from './ConversationSettingsModal';
 import { SearchProviderTypeIcon, PROVIDER_TYPE_LABELS } from '@/components/shared/SearchProviderIcon';
@@ -203,7 +204,10 @@ export function InputArea() {
               checked={enabledMcpServerIds.includes(server.id)}
               onChange={() => toggleMcpServer(server.id)}
             >
-              <span style={{ fontSize: 13 }}>{server.name}</span>
+              <span style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <McpServerIcon server={server} size={18} />
+                {server.name}
+              </span>
             </Checkbox>
           </div>
         ))}

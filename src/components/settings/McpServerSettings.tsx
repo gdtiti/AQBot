@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import {
-  Avatar,
   Button,
   Dropdown,
   Modal,
@@ -19,11 +18,11 @@ import {
   message,
 } from 'antd';
 import type { MenuProps } from 'antd';
-import { Plus, Trash2, Server, Globe, FileSearch, RefreshCw, Radio, Terminal, Plug, Smile, FileImage, Link } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Radio, Terminal, Plug, Smile, FileImage, Link, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useMcpStore } from '@/stores';
-import { useResolvedAvatarSrc } from '@/hooks/useResolvedAvatarSrc';
 import { invoke, isTauri } from '@/lib/invoke';
+import { McpServerIcon } from '@/components/shared/McpServerIcon';
 import type { McpServer, CreateMcpServerInput, ToolDescriptor } from '@/types';
 
 const MCP_EMOJI_PICKS = [
@@ -32,53 +31,10 @@ const MCP_EMOJI_PICKS = [
   '📊', '📝', '🗺️', '🎨', '🔒', '💬', '📁', '⚙️',
 ];
 
-const BUILTIN_ICONS: Record<string, React.ReactNode> = {
-  '@aqbot/fetch': <Globe size={16} />,
-  '@aqbot/search-file': <FileSearch size={16} />,
-};
-
 const BUILTIN_DISPLAY_NAME_KEYS: Record<string, string> = {
   '@aqbot/fetch': 'settings.mcpServers.builtinFetch',
   '@aqbot/search-file': 'settings.mcpServers.builtinSearchFile',
 };
-
-// ── MCP Server Avatar Helper ──────────────────────────────
-
-function McpServerAvatar({ server, size = 24 }: { server: McpServer; size?: number }) {
-  const resolvedSrc = useResolvedAvatarSrc(
-    (server.iconType as 'icon' | 'emoji' | 'url' | 'file') ?? 'icon',
-    server.iconValue ?? '',
-  );
-  const { token } = theme.useToken();
-
-  if (server.iconType === 'emoji' && server.iconValue) {
-    return (
-      <span style={{
-        width: size, height: size, borderRadius: '50%',
-        backgroundColor: token.colorFillSecondary,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: size * 0.6, lineHeight: 1, flexShrink: 0,
-      }}>
-        {server.iconValue}
-      </span>
-    );
-  }
-  if ((server.iconType === 'url' || server.iconType === 'file') && server.iconValue) {
-    const src = server.iconType === 'file' ? resolvedSrc : server.iconValue;
-    return <Avatar size={size} src={src} style={{ flexShrink: 0 }} />;
-  }
-  // Default: MCP plug icon
-  return (
-    <span style={{
-      width: size, height: size, borderRadius: '50%',
-      backgroundColor: token.colorFillSecondary,
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0, color: token.colorTextSecondary,
-    }}>
-      <Plug size={size * 0.6} />
-    </span>
-  );
-}
 
 // ── Left Sidebar: Server List ─────────────────────────────
 
@@ -125,13 +81,7 @@ function McpServerList({
         }}
       >
         <span style={{ marginRight: 8, flexShrink: 0, display: 'inline-flex' }}>
-          {isBuiltin ? (
-            <span style={{ color: token.colorTextSecondary, display: 'inline-flex' }}>
-              {BUILTIN_ICONS[s.name] ?? <Server size={16} />}
-            </span>
-          ) : (
-            <McpServerAvatar server={s} size={24} />
-          )}
+          <McpServerIcon server={s} size={isBuiltin ? 16 : 24} />
         </span>
         <div className="min-w-0 flex-1 flex items-center gap-2">
           <span style={{ color: isSelected ? token.colorPrimary : undefined }}>{displayName}</span>
@@ -337,13 +287,11 @@ function McpServerDetail({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           {isBuiltin ? (
-            <span style={{ display: 'inline-flex', color: 'var(--ant-color-text-secondary)' }}>
-              {BUILTIN_ICONS[server.name]}
-            </span>
+            <McpServerIcon server={server} size={36} />
           ) : (
             <Dropdown menu={{ items: avatarMenuItems }} trigger={['click']} placement="bottomLeft">
               <span style={{ cursor: 'pointer' }}>
-                <McpServerAvatar server={server} size={36} />
+                <McpServerIcon server={server} size={36} />
               </span>
             </Dropdown>
           )}
@@ -417,9 +365,9 @@ function McpServerDetail({
               onChange={(val) => handleFieldChange('transport', val)}
               style={{ width: 280 }}
               options={[
-                { value: 'sse', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Radio size={14} /> SSE（服务器推送事件）</span> },
-                { value: 'http', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Globe size={14} /> StreamableHTTP（流式HTTP请求）</span> },
-                { value: 'stdio', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Terminal size={14} /> Stdio（服务器本地标准输入输出）</span> },
+                { value: 'sse', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Radio size={14} /> SSE</span> },
+                { value: 'http', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Globe size={14} /> StreamableHTTP</span> },
+                { value: 'stdio', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Terminal size={14} /> Stdio</span> },
               ]}
             />
           </div>
@@ -684,9 +632,9 @@ export default function McpServerSettings() {
           </Form.Item>
           <Form.Item name="transport" label={t('settings.mcpServers.transport')} rules={[{ required: true }]}>
             <Select options={[
-              { value: 'sse', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Radio size={14} /> SSE（服务器推送事件）</span> },
-              { value: 'http', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Globe size={14} /> StreamableHTTP（流式HTTP请求）</span> },
-              { value: 'stdio', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Terminal size={14} /> Stdio（服务器本地标准输入输出）</span> },
+              { value: 'sse', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Radio size={14} /> SSE</span> },
+              { value: 'http', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Globe size={14} /> StreamableHTTP</span> },
+              { value: 'stdio', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Terminal size={14} /> Stdio</span> },
             ]} />
           </Form.Item>
           {transport === 'stdio' && (

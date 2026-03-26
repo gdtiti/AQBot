@@ -10,6 +10,7 @@ import type {
   MessagePage,
   AttachmentInput,
   ConversationSearchResult,
+  ConversationSummary,
   UpdateConversationInput,
   ChatStreamEvent,
   ChatStreamErrorEvent,
@@ -241,6 +242,7 @@ interface ConversationState {
   hasOlderMessages: boolean;
   oldestLoadedMessageId: string | null;
   streaming: boolean;
+  compressing: boolean;
   streamingMessageId: string | null;
   streamingConversationId: string | null;
   thinkingActiveMessageId: string | null;
@@ -272,6 +274,12 @@ interface ConversationState {
   removeContextClear: (messageId: string) => Promise<void>;
   /** Clear all messages in the active conversation */
   clearAllMessages: () => Promise<void>;
+  /** Manually compress the current conversation context */
+  compressContext: () => Promise<void>;
+  /** Get the compression summary for a conversation */
+  getCompressionSummary: (conversationId: string) => Promise<ConversationSummary | null>;
+  /** Delete the compression summary and all marker messages */
+  deleteCompression: () => Promise<void>;
   fetchConversations: () => Promise<void>;
   setActiveConversation: (id: string | null) => void;
   createConversation: (title: string, modelId: string, providerId: string) => Promise<Conversation>;
@@ -439,6 +447,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   hasOlderMessages: false,
   oldestLoadedMessageId: null,
   streaming: false,
+  compressing: false,
   streamingMessageId: null,
   streamingConversationId: null,
   thinkingActiveMessageId: null,
@@ -641,6 +650,62 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       set({ messages: [], hasOlderMessages: false, oldestLoadedMessageId: null, loadingOlder: false });
     } catch (e) {
       console.error('Failed to clear messages:', e);
+    }
+  },
+
+  compressContext: async () => {
+    const conversationId = get().activeConversationId;
+    if (!conversationId) return;
+    set({ compressing: true });
+    try {
+      await invoke<ConversationSummary>('compress_context', { conversationId });
+      // Reload messages to get the new compression marker
+      const page = await invoke<MessagePage>('list_messages_page', {
+        conversationId,
+        limit: 100,
+        beforeMessageId: null,
+      });
+      set({
+        messages: page.messages,
+        hasOlderMessages: page.has_older,
+        oldestLoadedMessageId: page.messages.length > 0 ? page.messages[0].id : null,
+        compressing: false,
+      });
+    } catch (e) {
+      set({ compressing: false });
+      console.error('Failed to compress context:', e);
+      throw e;
+    }
+  },
+
+  getCompressionSummary: async (conversationId: string) => {
+    try {
+      return await invoke<ConversationSummary | null>('get_compression_summary', { conversationId });
+    } catch (e) {
+      console.error('Failed to get compression summary:', e);
+      return null;
+    }
+  },
+
+  deleteCompression: async () => {
+    const conversationId = get().activeConversationId;
+    if (!conversationId) return;
+    try {
+      await invoke('delete_compression', { conversationId });
+      // Reload messages to remove the compression marker
+      const page = await invoke<MessagePage>('list_messages_page', {
+        conversationId,
+        limit: 100,
+        beforeMessageId: null,
+      });
+      set({
+        messages: page.messages,
+        hasOlderMessages: page.has_older,
+        oldestLoadedMessageId: page.messages.length > 0 ? page.messages[0].id : null,
+      });
+    } catch (e) {
+      console.error('Failed to delete compression:', e);
+      throw e;
     }
   },
 

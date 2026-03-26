@@ -1,11 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Button, Tooltip, App, theme, Dropdown, Tag, Popover, Checkbox } from 'antd';
 import type { MenuProps } from 'antd';
-import { Paperclip, Trash2, Mic, Eraser, Scissors, Globe, Brain, Plug, SlidersHorizontal, ArrowUp, Square, Check } from 'lucide-react';
+import { Paperclip, Trash2, Mic, Eraser, Scissors, Globe, Brain, Plug, SlidersHorizontal, ArrowUp, Square, Check, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useConversationStore, useProviderStore, useSettingsStore, useSearchStore, useMcpStore } from '@/stores';
 import { useUIStore } from '@/stores/uiStore';
 import { findModelByIds, supportsReasoning } from '@/lib/modelCapabilities';
+import { estimateMessageTokens, estimateTokens } from '@/lib/tokenEstimator';
 import { McpServerIcon } from '@/components/shared/McpServerIcon';
 import { VoiceCall } from './VoiceCall';
 import { ConversationSettingsModal } from './ConversationSettingsModal';
@@ -42,17 +43,21 @@ export function InputArea() {
 
   const { message: messageApi, modal } = App.useApp();
   const streaming = useConversationStore((s) => s.streaming);
+  const compressing = useConversationStore((s) => s.compressing);
   const stopStreamListening = useConversationStore((s) => s.stopStreamListening);
   const activeConversationId = useConversationStore((s) => s.activeConversationId);
   const sendMessage = useConversationStore((s) => s.sendMessage);
   const createConversation = useConversationStore((s) => s.createConversation);
   const messages = useConversationStore((s) => s.messages);
-  const contextCount = (() => {
+  const contextCount = useMemo(() => {
     const activeMessages = messages.filter((m) => m.is_active !== false && !m.content.startsWith('%%ERROR%%'));
-    const lastClearIdx = activeMessages.map(m => m.content).lastIndexOf('<!-- context-clear -->');
-    if (lastClearIdx === -1) return activeMessages.length;
-    return activeMessages.slice(lastClearIdx + 1).length;
-  })();
+    const lastMarkerIdx = activeMessages.reduce((maxIdx, m, i) => {
+      if (m.content === '<!-- context-clear -->' || m.content === '<!-- context-compressed -->') return i;
+      return maxIdx;
+    }, -1);
+    if (lastMarkerIdx === -1) return activeMessages.length;
+    return activeMessages.slice(lastMarkerIdx + 1).length;
+  }, [messages]);
 
   const conversations = useConversationStore((s) => s.conversations);
   const providers = useProviderStore((s) => s.providers);
@@ -94,6 +99,8 @@ export function InputArea() {
   // Context clear
   const insertContextClear = useConversationStore((s) => s.insertContextClear);
   const clearAllMessages = useConversationStore((s) => s.clearAllMessages);
+  const updateConversation = useConversationStore((s) => s.updateConversation);
+  const compressContext = useConversationStore((s) => s.compressContext);
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
@@ -353,6 +360,47 @@ export function InputArea() {
 
     return null;
   }, [activeConversation, providers, settings.default_provider_id, settings.default_model_id]);
+
+  // Context token usage calculation
+  const getCompressionSummary = useConversationStore((s) => s.getCompressionSummary);
+  const [summaryTokenCount, setSummaryTokenCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!activeConversationId || !activeConversation?.context_compression) {
+      setSummaryTokenCount(0);
+      return;
+    }
+    getCompressionSummary(activeConversationId).then((s) => {
+      setSummaryTokenCount(s?.token_count ?? 0);
+    });
+  }, [activeConversationId, activeConversation?.context_compression, getCompressionSummary, messages]);
+
+  const contextTokenUsage = useMemo(() => {
+    const maxTokens = currentModel?.max_tokens;
+    if (!maxTokens) return null;
+
+    // Count message tokens (only after last marker)
+    const activeMessages = messages.filter((m) => m.is_active !== false && !m.content.startsWith('%%ERROR%%'));
+    const lastMarkerIdx = activeMessages.reduce((maxIdx, m, i) => {
+      if (m.content === '<!-- context-clear -->' || m.content === '<!-- context-compressed -->') return i;
+      return maxIdx;
+    }, -1);
+    const effectiveMessages = lastMarkerIdx === -1 ? activeMessages : activeMessages.slice(lastMarkerIdx + 1);
+    let usedTokens = effectiveMessages.reduce(
+      (sum, m) => sum + estimateMessageTokens(m.role, m.content), 0,
+    );
+
+    // Add system prompt
+    if (activeConversation?.system_prompt) {
+      usedTokens += estimateTokens(activeConversation.system_prompt) + 4;
+    }
+
+    // Add summary tokens
+    usedTokens += summaryTokenCount;
+
+    const percent = Math.min(Math.round((usedTokens / maxTokens) * 100), 100);
+    return { usedTokens, maxTokens, percent };
+  }, [messages, currentModel?.max_tokens, activeConversation?.system_prompt, summaryTokenCount]);
 
   const { hasRealtimeVoice, hasReasoning } = React.useMemo(() => ({
     hasRealtimeVoice: activeConversation
@@ -684,6 +732,47 @@ export function InputArea() {
                 disabled={!activeConversationId || streaming || messages.length === 0 || messages[messages.length - 1]?.content === '<!-- context-clear -->'}
               />
             </Tooltip>
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'auto',
+                    label: activeConversation?.context_compression
+                      ? t('chat.disableAutoCompression', '关闭自动压缩')
+                      : t('chat.enableAutoCompression', '开启自动压缩'),
+                    onClick: () => {
+                      if (!activeConversationId || !activeConversation) return;
+                      updateConversation(activeConversationId, { context_compression: !activeConversation.context_compression });
+                    },
+                  },
+                  {
+                    key: 'manual',
+                    label: t('chat.manualCompress', '手动压缩'),
+                    disabled: !activeConversationId || streaming || compressing || messages.length === 0,
+                    onClick: async () => {
+                      if (!activeConversationId) return;
+                      try {
+                        await compressContext();
+                        messageApi.success(t('chat.compressSuccess', '上下文已压缩'));
+                      } catch {
+                        messageApi.error(t('chat.compressFailed', '压缩失败'));
+                      }
+                    },
+                  },
+                ],
+              }}
+              trigger={['click']}
+              placement="topLeft"
+            >
+              <Button
+                type="text"
+                size="small"
+                icon={<Zap size={14} />}
+                loading={compressing}
+                disabled={!activeConversationId}
+                style={activeConversation?.context_compression ? { color: token.colorPrimary } : undefined}
+              />
+            </Dropdown>
             <Tooltip title={t('chat.clearConversation', '清空对话')}>
               <Button
                 type="text"
@@ -722,9 +811,39 @@ export function InputArea() {
           <div className="flex items-center gap-2">
             {contextCount > 0 && (
               <span style={{ fontSize: 11, color: token.colorTextSecondary }}>
-                {contextCount} 条上下文
+                {contextCount} {t('chat.contextMessages', '条上下文')}
               </span>
             )}
+            {contextTokenUsage && (() => {
+              const r = 8, stroke = 2.5, size = (r + stroke) * 2;
+              const circ = 2 * Math.PI * r;
+              const offset = circ * (1 - contextTokenUsage.percent / 100);
+              const color = contextTokenUsage.percent > 80
+                ? token.colorError
+                : contextTokenUsage.percent > 60
+                  ? token.colorWarning
+                  : token.colorPrimary;
+              return (
+                <Popover
+                  content={
+                    <span style={{ fontSize: 12 }}>
+                      {contextTokenUsage.usedTokens.toLocaleString()} / {contextTokenUsage.maxTokens.toLocaleString()} tokens ({contextTokenUsage.percent}%)
+                    </span>
+                  }
+                >
+                  <svg width={size} height={size} style={{ display: 'block', cursor: 'pointer' }}>
+                    <circle cx={r + stroke} cy={r + stroke} r={r} fill="none" stroke={token.colorBorderSecondary} strokeWidth={stroke} />
+                    <circle
+                      cx={r + stroke} cy={r + stroke} r={r}
+                      fill="none" stroke={color} strokeWidth={stroke}
+                      strokeDasharray={circ} strokeDashoffset={offset}
+                      strokeLinecap="round"
+                      transform={`rotate(-90 ${r + stroke} ${r + stroke})`}
+                    />
+                  </svg>
+                </Popover>
+              );
+            })()}
             {streaming ? (
               <Button
                 shape="circle"

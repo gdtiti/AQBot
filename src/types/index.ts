@@ -72,6 +72,9 @@ export interface ModelParamOverrides {
   max_tokens?: number;
   top_p?: number;
   frequency_penalty?: number;
+  use_max_completion_tokens?: boolean;
+  no_system_role?: boolean;
+  force_max_tokens?: boolean;
 }
 
 // === Conversation & Message ===
@@ -95,6 +98,7 @@ export interface Conversation {
   enabled_memory_namespace_ids: string[];
   is_pinned: boolean;
   is_archived: boolean;
+  context_compression: boolean;
   message_count: number;
   created_at: number;
   updated_at: number;
@@ -156,6 +160,17 @@ export interface ConversationSearchResult {
   matched_message_preview: string | null;
 }
 
+export interface ConversationSummary {
+  id: string;
+  conversation_id: string;
+  summary_text: string;
+  compressed_until_message_id: string | null;
+  token_count: number | null;
+  model_used: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface UpdateConversationInput {
   title?: string;
   provider_id?: string;
@@ -173,6 +188,7 @@ export interface UpdateConversationInput {
   enabled_mcp_server_ids?: string[];
   enabled_knowledge_base_ids?: string[];
   enabled_memory_namespace_ids?: string[];
+  context_compression?: boolean;
 }
 
 // === Gateway System ===

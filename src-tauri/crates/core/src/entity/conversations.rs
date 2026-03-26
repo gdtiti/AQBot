@@ -29,6 +29,7 @@ pub struct Model {
     pub active_branch_id: Option<String>,
     pub active_artifact_id: Option<String>,
     pub research_mode: i32,
+    pub context_compression: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

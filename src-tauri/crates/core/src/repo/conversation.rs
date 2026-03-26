@@ -1,9 +1,9 @@
 use sea_orm::*;
 use serde_json;
 
-use crate::entity::conversations;
+use crate::entity::{conversations, conversation_summaries};
 use crate::error::{AQBotError, Result};
-use crate::types::{Conversation, ConversationSearchResult, UpdateConversationInput};
+use crate::types::{Conversation, ConversationSearchResult, ConversationSummary, UpdateConversationInput};
 use crate::utils::{gen_id, now_ts};
 
 fn conversation_from_entity(m: conversations::Model) -> Conversation {
@@ -26,6 +26,7 @@ fn conversation_from_entity(m: conversations::Model) -> Conversation {
         message_count: m.message_count as u32,
         is_pinned: m.is_pinned != 0,
         is_archived: m.is_archived != 0,
+        context_compression: m.context_compression != 0,
         created_at: m.created_at,
         updated_at: m.updated_at,
     }
@@ -157,6 +158,9 @@ pub async fn update_conversation(
     if let Some(enabled_memory_namespace_ids) = input.enabled_memory_namespace_ids {
         am.enabled_memory_namespace_ids = Set(stringify_string_list(&enabled_memory_namespace_ids));
     }
+    if let Some(context_compression) = input.context_compression {
+        am.context_compression = Set(if context_compression { 1 } else { 0 });
+    }
     am.updated_at = Set(now);
     am.update(db).await?;
 
@@ -272,5 +276,91 @@ pub async fn decrement_message_count(db: &DatabaseConnection, conversation_id: &
         [now_ts().into(), conversation_id.into()],
     ))
     .await?;
+    Ok(())
+}
+
+// ── Conversation summaries ──────────────────────────────────────────────
+
+fn summary_from_entity(m: conversation_summaries::Model) -> ConversationSummary {
+    ConversationSummary {
+        id: m.id,
+        conversation_id: m.conversation_id,
+        summary_text: m.summary_text,
+        compressed_until_message_id: m.compressed_until_message_id,
+        token_count: m.token_count.map(|v| v as u32),
+        model_used: m.model_used,
+        created_at: m.created_at,
+        updated_at: m.updated_at,
+    }
+}
+
+pub async fn get_summary(
+    db: &DatabaseConnection,
+    conversation_id: &str,
+) -> Result<Option<ConversationSummary>> {
+    let row = conversation_summaries::Entity::find()
+        .filter(conversation_summaries::Column::ConversationId.eq(conversation_id))
+        .order_by_desc(conversation_summaries::Column::UpdatedAt)
+        .one(db)
+        .await?;
+
+    Ok(row.map(summary_from_entity))
+}
+
+pub async fn upsert_summary(
+    db: &DatabaseConnection,
+    conversation_id: &str,
+    summary_text: &str,
+    compressed_until_message_id: Option<&str>,
+    token_count: Option<u32>,
+    model_used: Option<&str>,
+) -> Result<ConversationSummary> {
+    let now = now_ts();
+
+    let existing = conversation_summaries::Entity::find()
+        .filter(conversation_summaries::Column::ConversationId.eq(conversation_id))
+        .one(db)
+        .await?;
+
+    match existing {
+        Some(row) => {
+            let mut am: conversation_summaries::ActiveModel = row.into();
+            am.summary_text = Set(summary_text.to_string());
+            am.compressed_until_message_id =
+                Set(compressed_until_message_id.map(|s| s.to_string()));
+            am.token_count = Set(token_count.map(|v| v as i64));
+            am.model_used = Set(model_used.map(|s| s.to_string()));
+            am.updated_at = Set(now);
+            am.update(db).await?;
+        }
+        None => {
+            let id = gen_id();
+            conversation_summaries::ActiveModel {
+                id: Set(id),
+                conversation_id: Set(conversation_id.to_string()),
+                summary_text: Set(summary_text.to_string()),
+                compressed_until_message_id: Set(
+                    compressed_until_message_id.map(|s| s.to_string()),
+                ),
+                token_count: Set(token_count.map(|v| v as i64)),
+                model_used: Set(model_used.map(|s| s.to_string())),
+                created_at: Set(now),
+                updated_at: Set(now),
+            }
+            .insert(db)
+            .await?;
+        }
+    }
+
+    get_summary(db, conversation_id)
+        .await?
+        .ok_or_else(|| AQBotError::Database(sea_orm::DbErr::Custom("Failed to read back upserted summary".into())))
+}
+
+pub async fn delete_summary(db: &DatabaseConnection, conversation_id: &str) -> Result<()> {
+    conversation_summaries::Entity::delete_many()
+        .filter(conversation_summaries::Column::ConversationId.eq(conversation_id))
+        .exec(db)
+        .await?;
     Ok(())
 }

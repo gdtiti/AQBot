@@ -15,3 +15,4 @@ pub mod builtin_tools;
 pub mod storage_paths;
 pub mod storage_inventory;
 pub mod storage_migration;
+pub mod token_counter;

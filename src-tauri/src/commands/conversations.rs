@@ -415,6 +415,8 @@ fn spawn_stream_task(
     thinking_budget: Option<u32>,
     mcp_server_ids: Vec<String>,
     override_created_at: Option<i64>,
+    use_max_completion_tokens: Option<bool>,
+    force_max_tokens: Option<bool>,
 ) {
     let model_id = conversation.model_id.clone();
 
@@ -454,9 +456,14 @@ fn spawn_stream_task(
                 stream: true,
                 temperature: conversation.temperature.map(|v| v as f64),
                 top_p: conversation.top_p.map(|v| v as f64),
-                max_tokens: conversation.max_tokens,
+                max_tokens: if force_max_tokens == Some(true) {
+                    conversation.max_tokens.or(Some(4096))
+                } else {
+                    conversation.max_tokens
+                },
                 tools: tools.clone(),
                 thinking_budget,
+                use_max_completion_tokens,
             };
 
             let mut stream = adapter.chat_stream(&ctx, request);
@@ -724,6 +731,19 @@ pub async fn send_message(
         aqbot_core::crypto::decrypt_key(&key_row.key_encrypted, &state.master_key)
             .map_err(|e| e.to_string())?;
 
+    // Get model info for param overrides and token budget
+    let resolved_model = aqbot_core::repo::provider::get_model(
+        &state.sea_db,
+        &conversation.provider_id,
+        &conversation.model_id,
+    )
+    .await
+    .ok();
+    let model_param_overrides = resolved_model.as_ref().and_then(|m| m.param_overrides.clone());
+    let no_system_role = model_param_overrides.as_ref().and_then(|p| p.no_system_role).unwrap_or(false);
+    let use_max_completion_tokens = model_param_overrides.as_ref().and_then(|p| p.use_max_completion_tokens);
+    let force_max_tokens = model_param_overrides.as_ref().and_then(|p| p.force_max_tokens);
+
     // 4. Build ChatRequest from conversation messages
     let db_messages = aqbot_core::repo::message::list_messages(&state.sea_db, &conversation_id)
         .await
@@ -736,7 +756,7 @@ pub async fn send_message(
     if let Some(ref sys) = conversation.system_prompt {
         if !sys.is_empty() {
             chat_messages.push(ChatMessage {
-                role: "system".to_string(),
+                role: if no_system_role { "user".to_string() } else { "system".to_string() },
                 content: ChatContent::Text(sys.clone()),
                 tool_calls: None,
                 tool_call_id: None,
@@ -817,41 +837,124 @@ pub async fn send_message(
         });
     }
 
-    // Find last context-clear marker to truncate history
-    let clear_idx = db_messages.iter().rposition(|m| {
-        m.role == MessageRole::System && m.content == "<!-- context-clear -->"
+    // Find last context-clear or context-compressed marker to truncate history
+    let marker_idx = db_messages.iter().rposition(|m| {
+        m.role == MessageRole::System
+            && (m.content == "<!-- context-clear -->"
+                || m.content == crate::context_manager::COMPRESSION_MARKER)
     });
-    let effective_messages = match clear_idx {
+    let effective_messages = match marker_idx {
         Some(idx) => &db_messages[idx + 1..],
         None => &db_messages[..],
     };
 
+    let mut history_messages: Vec<ChatMessage> = Vec::new();
     for m in effective_messages {
-        // Skip context-clear markers themselves
-        if m.role == MessageRole::System && m.content == "<!-- context-clear -->" {
+        if m.role == MessageRole::System
+            && (m.content == "<!-- context-clear -->"
+                || m.content == crate::context_manager::COMPRESSION_MARKER)
+        {
             continue;
         }
-        // Tool results are internal scaffolding — only used in-memory during
-        // the same turn's tool-execution loop.  Never reload from DB because
-        // the final assistant message already incorporates them.
         if m.role == MessageRole::Tool {
             continue;
         }
-        // Intermediate assistant messages with tool_calls are scaffolding too —
-        // the final assistant message already contains the complete response.
         if m.role == MessageRole::Assistant && m.tool_calls_json.is_some() {
             continue;
         }
-        chat_messages.push(chat_message_from_message(&file_store, m).map_err(|e| e.to_string())?);
+        history_messages.push(chat_message_from_message(&file_store, m).map_err(|e| e.to_string())?);
     }
 
-    // 5. Generate assistant message ID upfront
-    let assistant_message_id = aqbot_core::utils::gen_id();
-
+    // Resolve proxy config early (needed for both summary generation and main request)
     let global_settings = aqbot_core::repo::settings::get_settings(&state.sea_db)
         .await
         .unwrap_or_default();
     let resolved_proxy = ProviderProxyConfig::resolve(&provider.proxy_config, &global_settings);
+
+    // Get model info for token budget and param overrides
+    // Get model context window for token budget (resolved_model fetched earlier)
+    let model_context_window = resolved_model.as_ref().and_then(|m| m.max_tokens);
+
+    // Load existing summary for this conversation
+    let existing_summary = aqbot_core::repo::conversation::get_summary(
+        &state.sea_db,
+        &conversation_id,
+    )
+    .await
+    .ok()
+    .flatten();
+
+    // Auto-compression: if enabled and tokens exceed threshold, compress now
+    if conversation.context_compression
+        && !history_messages.is_empty()
+        && crate::context_manager::should_auto_compress(
+            &chat_messages,
+            &history_messages,
+            model_context_window,
+        )
+    {
+        // Perform synchronous compression before sending
+        if let Ok(summary_text) = do_compress(
+            &state.sea_db,
+            &conversation_id,
+            &history_messages,
+            existing_summary.as_ref().map(|s| s.summary_text.as_str()),
+            &provider,
+            &decrypted_key,
+            &key_row.id,
+            &resolved_proxy,
+            &conversation.model_id,
+            use_max_completion_tokens,
+        )
+        .await
+        {
+            // Insert compression marker
+            let _ = aqbot_core::repo::message::create_message(
+                &state.sea_db,
+                &conversation_id,
+                MessageRole::System,
+                crate::context_manager::COMPRESSION_MARKER,
+                &[],
+                None,
+                0,
+            )
+            .await;
+
+            // Emit marker to frontend
+            let _ = app.emit(
+                &format!("conversation:compressed:{}", conversation_id),
+                &summary_text,
+            );
+
+            // After compression, history is now empty (marker splits it)
+            // Context = system + summary + current user message only
+            chat_messages = crate::context_manager::build_context(
+                &chat_messages,
+                &[],
+                Some(&summary_text),
+                model_context_window,
+            );
+        } else {
+            // Compression failed — fall back to sliding window
+            chat_messages = crate::context_manager::build_context(
+                &chat_messages,
+                &history_messages,
+                existing_summary.as_ref().map(|s| s.summary_text.as_str()),
+                model_context_window,
+            );
+        }
+    } else {
+        // No auto-compression: use existing summary (if any) + sliding window
+        chat_messages = crate::context_manager::build_context(
+            &chat_messages,
+            &history_messages,
+            existing_summary.as_ref().map(|s| s.summary_text.as_str()),
+            model_context_window,
+        );
+    }
+
+    // 5. Generate assistant message ID upfront
+    let assistant_message_id = aqbot_core::utils::gen_id();
 
     let ctx = ProviderRequestContext {
         api_key: decrypted_key,
@@ -890,6 +993,15 @@ pub async fn send_message(
     };
 
     // 7. Spawn streaming in background
+    // Convert all remaining system messages to user messages if model doesn't support system role
+    if no_system_role {
+        for msg in &mut chat_messages {
+            if msg.role == "system" {
+                msg.role = "user".to_string();
+            }
+        }
+    }
+
     let user_msg_id = user_message.id.clone();
     spawn_stream_task(
         app,
@@ -908,6 +1020,8 @@ pub async fn send_message(
         thinking_budget,
         mcp_ids,
         None,
+        use_max_completion_tokens,
+        force_max_tokens,
     );
 
     // Return the user message immediately
@@ -1068,14 +1182,16 @@ pub async fn regenerate_message(
         }
     }
 
-    // Find the target user message position, then search for context-clear BEFORE it
+    // Find the target user message position, then search for context-clear/compressed BEFORE it
     let target_pos = remaining_messages.iter().position(|m| m.id == last_user_msg.id);
     let search_range = match target_pos {
         Some(pos) => &remaining_messages[..pos],
         None => &remaining_messages[..],
     };
     let clear_idx = search_range.iter().rposition(|m| {
-        m.role == MessageRole::System && m.content == "<!-- context-clear -->"
+        m.role == MessageRole::System
+            && (m.content == "<!-- context-clear -->"
+                || m.content == crate::context_manager::COMPRESSION_MARKER)
     });
     let effective_messages = match clear_idx {
         Some(idx) => &remaining_messages[idx + 1..],
@@ -1083,7 +1199,10 @@ pub async fn regenerate_message(
     };
 
     for m in effective_messages {
-        if m.role == MessageRole::System && m.content == "<!-- context-clear -->" {
+        if m.role == MessageRole::System
+            && (m.content == "<!-- context-clear -->"
+                || m.content == crate::context_manager::COMPRESSION_MARKER)
+        {
             continue;
         }
         // Include messages up to and including the last user message
@@ -1138,6 +1257,27 @@ pub async fn regenerate_message(
         if all_tools.is_empty() { None } else { Some(all_tools) }
     };
 
+    let regen_model_overrides = aqbot_core::repo::provider::get_model(
+        &state.sea_db,
+        &conversation.provider_id,
+        &conversation.model_id,
+    )
+    .await
+    .ok()
+    .and_then(|m| m.param_overrides);
+    let use_max_completion_tokens = regen_model_overrides.as_ref().and_then(|p| p.use_max_completion_tokens);
+    let force_max_tokens = regen_model_overrides.as_ref().and_then(|p| p.force_max_tokens);
+    let no_system_role = regen_model_overrides.as_ref().and_then(|p| p.no_system_role).unwrap_or(false);
+
+    // Convert system messages to user messages if model doesn't support system role
+    if no_system_role {
+        for msg in &mut chat_messages {
+            if msg.role == "system" {
+                msg.role = "user".to_string();
+            }
+        }
+    }
+
     spawn_stream_task(
         app,
         state.sea_db.clone(),
@@ -1155,6 +1295,8 @@ pub async fn regenerate_message(
         thinking_budget,
         mcp_ids,
         original_created_at,
+        use_max_completion_tokens,
+        force_max_tokens,
     );
 
     Ok(())
@@ -1284,21 +1426,26 @@ pub async fn regenerate_with_model(
         }
     }
 
-    // Context building with context-clear handling
+    // Context building with context-clear/compressed handling
     let target_pos = remaining_messages.iter().position(|m| m.id == user_msg.id);
     let search_range = match target_pos {
         Some(pos) => &remaining_messages[..pos],
         None => &remaining_messages[..],
     };
     let clear_idx = search_range.iter().rposition(|m| {
-        m.role == MessageRole::System && m.content == "<!-- context-clear -->"
+        m.role == MessageRole::System
+            && (m.content == "<!-- context-clear -->"
+                || m.content == crate::context_manager::COMPRESSION_MARKER)
     });
     let effective_messages = match clear_idx {
         Some(idx) => &remaining_messages[idx + 1..],
         None => &remaining_messages[..],
     };
     for m in effective_messages {
-        if m.role == MessageRole::System && m.content == "<!-- context-clear -->" {
+        if m.role == MessageRole::System
+            && (m.content == "<!-- context-clear -->"
+                || m.content == crate::context_manager::COMPRESSION_MARKER)
+        {
             continue;
         }
         chat_messages.push(chat_message_from_message(&file_store, m).map_err(|e| e.to_string())?);
@@ -1348,6 +1495,26 @@ pub async fn regenerate_with_model(
         if all_tools.is_empty() { None } else { Some(all_tools) }
     };
 
+    let rwm_overrides = aqbot_core::repo::provider::get_model(
+        &state.sea_db,
+        &conversation.provider_id,
+        &conversation.model_id,
+    )
+    .await
+    .ok()
+    .and_then(|m| m.param_overrides);
+    let use_max_completion_tokens = rwm_overrides.as_ref().and_then(|p| p.use_max_completion_tokens);
+    let force_max_tokens = rwm_overrides.as_ref().and_then(|p| p.force_max_tokens);
+    let no_system_role = rwm_overrides.as_ref().and_then(|p| p.no_system_role).unwrap_or(false);
+
+    if no_system_role {
+        for msg in &mut chat_messages {
+            if msg.role == "system" {
+                msg.role = "user".to_string();
+            }
+        }
+    }
+
     spawn_stream_task(
         app,
         state.sea_db.clone(),
@@ -1365,6 +1532,8 @@ pub async fn regenerate_with_model(
         thinking_budget,
         mcp_ids,
         original_created_at,
+        use_max_completion_tokens,
+        force_max_tokens,
     );
 
     Ok(())
@@ -1408,6 +1577,252 @@ pub async fn delete_message_group(
             &state.sea_db, &conversation_id
         ).await.map_err(|e| e.to_string())?;
     }
+    Ok(())
+}
+
+/// Internal helper: call LLM to compress messages into a summary and persist it.
+async fn do_compress(
+    db: &sea_orm::DatabaseConnection,
+    conversation_id: &str,
+    history_messages: &[ChatMessage],
+    existing_summary: Option<&str>,
+    provider: &ProviderConfig,
+    decrypted_key: &str,
+    key_id: &str,
+    proxy_config: &Option<ProviderProxyConfig>,
+    model_id: &str,
+    use_max_completion_tokens: Option<bool>,
+) -> Result<String, String> {
+    let sum_req = crate::context_manager::SummarizationRequest {
+        existing_summary: existing_summary.map(|s| s.to_string()),
+        messages_to_compress: history_messages.to_vec(),
+    };
+
+    let summary_messages = crate::context_manager::build_summary_prompt(&sum_req);
+    let request = ChatRequest {
+        model: model_id.to_string(),
+        messages: summary_messages,
+        stream: false,
+        temperature: Some(0.3),
+        top_p: None,
+        max_tokens: Some(1024),
+        tools: None,
+        thinking_budget: None,
+        use_max_completion_tokens,
+    };
+
+    let ctx = ProviderRequestContext {
+        api_key: decrypted_key.to_string(),
+        key_id: key_id.to_string(),
+        provider_id: provider.id.clone(),
+        base_url: Some(resolve_base_url(&provider.api_host)),
+        api_path: provider.api_path.clone(),
+        proxy_config: proxy_config.clone(),
+    };
+
+    let registry = ProviderRegistry::create_default();
+    let registry_key = provider_type_to_registry_key(&provider.provider_type);
+    let adapter = registry
+        .get(registry_key)
+        .ok_or_else(|| "Provider adapter not found".to_string())?;
+
+    let response = adapter
+        .chat(&ctx, request)
+        .await
+        .map_err(|e| format!("Summary generation failed: {}", e))?;
+
+    let token_count = aqbot_core::token_counter::estimate_tokens(&response.content);
+    aqbot_core::repo::conversation::upsert_summary(
+        db,
+        conversation_id,
+        &response.content,
+        None,
+        Some(token_count as u32),
+        Some(model_id),
+    )
+    .await
+    .map_err(|e| format!("Failed to save summary: {}", e))?;
+
+    tracing::debug!("Compressed context for {} ({} tokens)", conversation_id, token_count);
+    Ok(response.content)
+}
+
+/// Tauri command: manually compress the current conversation context.
+///
+/// Returns the generated summary text and inserts a compression marker.
+#[tauri::command]
+pub async fn compress_context(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    conversation_id: String,
+) -> Result<ConversationSummary, String> {
+    let conversation = aqbot_core::repo::conversation::get_conversation(
+        &state.sea_db,
+        &conversation_id,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // Get provider + key
+    let provider = aqbot_core::repo::provider::get_provider(&state.sea_db, &conversation.provider_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let key_row = provider
+        .keys
+        .first()
+        .ok_or_else(|| "No API key configured".to_string())?;
+    let decrypted_key = aqbot_core::crypto::decrypt_key(&key_row.key_encrypted, &state.master_key)
+        .map_err(|e| e.to_string())?;
+
+    let global_settings = aqbot_core::repo::settings::get_settings(&state.sea_db)
+        .await
+        .unwrap_or_default();
+    let resolved_proxy = ProviderProxyConfig::resolve(&provider.proxy_config, &global_settings);
+
+    // Load messages after last marker
+    let db_messages = aqbot_core::repo::message::list_messages(&state.sea_db, &conversation_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let file_store = aqbot_core::file_store::FileStore::new();
+
+    // For manual compression: try messages after last marker first,
+    // fall back to ALL messages if nothing after marker
+    let marker_idx = db_messages.iter().rposition(|m| {
+        m.role == MessageRole::System
+            && (m.content == "<!-- context-clear -->"
+                || m.content == crate::context_manager::COMPRESSION_MARKER)
+    });
+
+    let collect_messages = |msgs: &[Message]| -> Result<Vec<ChatMessage>, String> {
+        let mut out = Vec::new();
+        for m in msgs {
+            if m.role == MessageRole::System
+                && (m.content == "<!-- context-clear -->"
+                    || m.content == crate::context_manager::COMPRESSION_MARKER)
+            {
+                continue;
+            }
+            if m.role == MessageRole::Tool {
+                continue;
+            }
+            if m.role == MessageRole::Assistant && m.tool_calls_json.is_some() {
+                continue;
+            }
+            out.push(chat_message_from_message(&file_store, m).map_err(|e| e.to_string())?);
+        }
+        Ok(out)
+    };
+
+    let mut history_messages = match marker_idx {
+        Some(idx) => collect_messages(&db_messages[idx + 1..])?,
+        None => collect_messages(&db_messages)?,
+    };
+
+    // If nothing after the last marker, try all messages
+    if history_messages.is_empty() && marker_idx.is_some() {
+        history_messages = collect_messages(&db_messages)?;
+    }
+
+    if history_messages.is_empty() {
+        return Err("No messages to compress".to_string());
+    }
+
+    // Load existing summary
+    let existing_summary = aqbot_core::repo::conversation::get_summary(
+        &state.sea_db,
+        &conversation_id,
+    )
+    .await
+    .ok()
+    .flatten();
+
+    // Compress
+    let use_max_completion_tokens = aqbot_core::repo::provider::get_model(
+        &state.sea_db,
+        &conversation.provider_id,
+        &conversation.model_id,
+    )
+    .await
+    .ok()
+    .and_then(|m| m.param_overrides)
+    .and_then(|p| p.use_max_completion_tokens);
+
+    do_compress(
+        &state.sea_db,
+        &conversation_id,
+        &history_messages,
+        existing_summary.as_ref().map(|s| s.summary_text.as_str()),
+        &provider,
+        &decrypted_key,
+        &key_row.id,
+        &resolved_proxy,
+        &conversation.model_id,
+        use_max_completion_tokens,
+    )
+    .await?;
+
+    // Insert compression marker message
+    let marker_msg = aqbot_core::repo::message::create_message(
+        &state.sea_db,
+        &conversation_id,
+        MessageRole::System,
+        crate::context_manager::COMPRESSION_MARKER,
+        &[],
+        None,
+        0,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // Emit events to frontend
+    let _ = app.emit(
+        &format!("conversation:compressed:{}", conversation_id),
+        &marker_msg,
+    );
+
+    // Return the updated summary
+    let summary = aqbot_core::repo::conversation::get_summary(
+        &state.sea_db,
+        &conversation_id,
+    )
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| "Summary not found after compression".to_string())?;
+
+    Ok(summary)
+}
+
+/// Tauri command: get the compression summary for a conversation.
+#[tauri::command]
+pub async fn get_compression_summary(
+    state: State<'_, AppState>,
+    conversation_id: String,
+) -> Result<Option<ConversationSummary>, String> {
+    aqbot_core::repo::conversation::get_summary(&state.sea_db, &conversation_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Tauri command: delete the compression summary and all marker messages.
+#[tauri::command]
+pub async fn delete_compression(
+    state: State<'_, AppState>,
+    conversation_id: String,
+) -> Result<(), String> {
+    // Delete the summary
+    aqbot_core::repo::conversation::delete_summary(&state.sea_db, &conversation_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Delete all compression marker messages
+    aqbot_core::entity::messages::Entity::delete_many()
+        .filter(aqbot_core::entity::messages::Column::ConversationId.eq(&conversation_id))
+        .filter(aqbot_core::entity::messages::Column::Content.eq(crate::context_manager::COMPRESSION_MARKER))
+        .exec(&state.sea_db)
+        .await
+        .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 

@@ -849,6 +849,7 @@ mod tests {
             max_tokens: Some(100),
             tools: None,
             thinking_budget: None,
+            use_max_completion_tokens: None,
         };
         let built = build_request(&request, false);
         assert_eq!(built.max_output_tokens, Some(100));
@@ -872,6 +873,7 @@ mod tests {
             max_tokens: Some(1),
             tools: None,
             thinking_budget: None,
+            use_max_completion_tokens: None,
         };
         let built = build_request(&request, false);
         assert_eq!(built.max_output_tokens, Some(16));

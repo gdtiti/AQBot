@@ -265,6 +265,7 @@ pub async fn test_model(
         max_tokens: Some(1),
         tools: None,
         thinking_budget: None,
+        use_max_completion_tokens: None,
     };
     let start = Instant::now();
     adapter.chat(&ctx, request)

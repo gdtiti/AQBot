@@ -184,6 +184,15 @@ pub struct ModelParamOverrides {
     pub max_tokens: Option<u32>,
     pub top_p: Option<f32>,
     pub frequency_penalty: Option<f32>,
+    /// When true, the provider adapter should send `max_completion_tokens`
+    /// instead of `max_tokens` (required by OpenAI o-series models).
+    pub use_max_completion_tokens: Option<bool>,
+    /// When true, system messages are converted to user messages
+    /// (for models that don't support the system role).
+    pub no_system_role: Option<bool>,
+    /// When true, always include max_tokens in the request
+    /// (falls back to 4096 if conversation.max_tokens is not set).
+    pub force_max_tokens: Option<bool>,
 }
 
 // === Conversation & Message ===
@@ -208,6 +217,7 @@ pub struct Conversation {
     pub message_count: u32,
     pub is_pinned: bool,
     pub is_archived: bool,
+    pub context_compression: bool,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -277,6 +287,18 @@ pub struct ConversationSearchResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConversationSummary {
+    pub id: String,
+    pub conversation_id: String,
+    pub summary_text: String,
+    pub compressed_until_message_id: Option<String>,
+    pub token_count: Option<u32>,
+    pub model_used: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateConversationInput {
     pub title: Option<String>,
     pub provider_id: Option<String>,
@@ -296,6 +318,7 @@ pub struct UpdateConversationInput {
     pub enabled_mcp_server_ids: Option<Vec<String>>,
     pub enabled_knowledge_base_ids: Option<Vec<String>>,
     pub enabled_memory_namespace_ids: Option<Vec<String>>,
+    pub context_compression: Option<bool>,
 }
 
 // === Gateway System ===
@@ -577,6 +600,9 @@ pub struct ChatRequest {
     /// Optional thinking/reasoning token budget. Mapped to provider-specific fields.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thinking_budget: Option<u32>,
+    /// When true, send `max_completion_tokens` instead of `max_tokens` (OpenAI o-series).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_max_completion_tokens: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -4,6 +4,7 @@ mod m20240101_000001_init;
 mod m20240102_000001_add_token_fields;
 mod m20240103_000001_add_mcp_timeout_headers;
 mod m20240104_000001_add_mcp_icon;
+mod m20250105_000001_context_compression;
 
 pub struct Migrator;
 
@@ -15,6 +16,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240102_000001_add_token_fields::Migration),
             Box::new(m20240103_000001_add_mcp_timeout_headers::Migration),
             Box::new(m20240104_000001_add_mcp_icon::Migration),
+            Box::new(m20250105_000001_context_compression::Migration),
         ]
     }
 }

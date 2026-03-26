@@ -1,8 +1,8 @@
 import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { CloseCircleFilled, SyncOutlined } from '@ant-design/icons';
-import { Typography, Button, Dropdown, Input, App, Avatar, Alert, Popconfirm, Popover, theme, Tag, Image, Tooltip } from 'antd';
+import { Typography, Button, Dropdown, Input, App, Avatar, Alert, Popconfirm, Popover, theme, Tag, Image, Tooltip, Modal, Spin } from 'antd';
 import type { InputRef } from 'antd';
-import { Pencil, Share2, FileImage, FileCode, FileText, FileType, Bot, Brain, Lightbulb, Code, Languages, Copy, RotateCcw, User, Trash2, ChevronLeft, ChevronRight, ChevronDown, Scissors, Paperclip, AlertCircle, X, ArrowDown, ArrowUp, ArrowLeftRight } from 'lucide-react';
+import { Pencil, Share2, FileImage, FileCode, FileText, FileType, Bot, Brain, Lightbulb, Code, Languages, Copy, RotateCcw, User, Trash2, ChevronLeft, ChevronRight, ChevronDown, Scissors, Paperclip, AlertCircle, X, ArrowDown, ArrowUp, ArrowLeftRight, Zap } from 'lucide-react';
 import { ModelIcon } from '@lobehub/icons';
 import { getConvIcon } from '@/lib/convIcon';
 import Bubble from '@ant-design/x/es/bubble';
@@ -1287,6 +1287,7 @@ export function ChatView() {
   const loadingOlder = useConversationStore((s) => s.loadingOlder);
   const hasOlderMessages = useConversationStore((s) => s.hasOlderMessages);
   const streaming = useConversationStore((s) => s.streaming);
+  const compressing = useConversationStore((s) => s.compressing);
   const streamingMessageId = useConversationStore((s) => s.streamingMessageId);
   const thinkingActiveMessageId = useConversationStore((s) => s.thinkingActiveMessageId);
   const storeError = useConversationStore((s) => s.error);
@@ -1296,6 +1297,10 @@ export function ChatView() {
   const regenerateMessage = useConversationStore((s) => s.regenerateMessage);
   const deleteMessageGroup = useConversationStore((s) => s.deleteMessageGroup);
   const removeContextClear = useConversationStore((s) => s.removeContextClear);
+  const getCompressionSummary = useConversationStore((s) => s.getCompressionSummary);
+  const deleteCompression = useConversationStore((s) => s.deleteCompression);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [summaryModalText, setSummaryModalText] = useState('');
   const createConversation = useConversationStore((s) => s.createConversation);
   const providers = useProviderStore((s) => s.providers);
   const settings = useSettingsStore((s) => s.settings);
@@ -1606,6 +1611,22 @@ export function ChatView() {
         continue;
       }
 
+      if (msg.role === 'system' && msg.content === '<!-- context-compressed -->') {
+        const signature = 'context-compressed';
+        const cached = cache.get(msg.id);
+        const item = cached?.signature === signature
+          ? cached.item
+          : {
+              key: msg.id,
+              role: 'context-compressed',
+              content: msg.id,
+              variant: 'borderless' as const,
+            };
+        nextCache.set(msg.id, { signature, item });
+        nextItems.push(item);
+        continue;
+      }
+
       if (msg.role === 'user') {
         const { userContent } = userSearchContentById.get(msg.id) ?? parseSearchContent(msg.content);
         const signature = `user:${userContent}`;
@@ -1655,8 +1676,23 @@ export function ChatView() {
     bubbleItemCacheRef.current = nextCache;
     return nextItems;
   }, [activeMessages, thinkingActiveMessageId, userSearchContentById]);
-  const lastBubbleKey = bubbleItems.length > 0
-    ? String(bubbleItems[bubbleItems.length - 1].key)
+
+  // Append compressing placeholder when compression is in progress
+  const finalBubbleItems = useMemo(() => {
+    if (!compressing) return bubbleItems;
+    return [
+      ...bubbleItems,
+      {
+        key: '__compressing__',
+        role: 'context-compressing',
+        content: '',
+        variant: 'borderless' as const,
+      },
+    ];
+  }, [bubbleItems, compressing]);
+
+  const lastBubbleKey = finalBubbleItems.length > 0
+    ? String(finalBubbleItems[finalBubbleItems.length - 1].key)
     : '';
 
   useEffect(() => {
@@ -1929,11 +1965,98 @@ export function ChatView() {
     };
   }, [messageApi, removeContextClear, t, token.colorBorderSecondary, token.colorTextQuaternary]);
 
+  const contextCompressedRole = useCallback((_bubbleData: BubbleItemType) => {
+    return {
+      placement: 'start' as const,
+      variant: 'borderless' as const,
+      className: 'context-clear-bubble',
+      contentRender: () => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 0', width: '100%' }}>
+          <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${token.colorPrimaryBorder}` }} />
+          <span
+            style={{
+              margin: '0 12px',
+              color: token.colorPrimary,
+              fontSize: 12,
+              display: 'inline-flex',
+              alignItems: 'center',
+              whiteSpace: 'nowrap',
+              userSelect: 'none',
+              cursor: 'pointer',
+              gap: 4,
+            }}
+          >
+            <span
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              onClick={async () => {
+                const convId = activeConversationId;
+                if (!convId) return;
+                const summary = await getCompressionSummary(convId);
+                setSummaryModalText(summary?.summary_text ?? t('chat.noSummary', '暂无摘要'));
+                setSummaryModalOpen(true);
+              }}
+            >
+              <Zap size={14} /> {t('chat.contextCompressed', '上下文已压缩')}
+            </span>
+            <Popconfirm
+              title={t('chat.deleteCompressionConfirm', '确定删除压缩摘要？')}
+              onConfirm={async () => {
+                try {
+                  await deleteCompression();
+                } catch {
+                  // error already logged in store
+                }
+              }}
+              okText={t('common.confirm', '确定')}
+              cancelText={t('common.cancel', '取消')}
+            >
+              <X
+                size={14}
+                style={{ cursor: 'pointer', color: token.colorTextTertiary, flexShrink: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Popconfirm>
+          </span>
+          <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${token.colorPrimaryBorder}` }} />
+        </div>
+      ),
+    };
+  }, [activeConversationId, deleteCompression, getCompressionSummary, t, token.colorPrimary, token.colorPrimaryBorder, token.colorTextTertiary]);
+
+  const contextCompressingRole = useCallback(() => {
+    return {
+      placement: 'start' as const,
+      variant: 'borderless' as const,
+      className: 'context-clear-bubble',
+      contentRender: () => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 0', width: '100%' }}>
+          <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${token.colorPrimaryBorder}` }} />
+          <span
+            style={{
+              margin: '0 12px',
+              color: token.colorPrimary,
+              fontSize: 12,
+              display: 'inline-flex',
+              alignItems: 'center',
+              whiteSpace: 'nowrap',
+              userSelect: 'none',
+            }}
+          >
+            <Spin size="small" style={{ marginRight: 6 }} /> {t('chat.compressing', '正在压缩中...')}
+          </span>
+          <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${token.colorPrimaryBorder}` }} />
+        </div>
+      ),
+    };
+  }, [t, token.colorPrimary, token.colorPrimaryBorder]);
+
   const roles: RoleType = useMemo(() => ({
     user: userRole,
     ai: aiRole,
     'context-clear': contextClearRole,
-  }), [aiRole, contextClearRole, userRole]);
+    'context-compressed': contextCompressedRole,
+    'context-compressing': contextCompressingRole,
+  }), [aiRole, contextClearRole, contextCompressedRole, contextCompressingRole, userRole]);
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
@@ -2108,7 +2231,7 @@ export function ChatView() {
         ) : (
           <Bubble.List
             ref={bubbleListRef}
-            items={bubbleItems}
+            items={finalBubbleItems}
             autoScroll
             onScroll={handleBubbleListScroll}
             role={roles}
@@ -2139,6 +2262,25 @@ export function ChatView() {
         )}
         <InputArea />
       </div>
+      <Modal
+        title={t('chat.compressionSummary', '压缩摘要')}
+        open={summaryModalOpen}
+        onCancel={() => setSummaryModalOpen(false)}
+        footer={null}
+        width={640}
+      >
+        <div style={{ maxHeight: 480, overflow: 'auto', padding: '8px 0' }}>
+          <NodeRenderer
+            content={summaryModalText}
+            isDark={isDarkMode}
+            customId="summary"
+            final
+            themes={codeBlockThemes}
+            codeBlockLightTheme={LIGHT_CODE_BLOCK_THEME}
+            codeBlockDarkTheme={codeBlockDarkTheme}
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

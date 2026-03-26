@@ -468,6 +468,9 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
         max_tokens: model.param_overrides?.max_tokens ?? 4096,
         top_p: model.param_overrides?.top_p ?? 1.0,
         frequency_penalty: model.param_overrides?.frequency_penalty ?? 0.0,
+        use_max_completion_tokens: model.param_overrides?.use_max_completion_tokens ?? false,
+        no_system_role: model.param_overrides?.no_system_role ?? false,
+        force_max_tokens: model.param_overrides?.force_max_tokens ?? false,
       });
       setSettingsModalOpen(true);
     },
@@ -1295,6 +1298,15 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
                 </Form.Item>
                 <Form.Item name="frequency_penalty" label={t('settings.frequencyPenalty')}>
                   <Slider min={-2} max={2} step={0.1} />
+                </Form.Item>
+                <Form.Item name="use_max_completion_tokens" label={t('settings.useMaxCompletionTokens', '使用 max_completion_tokens')} valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+                <Form.Item name="no_system_role" label={t('settings.noSystemRole', '不支持 System 角色')} valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+                <Form.Item name="force_max_tokens" label={t('settings.forceMaxTokens', '强制 Max Tokens')} valuePropName="checked">
+                  <Switch />
                 </Form.Item>
               </Form>
             </div>

@@ -51,6 +51,8 @@ struct OpenAIRequest {
     top_p: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_completion_tokens: Option<u32>,
     stream: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     stream_options: Option<StreamOptions>,
@@ -268,12 +270,27 @@ fn build_request(request: &ChatRequest, messages: &[ChatMessage], stream: bool) 
         6145..=12288 => "high".to_string(),
         _ => "xhigh".to_string(),
     });
+
+    // Use max_completion_tokens when: model config says so, or reasoning mode, or o-series models
+    let use_completion_tokens = request.use_max_completion_tokens == Some(true)
+        || reasoning_effort.is_some()
+        || request.model.starts_with("o1")
+        || request.model.starts_with("o3")
+        || request.model.starts_with("o4");
+
+    let (max_tokens, max_completion_tokens) = if use_completion_tokens {
+        (None, request.max_tokens)
+    } else {
+        (request.max_tokens, None)
+    };
+
     OpenAIRequest {
         model: request.model.clone(),
         messages: convert_messages(messages),
         temperature: if reasoning_effort.is_some() { None } else { request.temperature },
         top_p: if reasoning_effort.is_some() { None } else { request.top_p },
-        max_tokens: request.max_tokens,
+        max_tokens,
+        max_completion_tokens,
         stream,
         stream_options: if stream { Some(StreamOptions { include_usage: true }) } else { None },
         tools: request.tools.clone(),

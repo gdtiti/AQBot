@@ -23,6 +23,7 @@ pub struct AppState {
 }
 
 mod commands;
+mod context_manager;
 mod indexing;
 mod paths;
 mod tray;
@@ -86,6 +87,9 @@ pub fn run() {
             commands::conversations::switch_message_version,
             commands::conversations::delete_message_group,
             commands::conversations::send_system_message,
+            commands::conversations::compress_context,
+            commands::conversations::get_compression_summary,
+            commands::conversations::delete_compression,
             // settings
             commands::settings::get_settings,
             commands::settings::save_settings,

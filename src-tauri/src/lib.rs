@@ -218,6 +218,33 @@ pub fn run() {
             commands::storage::open_storage_directory,
         ])
         .setup(|app| {
+            // Force overlay (auto-hide) scrollbar style on macOS.
+            // Apps linked against older SDKs (e.g. macOS 15 CI builds) may
+            // fall back to classic native scrollbars, ignoring CSS
+            // ::-webkit-scrollbar styling.  Setting this user default before
+            // the WebView is created ensures consistent thin overlay
+            // scrollbars regardless of which SDK the binary was linked with.
+            #[cfg(target_os = "macos")]
+            {
+                use objc2::msg_send;
+                use objc2::rc::Retained;
+                use objc2::runtime::{AnyClass, AnyObject};
+
+                unsafe {
+                    let defaults_cls = AnyClass::get(c"NSUserDefaults").unwrap();
+                    let defaults: Retained<AnyObject> =
+                        msg_send![defaults_cls, standardUserDefaults];
+
+                    let str_cls = AnyClass::get(c"NSString").unwrap();
+                    let key: Retained<AnyObject> =
+                        msg_send![str_cls, stringWithUTF8String: c"AppleShowScrollBars".as_ptr()];
+                    let value: Retained<AnyObject> =
+                        msg_send![str_cls, stringWithUTF8String: c"WhenScrolling".as_ptr()];
+
+                    let _: () = msg_send![&*defaults, setObject: &*value, forKey: &*key];
+                }
+            }
+
             // Canonical AQBot home directory (~/.aqbot/ on macOS/Linux,
             // %USERPROFILE%\.aqbot\ on Windows).
             let app_dir = paths::aqbot_home();

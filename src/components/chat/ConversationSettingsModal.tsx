@@ -223,7 +223,7 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
         </div>
       }
     >
-      <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
+      <div data-os-scrollbar style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
         {/* Avatar with Dropdown */}
         <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px' }}>
           <Dropdown menu={{ items: avatarMenuItems }} trigger={['click']} placement="bottom">

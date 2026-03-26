@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import './styles/vendor/markstream-react.css';
+@import 'overlayscrollbars/overlayscrollbars.css';
 
 /* Global theme tokens — synced with Ant Design ConfigProvider via JS */
 :root {
@@ -78,33 +79,45 @@ b, strong, th,
   font-weight: calc(var(--font-weight, 400) + 200) !important;
 }
 
-/* Scrollbar styling — standard properties only (scrollbar-width, scrollbar-color).
- * Works consistently across Safari 17.4+, Firefox 64+, Chrome 121+.
- * We intentionally avoid ::-webkit-scrollbar pseudo-elements: on macOS,
- * matching them activates WebKit's "custom scrollbar" mode which DISABLES
- * standard scrollbar-color.  If the custom renderer is buggy (e.g. WKWebView
- * linked against an older SDK), neither path produces correct output. */
+/* Scrollbar styling — native scrollbars are hidden; OverlayScrollbars provides
+ * a consistent, thin, semi-transparent custom scrollbar across all builds.
+ * This avoids the WKWebView SDK-linked-on-or-after rendering bug where
+ * scrollbar-color is parsed but ignored by the native renderer. */
 
 * {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-*:hover {
-  scrollbar-color: rgba(0, 0, 0, 0.08) transparent;
-}
-html[data-theme="dark"] *:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  scrollbar-width: none !important;
 }
 
-/* Override antd Bubble.List scrollbar — it sets its own CSS-in-JS styles */
-.ant-bubble-list-scroll-box {
-  scrollbar-color: transparent transparent !important;
+/* ── OverlayScrollbars custom theme ──────────────────────────────── */
+.os-theme-aqbot {
+  --os-size: 5px;
+  --os-padding-perpendicular: 0;
+  --os-padding-axis: 2px;
+  --os-track-border-radius: 3px;
+  --os-track-bg: transparent;
+  --os-track-bg-hover: transparent;
+  --os-track-bg-active: transparent;
+  --os-handle-border-radius: 3px;
+  --os-handle-bg: rgba(0, 0, 0, 0.08);
+  --os-handle-bg-hover: rgba(0, 0, 0, 0.18);
+  --os-handle-bg-active: rgba(0, 0, 0, 0.28);
+  --os-handle-perpendicular-size: 100%;
+  --os-handle-perpendicular-size-hover: 100%;
+  --os-handle-perpendicular-size-active: 100%;
 }
-.ant-bubble-list-scroll-box:hover {
-  scrollbar-color: rgba(0, 0, 0, 0.08) transparent !important;
+html[data-theme="dark"] .os-theme-aqbot {
+  --os-handle-bg: rgba(255, 255, 255, 0.08);
+  --os-handle-bg-hover: rgba(255, 255, 255, 0.18);
+  --os-handle-bg-active: rgba(255, 255, 255, 0.28);
 }
-html[data-theme="dark"] .ant-bubble-list-scroll-box:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent !important;
+
+/* ── Chat scroll indicator (Bubble.List uses column-reverse, incompatible
+ *    with OverlayScrollbars — uses a lightweight visual-only indicator) ── */
+.chat-scroll-indicator {
+  background: rgba(0, 0, 0, 0.12);
+}
+html[data-theme="dark"] .chat-scroll-indicator {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* Custom action item hover style (for actionRender items in @ant-design/x Actions) */

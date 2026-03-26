@@ -89,6 +89,12 @@ importers:
       markstream-react:
         specifier: ^0.0.32
         version: 0.0.32(@antv/infographic@0.2.16)(@terrastruct/d2@0.1.33)(katex@0.16.40)(mermaid@11.13.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(stream-markdown@0.0.14(shiki@3.23.0))(stream-monaco@0.0.20(monaco-editor@0.52.2))
+      overlayscrollbars:
+        specifier: ^2.14.0
+        version: 2.14.0
+      overlayscrollbars-react:
+        specifier: ^0.5.6
+        version: 0.5.6(overlayscrollbars@2.14.0)(react@19.2.4)
       react:
         specifier: ^19.1.0
         version: 19.2.4
@@ -3305,6 +3311,15 @@ packages:
 
   oniguruma-to-es@4.3.5:
     resolution: {integrity: sha512-Zjygswjpsewa0NLTsiizVuMQZbp0MDyM6lIt66OxsF21npUDlzpHi1Mgb/qhQdkb+dWFTzJmFbEWdvZgRho8eQ==}
+
+  overlayscrollbars-react@0.5.6:
+    resolution: {integrity: sha512-E5To04bL5brn9GVCZ36SnfGanxa2I2MDkWoa4Cjo5wol7l+diAgi4DBc983V7l2nOk/OLJ6Feg4kySspQEGDBw==}
+    peerDependencies:
+      overlayscrollbars: ^2.0.0
+      react: '>=16.8.0'
+
+  overlayscrollbars@2.14.0:
+    resolution: {integrity: sha512-RjV0pqc79kYhQLC3vTcLRb5GLpI1n6qh0Oua3g+bGH4EgNOJHVBGP7u0zZtxoAa0dkHlAqTTSYRb9MMmxNLjig==}
 
   package-manager-detector@1.6.0:
     resolution: {integrity: sha512-61A5ThoTiDG/C8s8UMZwSorAGwMJ0ERVGj2OjoW5pAalsNOg15+iQiPzrLJ4jhZ1HJzmC2PIHT2oEiH3R5fzNA==}
@@ -7910,6 +7925,13 @@ snapshots:
       oniguruma-parser: 0.12.1
       regex: 6.1.0
       regex-recursion: 6.0.2
+
+  overlayscrollbars-react@0.5.6(overlayscrollbars@2.14.0)(react@19.2.4):
+    dependencies:
+      overlayscrollbars: 2.14.0
+      react: 19.2.4
+
+  overlayscrollbars@2.14.0: {}
 
   package-manager-detector@1.6.0: {}
 

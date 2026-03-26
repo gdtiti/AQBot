@@ -265,7 +265,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
         </div>
 
         {/* Model list */}
-        <div style={{ overflowY: 'auto', flex: 1, padding: '4px 0 12px' }}>
+        <div data-os-scrollbar style={{ overflowY: 'auto', flex: 1, padding: '4px 0 12px' }}>
           {/* Pinned section */}
           {pinnedItems.length > 0 && (
             <div>

@@ -63,7 +63,7 @@ export function SettingsSidebar() {
   }));
 
   return (
-    <div className="h-full pt-4" style={{ backgroundColor: token.colorBgContainer, overflowY: 'auto' }}>
+    <div className="h-full pt-4" data-os-scrollbar style={{ backgroundColor: token.colorBgContainer, overflowY: 'auto' }}>
       <Menu
         mode="inline"
         selectedKeys={[settingsSection]}

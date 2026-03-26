@@ -167,6 +167,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
         />
         <div
           ref={listRef}
+          data-os-scrollbar
           style={{
             maxHeight: 400,
             overflowY: 'auto',

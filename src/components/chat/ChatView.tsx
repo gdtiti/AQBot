@@ -26,6 +26,7 @@ import { getDistanceToHistoryTop, shouldShowScrollToBottom } from './chatScroll'
 import { formatTokenCount } from '../gateway/tokenFormat';
 import { getStreamingLoadingState } from './chatStreaming';
 import { buildAssistantDisplayContent, shouldHideAssistantBubble } from './toolCallDisplay';
+import { ChatScrollIndicator } from './ChatScrollIndicator';
 
 import { invoke } from '@/lib/invoke';
 import { useResolvedAvatarSrc } from '@/hooks/useResolvedAvatarSrc';
@@ -2234,7 +2235,7 @@ export function ChatView() {
       </div>
 
       {/* Message Area */}
-      <div ref={messageAreaRef} data-message-area className={`flex-1 min-h-0 overflow-hidden bubble-${bubbleStyle || 'modern'}`}>
+      <div ref={messageAreaRef} data-message-area className={`flex-1 min-h-0 overflow-hidden relative bubble-${bubbleStyle || 'modern'}`}>
         {messages.length === 0 ? (
           activeConversationId && loading ? (
             <div
@@ -2260,14 +2261,17 @@ export function ChatView() {
             </div>
           )
         ) : (
-          <Bubble.List
-            ref={bubbleListRef}
-            items={finalBubbleItems}
-            autoScroll
-            onScroll={handleBubbleListScroll}
-            role={roles}
-            style={{ height: '100%', padding: '16px 24px', overflowX: 'hidden' }}
-          />
+          <>
+            <Bubble.List
+              ref={bubbleListRef}
+              items={finalBubbleItems}
+              autoScroll
+              onScroll={handleBubbleListScroll}
+              role={roles}
+              style={{ height: '100%', padding: '16px 24px', overflowX: 'hidden' }}
+            />
+            <ChatScrollIndicator />
+          </>
         )}
       </div>
 

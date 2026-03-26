@@ -11,6 +11,7 @@ import { useUIStore, useSettingsStore } from '@/stores';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useGlobalShortcutManager } from '@/hooks/useGlobalShortcutManager';
 import { useResolvedDarkMode } from '@/hooks/useResolvedDarkMode';
+import { useGlobalOverlayScrollbars } from '@/hooks/useGlobalOverlayScrollbars';
 import { useShadcnTheme } from '@/theme/shadcnTheme';
 import { isTauri } from '@/lib/invoke';
 import { preloadChatRenderers } from '@/lib/preloadChatRenderers';
@@ -173,6 +174,7 @@ function AppRoot() {
 
   useKeyboardShortcuts();
   useGlobalShortcutManager();
+  useGlobalOverlayScrollbars();
 
   // Load persisted settings from backend on startup, then apply native settings
   useEffect(() => {

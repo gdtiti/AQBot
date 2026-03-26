@@ -313,6 +313,13 @@ export interface AppSettings {
   title_summary_frequency_penalty: number | null;
   title_summary_context_count: number | null;
   title_summary_prompt: string | null;
+  compression_provider_id: string | null;
+  compression_model_id: string | null;
+  compression_temperature: number | null;
+  compression_max_tokens: number | null;
+  compression_top_p: number | null;
+  compression_frequency_penalty: number | null;
+  compression_prompt: string | null;
   proxy_type: string | null;
   proxy_address: string | null;
   proxy_port: number | null;

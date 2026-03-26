@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Button, Tooltip, App, theme, Dropdown, Tag, Popover, Checkbox } from 'antd';
 import type { MenuProps } from 'antd';
-import { Paperclip, Trash2, Mic, Eraser, Scissors, Globe, Brain, Plug, SlidersHorizontal, ArrowUp, Square, Check, Zap } from 'lucide-react';
+import { Paperclip, Trash2, Mic, Eraser, Scissors, Globe, Brain, BrainCog, Plug, SlidersHorizontal, ArrowUp, Square, Check, Zap, ZapOff, Gauge, Shrink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useConversationStore, useProviderStore, useSettingsStore, useSearchStore, useMcpStore } from '@/stores';
 import { useUIStore } from '@/stores/uiStore';
@@ -250,6 +250,7 @@ export function InputArea() {
     () => thinkingOptions.map((opt) => ({
       key: opt.key,
       label: opt.label,
+      icon: opt.key === 'none' ? <BrainCog size={14} /> : opt.key === 'default' ? <Brain size={14} /> : <Gauge size={14} />,
     })),
     [thinkingOptions],
   );
@@ -737,6 +738,9 @@ export function InputArea() {
                 items: [
                   {
                     key: 'auto',
+                    icon: activeConversation?.context_compression
+                      ? <ZapOff size={14} />
+                      : <Zap size={14} />,
                     label: activeConversation?.context_compression
                       ? t('chat.disableAutoCompression', '关闭自动压缩')
                       : t('chat.enableAutoCompression', '开启自动压缩'),
@@ -747,6 +751,7 @@ export function InputArea() {
                   },
                   {
                     key: 'manual',
+                    icon: <Shrink size={14} />,
                     label: t('chat.manualCompress', '手动压缩'),
                     disabled: !activeConversationId || streaming || compressing || messages.length === 0,
                     onClick: async () => {
@@ -764,14 +769,16 @@ export function InputArea() {
               trigger={['click']}
               placement="topLeft"
             >
-              <Button
-                type="text"
-                size="small"
-                icon={<Zap size={14} />}
-                loading={compressing}
-                disabled={!activeConversationId}
-                style={activeConversation?.context_compression ? { color: token.colorPrimary } : undefined}
-              />
+              <Tooltip title={t('chat.contextCompression', '上下文压缩')}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<Zap size={14} />}
+                  loading={compressing}
+                  disabled={!activeConversationId}
+                  style={activeConversation?.context_compression ? { color: token.colorPrimary } : undefined}
+                />
+              </Tooltip>
             </Dropdown>
             <Tooltip title={t('chat.clearConversation', '清空对话')}>
               <Button

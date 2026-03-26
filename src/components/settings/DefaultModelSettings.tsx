@@ -10,6 +10,8 @@ const { TextArea } = Input;
 
 const DEFAULT_TITLE_SUMMARY_PROMPT = '请根据以下对话内容，生成一个简短精炼的标题（不超过20个字），直接返回标题文本，不要包含引号或任何额外说明。';
 
+const DEFAULT_COMPRESSION_PROMPT = '你是一个对话摘要助手。请将以下对话历史压缩为简洁摘要。\n\n要求：\n1. 保留所有用户明确表达的需求、偏好和决策\n2. 保留关键技术细节（代码片段、配置、错误信息等）\n3. 保留待办事项和未解决的问题\n4. 用简洁的要点形式组织\n5. 保持摘要简洁，不超过 500 字';
+
 // ── Switch-controlled parameter row ────────────────────────
 
 function SwitchParam({
@@ -140,6 +142,8 @@ function ModelParamsModal({
   defaultTemperature,
   defaultTopP,
   defaultMaxTokens,
+  defaultPrompt,
+  promptPlaceholder,
 }: {
   open: boolean;
   onClose: () => void;
@@ -154,6 +158,8 @@ function ModelParamsModal({
   defaultTemperature: number;
   defaultTopP: number;
   defaultMaxTokens: number;
+  defaultPrompt?: string;
+  promptPlaceholder?: string;
 }) {
   const { t } = useTranslation();
   const settings = useSettingsStore((s) => s.settings);
@@ -186,9 +192,9 @@ function ModelParamsModal({
           </div>
           <TextArea
             rows={4}
-            value={(settings[promptKey] as string | null) ?? DEFAULT_TITLE_SUMMARY_PROMPT}
+            value={(settings[promptKey] as string | null) ?? (defaultPrompt || DEFAULT_TITLE_SUMMARY_PROMPT)}
             onChange={(e) => saveSettings({ [promptKey]: e.target.value || null } as Partial<AppSettings>)}
-            placeholder={t('settings.titleSummaryPromptPlaceholder', '请根据对话内容生成一个简短的标题...')}
+            placeholder={promptPlaceholder || t('settings.titleSummaryPromptPlaceholder', '请根据对话内容生成一个简短的标题...')}
           />
         </div>
       )}
@@ -264,6 +270,8 @@ function ModelCard({
   defaultTemperature,
   defaultTopP,
   defaultMaxTokens,
+  defaultPrompt,
+  promptPlaceholder,
 }: {
   title: string;
   description: string;
@@ -281,6 +289,8 @@ function ModelCard({
   defaultTemperature: number;
   defaultTopP: number;
   defaultMaxTokens: number;
+  defaultPrompt?: string;
+  promptPlaceholder?: string;
 }) {
   const { token } = theme.useToken();
   const settings = useSettingsStore((s) => s.settings);
@@ -347,6 +357,8 @@ function ModelCard({
         defaultTemperature={defaultTemperature}
         defaultTopP={defaultTopP}
         defaultMaxTokens={defaultMaxTokens}
+        defaultPrompt={defaultPrompt}
+        promptPlaceholder={promptPlaceholder}
       />
     </>
   );
@@ -400,6 +412,26 @@ export function DefaultModelSettings() {
         defaultTemperature={0.3}
         defaultTopP={1.0}
         defaultMaxTokens={256}
+      />
+
+      <ModelCard
+        title={t('settings.compressionModel', '上下文压缩模型')}
+        description={t('settings.compressionModelDesc', '压缩对话上下文时所使用的模型，若未设置则使用对话采用的模型')}
+        providerIdKey="compression_provider_id"
+        modelIdKey="compression_model_id"
+        placeholder={placeholderText}
+        modalTitle={t('settings.compressionModel', '上下文压缩模型')}
+        showPrompt={true}
+        showContextCount={false}
+        promptKey="compression_prompt"
+        temperatureKey="compression_temperature"
+        topPKey="compression_top_p"
+        maxTokensKey="compression_max_tokens"
+        defaultTemperature={0.3}
+        defaultTopP={1.0}
+        defaultMaxTokens={1024}
+        defaultPrompt={DEFAULT_COMPRESSION_PROMPT}
+        promptPlaceholder={t('settings.compressionPromptPlaceholder', '请将对话历史压缩为简洁摘要...')}
       />
     </div>
   );

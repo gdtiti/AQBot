@@ -905,6 +905,8 @@ pub async fn send_message(
             &resolved_proxy,
             &conversation.model_id,
             use_max_completion_tokens,
+            &global_settings,
+            &state.master_key,
         )
         .await
         {
@@ -1592,36 +1594,77 @@ async fn do_compress(
     proxy_config: &Option<ProviderProxyConfig>,
     model_id: &str,
     use_max_completion_tokens: Option<bool>,
+    settings: &AppSettings,
+    master_key: &[u8; 32],
 ) -> Result<String, String> {
+    // Resolve compression model: settings override → fallback to conversation model
+    let (comp_provider, comp_key, comp_key_id, comp_proxy, comp_model_id, comp_use_max) =
+        if let (Some(ref pid), Some(ref mid)) = (&settings.compression_provider_id, &settings.compression_model_id) {
+            match aqbot_core::repo::provider::get_provider(db, pid).await {
+                Ok(p) => {
+                    match p.keys.first() {
+                        Some(k) => {
+                            let dk = aqbot_core::crypto::decrypt_key(&k.key_encrypted, master_key)
+                                .map_err(|e| e.to_string())?;
+                            let kid = k.id.clone();
+                            let proxy = ProviderProxyConfig::resolve(&p.proxy_config, settings);
+                            let override_umc = aqbot_core::repo::provider::get_model(db, pid, mid)
+                                .await
+                                .ok()
+                                .and_then(|m| m.param_overrides)
+                                .and_then(|po| po.use_max_completion_tokens);
+                            (p, dk, kid, proxy, mid.clone(), override_umc)
+                        }
+                        None => {
+                            tracing::warn!("Compression model provider has no key, falling back to conversation model");
+                            (provider.clone(), decrypted_key.to_string(), key_id.to_string(), proxy_config.clone(), model_id.to_string(), use_max_completion_tokens)
+                        }
+                    }
+                }
+                Err(_) => {
+                    tracing::warn!("Compression model provider not found, falling back to conversation model");
+                    (provider.clone(), decrypted_key.to_string(), key_id.to_string(), proxy_config.clone(), model_id.to_string(), use_max_completion_tokens)
+                }
+            }
+        } else {
+            (provider.clone(), decrypted_key.to_string(), key_id.to_string(), proxy_config.clone(), model_id.to_string(), use_max_completion_tokens)
+        };
+
     let sum_req = crate::context_manager::SummarizationRequest {
         existing_summary: existing_summary.map(|s| s.to_string()),
         messages_to_compress: history_messages.to_vec(),
     };
 
-    let summary_messages = crate::context_manager::build_summary_prompt(&sum_req);
+    let custom_prompt = settings.compression_prompt.as_deref();
+    let summary_messages = if let Some(prompt) = custom_prompt {
+        crate::context_manager::build_summary_prompt_with_custom(&sum_req, prompt)
+    } else {
+        crate::context_manager::build_summary_prompt(&sum_req)
+    };
+
     let request = ChatRequest {
-        model: model_id.to_string(),
+        model: comp_model_id.clone(),
         messages: summary_messages,
         stream: false,
-        temperature: Some(0.3),
-        top_p: None,
-        max_tokens: Some(1024),
+        temperature: settings.compression_temperature.map(|v| v as f64).or(Some(0.3)),
+        top_p: settings.compression_top_p.map(|v| v as f64),
+        max_tokens: settings.compression_max_tokens.or(Some(1024)),
         tools: None,
         thinking_budget: None,
-        use_max_completion_tokens,
+        use_max_completion_tokens: comp_use_max,
     };
 
     let ctx = ProviderRequestContext {
-        api_key: decrypted_key.to_string(),
-        key_id: key_id.to_string(),
-        provider_id: provider.id.clone(),
-        base_url: Some(resolve_base_url(&provider.api_host)),
-        api_path: provider.api_path.clone(),
-        proxy_config: proxy_config.clone(),
+        api_key: comp_key,
+        key_id: comp_key_id,
+        provider_id: comp_provider.id.clone(),
+        base_url: Some(resolve_base_url(&comp_provider.api_host)),
+        api_path: comp_provider.api_path.clone(),
+        proxy_config: comp_proxy,
     };
 
     let registry = ProviderRegistry::create_default();
-    let registry_key = provider_type_to_registry_key(&provider.provider_type);
+    let registry_key = provider_type_to_registry_key(&comp_provider.provider_type);
     let adapter = registry
         .get(registry_key)
         .ok_or_else(|| "Provider adapter not found".to_string())?;
@@ -1638,7 +1681,7 @@ async fn do_compress(
         &response.content,
         None,
         Some(token_count as u32),
-        Some(model_id),
+        Some(&comp_model_id),
     )
     .await
     .map_err(|e| format!("Failed to save summary: {}", e))?;
@@ -1759,6 +1802,8 @@ pub async fn compress_context(
         &resolved_proxy,
         &conversation.model_id,
         use_max_completion_tokens,
+        &global_settings,
+        &state.master_key,
     )
     .await?;
 

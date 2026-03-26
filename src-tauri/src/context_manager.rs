@@ -199,3 +199,61 @@ pub fn build_summary_prompt(request: &SummarizationRequest) -> Vec<ChatMessage> 
 
     messages
 }
+
+/// Build summary prompt with a custom system instruction (from settings).
+pub fn build_summary_prompt_with_custom(
+    request: &SummarizationRequest,
+    custom_prompt: &str,
+) -> Vec<ChatMessage> {
+    let mut messages = Vec::new();
+
+    messages.push(ChatMessage {
+        role: "system".to_string(),
+        content: ChatContent::Text(custom_prompt.to_string()),
+        tool_calls: None,
+        tool_call_id: None,
+    });
+
+    if let Some(ref summary) = request.existing_summary {
+        messages.push(ChatMessage {
+            role: "user".to_string(),
+            content: ChatContent::Text(format!("已有摘要：\n{}", summary)),
+            tool_calls: None,
+            tool_call_id: None,
+        });
+    }
+
+    let conversation_text: Vec<String> = request
+        .messages_to_compress
+        .iter()
+        .map(|m| {
+            let content_text = match &m.content {
+                ChatContent::Text(s) => s.clone(),
+                ChatContent::Multipart(parts) => parts
+                    .iter()
+                    .filter_map(|p| p.text.as_deref())
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            };
+            let truncated = if content_text.len() > 2000 {
+                format!("{}...[已截断]", &content_text[..2000])
+            } else {
+                content_text
+            };
+            format!("{}: {}", m.role, truncated)
+        })
+        .collect();
+
+    messages.push(ChatMessage {
+        role: "user".to_string(),
+        content: ChatContent::Text(format!(
+            "{}对话内容：\n{}",
+            if request.existing_summary.is_some() { "新增" } else { "" },
+            conversation_text.join("\n")
+        )),
+        tool_calls: None,
+        tool_call_id: None,
+    });
+
+    messages
+}

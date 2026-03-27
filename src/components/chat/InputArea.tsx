@@ -8,6 +8,8 @@ import { useUIStore } from '@/stores/uiStore';
 import { findModelByIds, supportsReasoning } from '@/lib/modelCapabilities';
 import { estimateMessageTokens, estimateTokens } from '@/lib/tokenEstimator';
 import { McpServerIcon } from '@/components/shared/McpServerIcon';
+import { getShortcutBinding, formatShortcutForDisplay } from '@/lib/shortcuts';
+import type { ShortcutAction } from '@/lib/shortcuts';
 import { VoiceCall } from './VoiceCall';
 import { ConversationSettingsModal } from './ConversationSettingsModal';
 import { SearchProviderTypeIcon, PROVIDER_TYPE_LABELS } from '@/components/shared/SearchProviderIcon';
@@ -62,6 +64,12 @@ export function InputArea() {
   const conversations = useConversationStore((s) => s.conversations);
   const providers = useProviderStore((s) => s.providers);
   const settings = useSettingsStore((s) => s.settings);
+
+  const shortcutHint = useCallback((label: string, action: ShortcutAction) => {
+    if (!settings) return label;
+    const binding = getShortcutBinding(settings, action);
+    return `${label} (${formatShortcutForDisplay(binding)})`;
+  }, [settings]);
 
   // Search state
   const searchEnabled = useConversationStore((s) => s.searchEnabled);
@@ -724,7 +732,7 @@ export function InputArea() {
               </Tooltip>
             </Popover>
             {/* Knowledge base & Memory buttons — hidden (Coming Soon) */}
-            <Tooltip title={t('chat.clearContext', '清空上下文')}>
+            <Tooltip title={shortcutHint(t('chat.clearContext', '清空上下文'), 'clearContext')}>
               <Button
                 type="text"
                 size="small"
@@ -780,7 +788,7 @@ export function InputArea() {
                 />
               </Tooltip>
             </Dropdown>
-            <Tooltip title={t('chat.clearConversation', '清空对话')}>
+            <Tooltip title={shortcutHint(t('chat.clearConversation', '清空对话'), 'clearConversationMessages')}>
               <Button
                 type="text"
                 size="small"

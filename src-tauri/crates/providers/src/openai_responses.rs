@@ -386,11 +386,14 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
         let url = Self::chat_url(ctx);
         let body = build_request(&request, false);
 
-        let resp = self
-            .get_client(ctx)?
-            .post(&url)
-            .header("Authorization", format!("Bearer {}", ctx.api_key))
-            .json(&body)
+        let resp = crate::apply_request_headers(
+            self
+                .get_client(ctx)?
+                .post(&url)
+                .header("Authorization", format!("Bearer {}", ctx.api_key))
+                .json(&body),
+            ctx,
+        )
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
@@ -433,16 +436,20 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
     ) -> Pin<Box<dyn Stream<Item = Result<ChatStreamChunk>> + Send>> {
         let client = self.get_client(ctx).unwrap_or_else(|_| self.client.clone());
         let api_key = ctx.api_key.clone();
+        let custom_headers = ctx.custom_headers.clone();
         let url = Self::chat_url(ctx);
         let body = build_request(&request, true);
 
         let (tx, rx) = futures::channel::mpsc::unbounded();
 
         tokio::spawn(async move {
-            let resp = match client
-                .post(&url)
-                .header("Authorization", format!("Bearer {}", api_key))
-                .json(&body)
+            let resp = match crate::apply_headers_to_request(
+                client
+                    .post(&url)
+                    .header("Authorization", format!("Bearer {}", api_key))
+                    .json(&body),
+                &custom_headers,
+            )
                 .send()
                 .await
             {
@@ -648,10 +655,13 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
     async fn list_models(&self, ctx: &ProviderRequestContext) -> Result<Vec<Model>> {
         let url = format!("{}/models", Self::base_url(ctx));
 
-        let resp = self
-            .get_client(ctx)?
-            .get(&url)
-            .header("Authorization", format!("Bearer {}", ctx.api_key))
+        let resp = crate::apply_request_headers(
+            self
+                .get_client(ctx)?
+                .get(&url)
+                .header("Authorization", format!("Bearer {}", ctx.api_key)),
+            ctx,
+        )
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
@@ -708,11 +718,14 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
             input: request.input,
         };
 
-        let resp = self
-            .get_client(ctx)?
-            .post(&url)
-            .header("Authorization", format!("Bearer {}", ctx.api_key))
-            .json(&body)
+        let resp = crate::apply_request_headers(
+            self
+                .get_client(ctx)?
+                .post(&url)
+                .header("Authorization", format!("Bearer {}", ctx.api_key))
+                .json(&body),
+            ctx,
+        )
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;

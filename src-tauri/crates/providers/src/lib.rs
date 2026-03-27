@@ -40,6 +40,7 @@ pub struct ProviderRequestContext {
     pub base_url: Option<String>,
     pub api_path: Option<String>,
     pub proxy_config: Option<ProviderProxyConfig>,
+    pub custom_headers: Option<std::collections::HashMap<String, String>>,
 }
 
 /// Resolve `api_host` into a usable base URL.
@@ -119,4 +120,42 @@ pub fn build_http_client(proxy_config: Option<&ProviderProxyConfig>) -> Result<r
     builder
         .build()
         .map_err(|e| AQBotError::Provider(format!("Failed to build HTTP client: {}", e)))
+}
+
+/// Default User-Agent: `AQBot-{os}_{arch}/{version}`
+pub fn default_user_agent() -> String {
+    format!(
+        "AQBot-{}_{}/{}",
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
+/// Apply custom headers + default User-Agent to a request builder.
+pub fn apply_request_headers(
+    builder: reqwest::RequestBuilder,
+    ctx: &ProviderRequestContext,
+) -> reqwest::RequestBuilder {
+    apply_headers_to_request(builder, &ctx.custom_headers)
+}
+
+/// Apply custom headers + default User-Agent from a raw headers map.
+pub fn apply_headers_to_request(
+    mut builder: reqwest::RequestBuilder,
+    custom_headers: &Option<std::collections::HashMap<String, String>>,
+) -> reqwest::RequestBuilder {
+    let mut has_ua = false;
+    if let Some(ref headers) = custom_headers {
+        for (key, value) in headers {
+            if key.eq_ignore_ascii_case("user-agent") {
+                has_ua = true;
+            }
+            builder = builder.header(key, value);
+        }
+    }
+    if !has_ua {
+        builder = builder.header("User-Agent", default_user_agent());
+    }
+    builder
 }

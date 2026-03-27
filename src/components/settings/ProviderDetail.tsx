@@ -171,6 +171,12 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
   const [iconOverrides, setIconOverrides] = useState<Record<string, string>>({});
   const [apiHostLocal, setApiHostLocal] = useState(provider?.api_host ?? '');
   const [apiPathLocal, setApiPathLocal] = useState(provider?.api_path ?? '');
+  const [customHeadersLocal, setCustomHeadersLocal] = useState(() => {
+    try {
+      const obj = JSON.parse(provider?.custom_headers ?? '{}') as Record<string, string>;
+      return Object.entries(obj).map(([k, v]) => `${k}=${v}`).join('\n');
+    } catch { return ''; }
+  });
   const apiHostTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const apiPathTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [testingModels, setTestingModels] = useState<Set<string>>(new Set());
@@ -239,6 +245,10 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
   useEffect(() => {
     setApiHostLocal(provider?.api_host ?? '');
     setApiPathLocal(provider?.api_path ?? '');
+    try {
+      const obj = JSON.parse(provider?.custom_headers ?? '{}') as Record<string, string>;
+      setCustomHeadersLocal(Object.entries(obj).map(([k, v]) => `${k}=${v}`).join('\n'));
+    } catch { setCustomHeadersLocal(''); }
   }, [provider?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resolve actual request URLs for preview
@@ -1011,6 +1021,36 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
           </div>
         </div>
       </Card>
+
+      {/* Custom Headers */}
+      <Collapse
+        items={[
+          {
+            key: 'custom-headers',
+            label: t('settings.customHeaders'),
+            children: (
+              <Input.TextArea
+                value={customHeadersLocal}
+                onChange={(e) => setCustomHeadersLocal(e.target.value)}
+                onBlur={() => {
+                  const lines = customHeadersLocal.split('\n').filter((l) => l.trim());
+                  const obj: Record<string, string> = {};
+                  for (const line of lines) {
+                    const idx = line.indexOf('=');
+                    if (idx > 0) {
+                      obj[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+                    }
+                  }
+                  const json = Object.keys(obj).length > 0 ? JSON.stringify(obj) : null;
+                  updateProvider(providerId, { custom_headers: json });
+                }}
+                placeholder={t('settings.customHeadersPlaceholder')}
+                autoSize={{ minRows: 2, maxRows: 8 }}
+              />
+            ),
+          },
+        ]}
+      />
 
       {/* Provider Proxy */}
       <Collapse

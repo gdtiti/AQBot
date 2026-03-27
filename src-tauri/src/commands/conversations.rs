@@ -484,6 +484,8 @@ async fn generate_ai_title(
             base_url: Some(resolve_base_url(&provider.api_host)),
             api_path: provider.api_path.clone(),
             proxy_config: proxy,
+            custom_headers: provider.custom_headers.as_ref()
+                .and_then(|s| serde_json::from_str(s).ok()),
         };
         let umc = lookup_umc(pid, mid, db).await;
         generate_ai_title_with(&provider, &ctx, mid, user_content, assistant_content, settings, umc).await
@@ -630,6 +632,8 @@ pub async fn regenerate_conversation_title(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
+        custom_headers: provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
 
     // Emit generating event
@@ -1372,6 +1376,8 @@ pub async fn send_message(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
+        custom_headers: provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
 
     // 6. Load MCP tools for enabled servers
@@ -1647,6 +1653,8 @@ pub async fn regenerate_message(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
+        custom_headers: provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
 
     // Load MCP tools for enabled servers
@@ -1896,6 +1904,8 @@ pub async fn regenerate_with_model(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
+        custom_headers: provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
 
     let mcp_ids = enabled_mcp_server_ids.unwrap_or_default();
@@ -2094,6 +2104,8 @@ async fn do_compress(
         base_url: Some(resolve_base_url(&comp_provider.api_host)),
         api_path: comp_provider.api_path.clone(),
         proxy_config: comp_proxy,
+        custom_headers: comp_provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
 
     let registry = ProviderRegistry::create_default();

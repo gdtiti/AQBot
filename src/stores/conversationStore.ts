@@ -1485,10 +1485,14 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         const placeholderMessageId = get().streamingMessageId;
         flushPendingStreamChunk(set, get);
         const flushedMessageId = get().streamingMessageId ?? message_id;
+        // Only preserve real backend IDs — temp placeholders (temp-assistant-*)
+        // must NOT be preserved alongside the DB message, otherwise both the
+        // unresolved placeholder and the DB row survive the merge (different
+        // ids, same parent_message_id → duplicate bubble + React key collision).
         const preserveMessageIds = Array.from(
           new Set(
             [placeholderMessageId, flushedMessageId, message_id].filter(
-              (value): value is string => Boolean(value),
+              (value): value is string => typeof value === 'string' && value.length > 0 && !value.startsWith('temp-'),
             ),
           ),
         );

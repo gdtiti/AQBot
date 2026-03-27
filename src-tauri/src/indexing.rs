@@ -61,6 +61,8 @@ pub async fn build_embed_context(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: None,
         proxy_config: resolved_proxy,
+        custom_headers: provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
 
     Ok((ctx, provider))

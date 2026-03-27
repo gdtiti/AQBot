@@ -312,13 +312,16 @@ impl ProviderAdapter for AnthropicAdapter {
             thinking,
         };
 
-        let resp = self
-            .get_client(ctx)?
-            .post(&url)
-            .header("x-api-key", &ctx.api_key)
-            .header("anthropic-version", ANTHROPIC_VERSION)
-            .header("content-type", "application/json")
-            .json(&body)
+        let resp = crate::apply_request_headers(
+            self
+                .get_client(ctx)?
+                .post(&url)
+                .header("x-api-key", &ctx.api_key)
+                .header("anthropic-version", ANTHROPIC_VERSION)
+                .header("content-type", "application/json")
+                .json(&body),
+            ctx,
+        )
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
@@ -393,6 +396,7 @@ impl ProviderAdapter for AnthropicAdapter {
     ) -> Pin<Box<dyn Stream<Item = Result<ChatStreamChunk>> + Send>> {
         let client = self.get_client(ctx).unwrap_or_else(|_| self.client.clone());
         let api_key = ctx.api_key.clone();
+        let custom_headers = ctx.custom_headers.clone();
         let url = Self::chat_url(ctx);
 
         let (system, messages) = convert_messages(&request.messages);
@@ -423,12 +427,15 @@ impl ProviderAdapter for AnthropicAdapter {
         let (tx, rx) = futures::channel::mpsc::unbounded();
 
         tokio::spawn(async move {
-            let resp = match client
-                .post(&url)
-                .header("x-api-key", &api_key)
-                .header("anthropic-version", ANTHROPIC_VERSION)
-                .header("content-type", "application/json")
-                .json(&body)
+            let resp = match crate::apply_headers_to_request(
+                client
+                    .post(&url)
+                    .header("x-api-key", &api_key)
+                    .header("anthropic-version", ANTHROPIC_VERSION)
+                    .header("content-type", "application/json")
+                    .json(&body),
+                &custom_headers,
+            )
                 .send()
                 .await
             {
@@ -643,11 +650,14 @@ impl ProviderAdapter for AnthropicAdapter {
     async fn list_models(&self, ctx: &ProviderRequestContext) -> Result<Vec<Model>> {
         let url = format!("{}/models", Self::base_url(ctx));
 
-        let resp = self
-            .get_client(ctx)?
-            .get(&url)
-            .header("x-api-key", &ctx.api_key)
-            .header("anthropic-version", ANTHROPIC_VERSION)
+        let resp = crate::apply_request_headers(
+            self
+                .get_client(ctx)?
+                .get(&url)
+                .header("x-api-key", &ctx.api_key)
+                .header("anthropic-version", ANTHROPIC_VERSION),
+            ctx,
+        )
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
@@ -708,13 +718,16 @@ impl ProviderAdapter for AnthropicAdapter {
         // This avoids token consumption and works with proxy services
         // that don't support the /models endpoint.
         let url = Self::chat_url(ctx);
-        let resp = self
-            .get_client(ctx)?
-            .post(&url)
-            .header("x-api-key", &ctx.api_key)
-            .header("anthropic-version", ANTHROPIC_VERSION)
-            .header("content-type", "application/json")
-            .body("{}")
+        let resp = crate::apply_request_headers(
+            self
+                .get_client(ctx)?
+                .post(&url)
+                .header("x-api-key", &ctx.api_key)
+                .header("anthropic-version", ANTHROPIC_VERSION)
+                .header("content-type", "application/json")
+                .body("{}"),
+            ctx,
+        )
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Validation request failed: {e}")))?;

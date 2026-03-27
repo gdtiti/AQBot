@@ -11,6 +11,7 @@ export interface ProviderConfig {
   models: Model[];
   keys: ProviderKey[];
   proxy_config: ProviderProxyConfig | null;
+  custom_headers: string | null;
   sort_order: number;
   created_at: number;
   updated_at: number;
@@ -48,6 +49,7 @@ export interface UpdateProviderInput {
   api_path?: string | null;
   enabled?: boolean;
   proxy_config?: ProviderProxyConfig;
+  custom_headers?: string | null;
   sort_order?: number;
 }
 

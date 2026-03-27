@@ -73,6 +73,7 @@ fn provider_from_entity(
         proxy_config: row
             .proxy_config
             .and_then(|s| serde_json::from_str(&s).ok()),
+        custom_headers: row.custom_headers,
         sort_order: row.sort_order,
         created_at: row.created_at,
         updated_at: row.updated_at,
@@ -124,6 +125,7 @@ pub async fn create_provider(
         api_path: Set(input.api_path),
         enabled: Set(if input.enabled { 1 } else { 0 }),
         proxy_config: Set(None),
+        custom_headers: Set(None),
         sort_order: Set(0),
         created_at: Set(now),
         updated_at: Set(now),
@@ -169,6 +171,9 @@ pub async fn update_provider(
     }
     if let Some(sort_order) = input.sort_order {
         am.sort_order = Set(sort_order);
+    }
+    if let Some(custom_headers) = input.custom_headers {
+        am.custom_headers = Set(custom_headers);
     }
     am.updated_at = Set(now);
     am.update(db).await?;

@@ -148,6 +148,8 @@ pub async fn chat_completions(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
+        custom_headers: provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
 
     let registry = aqbot_providers::registry::ProviderRegistry::create_default();

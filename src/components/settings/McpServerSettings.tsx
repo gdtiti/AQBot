@@ -181,6 +181,12 @@ function McpServerDetail({
       return Object.entries(obj).map(([k, v]) => `${k}=${v}`).join('\n');
     } catch { return ''; }
   });
+  const [localEnv, setLocalEnv] = useState(() => {
+    try {
+      const obj = JSON.parse(server.envJson ?? '{}') as Record<string, string>;
+      return Object.entries(obj).map(([k, v]) => `${k}=${v}`).join('\n');
+    } catch { return ''; }
+  });
 
   // Reset local state when switching servers
   useEffect(() => {
@@ -192,6 +198,10 @@ function McpServerDetail({
       const obj = JSON.parse(server.headersJson ?? '{}') as Record<string, string>;
       setLocalHeaders(Object.entries(obj).map(([k, v]) => `${k}=${v}`).join('\n'));
     } catch { setLocalHeaders(''); }
+    try {
+      const obj = JSON.parse(server.envJson ?? '{}') as Record<string, string>;
+      setLocalEnv(Object.entries(obj).map(([k, v]) => `${k}=${v}`).join('\n'));
+    } catch { setLocalEnv(''); }
   }, [server.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -416,6 +426,31 @@ function McpServerDetail({
                 handleFieldChange('headersJson', lines.length > 0 ? JSON.stringify(obj) : null);
               }}
               placeholder={'Authorization=Bearer xxx\nX-Custom=value'}
+              autoSize={{ minRows: 2, maxRows: 6 }}
+              style={{ width: 280 }}
+            />
+          </div>
+          <Divider style={{ margin: '4px 0' }} />
+        </>
+      )}
+
+      {!isBuiltin && (
+        <>
+          <div style={rowStyle} className="flex items-center justify-between">
+            <span>{t('settings.mcpServers.envVars')}</span>
+            <Input.TextArea
+              value={localEnv}
+              onChange={(e) => setLocalEnv(e.target.value)}
+              onBlur={() => {
+                const lines = localEnv.split('\n').filter((l) => l.includes('='));
+                const obj: Record<string, string> = {};
+                for (const line of lines) {
+                  const idx = line.indexOf('=');
+                  if (idx > 0) obj[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+                }
+                handleFieldChange('envJson', Object.keys(obj).length > 0 ? JSON.stringify(obj) : null);
+              }}
+              placeholder={t('settings.mcpServers.envVarsPlaceholder')}
               autoSize={{ minRows: 2, maxRows: 6 }}
               style={{ width: 280 }}
             />

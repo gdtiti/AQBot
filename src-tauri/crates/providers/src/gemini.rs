@@ -442,10 +442,13 @@ impl ProviderAdapter for GeminiAdapter {
             tools: convert_tools_to_gemini(&request.tools),
         };
 
-        let resp = self
-            .get_client(ctx)?
-            .post(&url)
-            .json(&body)
+        let resp = crate::apply_request_headers(
+            self
+                .get_client(ctx)?
+                .post(&url)
+                .json(&body),
+            ctx,
+        )
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
@@ -506,6 +509,7 @@ impl ProviderAdapter for GeminiAdapter {
     ) -> Pin<Box<dyn Stream<Item = Result<ChatStreamChunk>> + Send>> {
         let client = self.get_client(ctx).unwrap_or_else(|_| self.client.clone());
         let api_key = ctx.api_key.clone();
+        let custom_headers = ctx.custom_headers.clone();
         let base_url = Self::base_url(ctx);
         let url = format!(
             "{}/models/{}:streamGenerateContent?alt=sse&key={}",
@@ -523,7 +527,13 @@ impl ProviderAdapter for GeminiAdapter {
         let (tx, rx) = futures::channel::mpsc::unbounded();
 
         tokio::spawn(async move {
-            let resp = match client.post(&url).json(&body).send().await {
+            let resp = match crate::apply_headers_to_request(
+                client.post(&url).json(&body),
+                &custom_headers,
+            )
+                .send()
+                .await
+            {
                 Ok(r) if r.status().is_success() => r,
                 Ok(r) => {
                     let s = r.status();
@@ -636,9 +646,12 @@ impl ProviderAdapter for GeminiAdapter {
     async fn list_models(&self, ctx: &ProviderRequestContext) -> Result<Vec<Model>> {
         let url = format!("{}/models?key={}", Self::base_url(ctx), ctx.api_key);
 
-        let resp = self
-            .get_client(ctx)?
-            .get(&url)
+        let resp = crate::apply_request_headers(
+            self
+                .get_client(ctx)?
+                .get(&url),
+            ctx,
+        )
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
@@ -709,10 +722,13 @@ impl ProviderAdapter for GeminiAdapter {
 
         let body = serde_json::json!({ "requests": requests });
 
-        let resp = self
-            .get_client(ctx)?
-            .post(&url)
-            .json(&body)
+        let resp = crate::apply_request_headers(
+            self
+                .get_client(ctx)?
+                .post(&url)
+                .json(&body),
+            ctx,
+        )
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Gemini embed request failed: {e}")))?;

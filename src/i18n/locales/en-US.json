@@ -446,6 +446,8 @@
     "chooseIcon": "Choose Icon",
     "searchIcon": "Search icons...",
     "providerProxy": "Provider Proxy",
+    "customHeaders": "Custom Headers",
+    "customHeadersPlaceholder": "One per line, format: key=value\ne.g. X-Custom-Header=my-value",
     "temperature": "Temperature",
     "maxTokens": "Max Tokens",
     "contextWindow": "Context Window",
@@ -534,6 +536,8 @@
       "discoverTimeout": "Discovery Timeout",
       "executeTimeout": "Execution Timeout",
       "customHeaders": "Custom Headers",
+      "envVars": "Environment Variables",
+      "envVarsPlaceholder": "One per line, format: KEY=VALUE",
       "resetIcon": "Reset to Default"
     },
     "knowledge": {

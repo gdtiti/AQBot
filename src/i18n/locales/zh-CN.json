@@ -446,6 +446,8 @@
     "chooseIcon": "选择图标",
     "searchIcon": "搜索图标...",
     "providerProxy": "服务商代理",
+    "customHeaders": "自定义请求头",
+    "customHeadersPlaceholder": "每行一个，格式：key=value\n例如：X-Custom-Header=my-value",
     "temperature": "温度",
     "maxTokens": "最大 Token",
     "contextWindow": "上下文窗口",
@@ -534,6 +536,8 @@
       "discoverTimeout": "发现超时",
       "executeTimeout": "执行超时",
       "customHeaders": "自定义请求头",
+      "envVars": "环境变量",
+      "envVarsPlaceholder": "每行一个，格式：KEY=VALUE",
       "resetIcon": "恢复默认图标"
     },
     "knowledge": {

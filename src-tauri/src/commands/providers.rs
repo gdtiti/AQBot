@@ -123,6 +123,8 @@ pub async fn validate_provider_key(
         base_url: Some(aqbot_providers::resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
+        custom_headers: provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
     let valid = adapter.validate_key(&ctx).await.unwrap_or(false);
     // Update validation timestamp
@@ -207,6 +209,8 @@ pub async fn fetch_remote_models(
         base_url: Some(aqbot_providers::resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
+        custom_headers: provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
     adapter.list_models(&ctx)
         .await
@@ -250,6 +254,8 @@ pub async fn test_model(
         base_url: Some(aqbot_providers::resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
+        custom_headers: provider.custom_headers.as_ref()
+            .and_then(|s| serde_json::from_str(s).ok()),
     };
     let request = ChatRequest {
         model: model_id,

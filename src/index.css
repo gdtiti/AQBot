@@ -28,6 +28,11 @@ body {
   -webkit-user-select: none;
 }
 
+/* Remove antd focus outline (green border) globally */
+*:focus-visible {
+  outline: none !important;
+}
+
 /* Re-enable text selection for content areas */
 .ant-bubble-content,
 .markstream-react,

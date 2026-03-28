@@ -8,7 +8,6 @@
   <a href="./README-EN.md">English</a> | 简体中文
 
   <br />
-  <br />
 
   ![Tauri](https://img.shields.io/badge/Tauri-v2-FFC131?style=flat-square&logo=tauri&logoColor=white)
   ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white)

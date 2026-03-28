@@ -7,8 +7,6 @@
 
   [简体中文](./README.md) | English
 
-  <br />
-
   ![Tauri](https://img.shields.io/badge/Tauri-v2-FFC131?style=flat-square&logo=tauri&logoColor=white)
   ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white)
   ![Rust](https://img.shields.io/badge/Rust-2021-000000?style=flat-square&logo=rust&logoColor=white)
@@ -24,6 +22,7 @@
 ![](.github/images/2.png)
 ![](.github/images/3.png)
 ![](.github/images/4.png)
+![](.github/images/5.png)
 
 ## Features
 

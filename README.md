@@ -2,12 +2,10 @@
   <img src="src/assets/image/logo.png" alt="AQBot" width="120" />
   <h1>AQBot</h1>
 
-  <p><strong>高性能跨平台 AI 聊天桌面客户端</strong></p>
+  <p><strong>高性能跨平台 AI 对话桌面客户端</strong></p>
   <p>集多模型对话、本地知识库、MCP 工具扩展、API 网关于一体的桌面 AI 助手</p>
 
   <a href="./README-EN.md">English</a> | 简体中文
-
-  <br />
 
   ![Tauri](https://img.shields.io/badge/Tauri-v2-FFC131?style=flat-square&logo=tauri&logoColor=white)
   ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white)
@@ -24,6 +22,7 @@
 ![](.github/images/2.png)
 ![](.github/images/3.png)
 ![](.github/images/4.png)
+![](.github/images/5.png)
 
 ## 功能特性
 

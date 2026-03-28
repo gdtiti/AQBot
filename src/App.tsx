@@ -293,7 +293,7 @@ function AppRoot() {
     <ConfigProvider
       locale={i18n.language === 'zh-CN' ? zhCN : undefined}
       theme={themeConfig}
-      modal={{ styles: { mask: { backdropFilter: 'blur(4px)' } } }}
+      modal={{ centered: true, styles: { mask: { backdropFilter: 'blur(4px)' } } }}
     >
       <AntdApp>
         <AppInner />

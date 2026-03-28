@@ -9,19 +9,31 @@ pub async fn dispatch(server_name: &str, tool_name: &str, args: Value) -> Result
         "@aqbot/fetch" => match tool_name {
             "fetch_url" => {
                 let url = args.get("url").and_then(|v| v.as_str()).unwrap_or_default();
-                let max_length = args.get("max_length").and_then(|v| v.as_u64()).map(|v| v as usize);
+                let max_length = args
+                    .get("max_length")
+                    .and_then(|v| v.as_u64())
+                    .map(|v| v as usize);
                 fetch_url(url, max_length).await
             }
             "fetch_markdown" => {
                 let url = args.get("url").and_then(|v| v.as_str()).unwrap_or_default();
-                let max_length = args.get("max_length").and_then(|v| v.as_u64()).map(|v| v as usize);
+                let max_length = args
+                    .get("max_length")
+                    .and_then(|v| v.as_u64())
+                    .map(|v| v as usize);
                 fetch_markdown(url, max_length).await
             }
-            _ => Err(AQBotError::Gateway(format!("Unknown fetch tool: {}", tool_name))),
+            _ => Err(AQBotError::Gateway(format!(
+                "Unknown fetch tool: {}",
+                tool_name
+            ))),
         },
         "@aqbot/search-file" => match tool_name {
             "read_file" => {
-                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or_default();
+                let path = args
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default();
                 read_file(path).await
             }
             "list_directory" => {
@@ -31,12 +43,21 @@ pub async fn dispatch(server_name: &str, tool_name: &str, args: Value) -> Result
             "search_files" => {
                 let path = args.get("path").and_then(|v| v.as_str()).unwrap_or(".");
                 let pattern = args.get("pattern").and_then(|v| v.as_str()).unwrap_or("*");
-                let max_results = args.get("max_results").and_then(|v| v.as_u64()).map(|v| v as usize);
+                let max_results = args
+                    .get("max_results")
+                    .and_then(|v| v.as_u64())
+                    .map(|v| v as usize);
                 search_files(path, pattern, max_results).await
             }
-            _ => Err(AQBotError::Gateway(format!("Unknown search-file tool: {}", tool_name))),
+            _ => Err(AQBotError::Gateway(format!(
+                "Unknown search-file tool: {}",
+                tool_name
+            ))),
         },
-        _ => Err(AQBotError::Gateway(format!("Unknown builtin server: {}", server_name))),
+        _ => Err(AQBotError::Gateway(format!(
+            "Unknown builtin server: {}",
+            server_name
+        ))),
     }
 }
 
@@ -46,7 +67,10 @@ pub async fn dispatch(server_name: &str, tool_name: &str, args: Value) -> Result
 
 async fn fetch_url(url: &str, max_length: Option<usize>) -> Result<McpToolResult> {
     if url.is_empty() {
-        return Ok(McpToolResult { content: "Error: url parameter is required".into(), is_error: true });
+        return Ok(McpToolResult {
+            content: "Error: url parameter is required".into(),
+            is_error: true,
+        });
     }
 
     let client = reqwest::Client::builder()
@@ -56,30 +80,45 @@ async fn fetch_url(url: &str, max_length: Option<usize>) -> Result<McpToolResult
         .build()
         .map_err(|e| AQBotError::Gateway(format!("HTTP client error: {}", e)))?;
 
-    let resp = client.get(url).send().await
+    let resp = client
+        .get(url)
+        .send()
+        .await
         .map_err(|e| AQBotError::Gateway(format!("Failed to fetch {}: {}", url, e)))?;
 
     let status = resp.status();
     if !status.is_success() {
         return Ok(McpToolResult {
-            content: format!("HTTP error: {} {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown")),
+            content: format!(
+                "HTTP error: {} {}",
+                status.as_u16(),
+                status.canonical_reason().unwrap_or("Unknown")
+            ),
             is_error: true,
         });
     }
 
-    let body = resp.text().await
+    let body = resp
+        .text()
+        .await
         .map_err(|e| AQBotError::Gateway(format!("Failed to read response body: {}", e)))?;
 
     let text = html_to_text(&body);
     let max = max_length.unwrap_or(5000);
     let content = truncate_text(&text, max);
 
-    Ok(McpToolResult { content, is_error: false })
+    Ok(McpToolResult {
+        content,
+        is_error: false,
+    })
 }
 
 async fn fetch_markdown(url: &str, max_length: Option<usize>) -> Result<McpToolResult> {
     if url.is_empty() {
-        return Ok(McpToolResult { content: "Error: url parameter is required".into(), is_error: true });
+        return Ok(McpToolResult {
+            content: "Error: url parameter is required".into(),
+            is_error: true,
+        });
     }
 
     let client = reqwest::Client::builder()
@@ -89,25 +128,37 @@ async fn fetch_markdown(url: &str, max_length: Option<usize>) -> Result<McpToolR
         .build()
         .map_err(|e| AQBotError::Gateway(format!("HTTP client error: {}", e)))?;
 
-    let resp = client.get(url).send().await
+    let resp = client
+        .get(url)
+        .send()
+        .await
         .map_err(|e| AQBotError::Gateway(format!("Failed to fetch {}: {}", url, e)))?;
 
     let status = resp.status();
     if !status.is_success() {
         return Ok(McpToolResult {
-            content: format!("HTTP error: {} {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown")),
+            content: format!(
+                "HTTP error: {} {}",
+                status.as_u16(),
+                status.canonical_reason().unwrap_or("Unknown")
+            ),
             is_error: true,
         });
     }
 
-    let body = resp.text().await
+    let body = resp
+        .text()
+        .await
         .map_err(|e| AQBotError::Gateway(format!("Failed to read response body: {}", e)))?;
 
     let markdown = html_to_markdown(&body);
     let max = max_length.unwrap_or(10000);
     let content = truncate_text(&markdown, max);
 
-    Ok(McpToolResult { content, is_error: false })
+    Ok(McpToolResult {
+        content,
+        is_error: false,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -116,13 +167,19 @@ async fn fetch_markdown(url: &str, max_length: Option<usize>) -> Result<McpToolR
 
 async fn read_file(path: &str) -> Result<McpToolResult> {
     if path.is_empty() {
-        return Ok(McpToolResult { content: "Error: path parameter is required".into(), is_error: true });
+        return Ok(McpToolResult {
+            content: "Error: path parameter is required".into(),
+            is_error: true,
+        });
     }
 
     match tokio::fs::read_to_string(path).await {
         Ok(content) => {
             let truncated = truncate_text(&content, 50000);
-            Ok(McpToolResult { content: truncated, is_error: false })
+            Ok(McpToolResult {
+                content: truncated,
+                is_error: false,
+            })
         }
         Err(e) => Ok(McpToolResult {
             content: format!("Error reading file '{}': {}", path, e),
@@ -145,7 +202,11 @@ async fn list_directory(path: &str) -> Result<McpToolResult> {
     let mut items = Vec::new();
     while let Ok(Some(entry)) = entries.next_entry().await {
         let name = entry.file_name().to_string_lossy().to_string();
-        let is_dir = entry.file_type().await.map(|ft| ft.is_dir()).unwrap_or(false);
+        let is_dir = entry
+            .file_type()
+            .await
+            .map(|ft| ft.is_dir())
+            .unwrap_or(false);
         let meta = entry.metadata().await.ok();
         let size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
 
@@ -163,30 +224,58 @@ async fn list_directory(path: &str) -> Result<McpToolResult> {
         format!("Contents of '{}':\n{}", path, items.join("\n"))
     };
 
-    Ok(McpToolResult { content, is_error: false })
+    Ok(McpToolResult {
+        content,
+        is_error: false,
+    })
 }
 
-async fn search_files(path: &str, pattern: &str, max_results: Option<usize>) -> Result<McpToolResult> {
+async fn search_files(
+    path: &str,
+    pattern: &str,
+    max_results: Option<usize>,
+) -> Result<McpToolResult> {
     let max = max_results.unwrap_or(50);
     let mut results = Vec::new();
 
     let pattern_lower = pattern.to_lowercase();
-    walk_dir_search(std::path::Path::new(path), &pattern_lower, &mut results, max).await;
+    walk_dir_search(
+        std::path::Path::new(path),
+        &pattern_lower,
+        &mut results,
+        max,
+    )
+    .await;
 
     let content = if results.is_empty() {
         format!("No files matching '{}' found in '{}'", pattern, path)
     } else {
-        format!("Found {} file(s) matching '{}':\n{}", results.len(), pattern, results.join("\n"))
+        format!(
+            "Found {} file(s) matching '{}':\n{}",
+            results.len(),
+            pattern,
+            results.join("\n")
+        )
     };
 
-    Ok(McpToolResult { content, is_error: false })
+    Ok(McpToolResult {
+        content,
+        is_error: false,
+    })
 }
 
-async fn walk_dir_search(root: &std::path::Path, pattern: &str, results: &mut Vec<String>, max: usize) {
+async fn walk_dir_search(
+    root: &std::path::Path,
+    pattern: &str,
+    results: &mut Vec<String>,
+    max: usize,
+) {
     let mut stack = vec![root.to_path_buf()];
 
     while let Some(dir) = stack.pop() {
-        if results.len() >= max { return; }
+        if results.len() >= max {
+            return;
+        }
 
         let mut entries = match tokio::fs::read_dir(&dir).await {
             Ok(rd) => rd,
@@ -194,13 +283,21 @@ async fn walk_dir_search(root: &std::path::Path, pattern: &str, results: &mut Ve
         };
 
         while let Ok(Some(entry)) = entries.next_entry().await {
-            if results.len() >= max { return; }
+            if results.len() >= max {
+                return;
+            }
 
             let name = entry.file_name().to_string_lossy().to_string();
-            if name.starts_with('.') { continue; }
+            if name.starts_with('.') {
+                continue;
+            }
 
             let path = entry.path();
-            let is_dir = entry.file_type().await.map(|ft| ft.is_dir()).unwrap_or(false);
+            let is_dir = entry
+                .file_type()
+                .await
+                .map(|ft| ft.is_dir())
+                .unwrap_or(false);
 
             if name.to_lowercase().contains(pattern) {
                 results.push(path.to_string_lossy().to_string());
@@ -259,40 +356,50 @@ fn html_to_markdown(html: &str) -> String {
     for level in 1..=6 {
         let prefix = "#".repeat(level);
         let re_h = Regex::new(&format!(r"(?is)<h{}\s*[^>]*>(.*?)</h{}>", level, level)).unwrap();
-        text = re_h.replace_all(&text, |caps: &regex::Captures| {
-            let inner = strip_tags(caps.get(1).map_or("", |m| m.as_str()));
-            format!("\n\n{} {}\n\n", prefix, inner.trim())
-        }).to_string();
+        text = re_h
+            .replace_all(&text, |caps: &regex::Captures| {
+                let inner = strip_tags(caps.get(1).map_or("", |m| m.as_str()));
+                format!("\n\n{} {}\n\n", prefix, inner.trim())
+            })
+            .to_string();
     }
 
     // Links
     let re_a = Regex::new(r#"(?is)<a\s[^>]*href\s*=\s*["']([^"']+)["'][^>]*>(.*?)</a>"#).unwrap();
-    text = re_a.replace_all(&text, |caps: &regex::Captures| {
-        let href = caps.get(1).map_or("", |m| m.as_str());
-        let inner = strip_tags(caps.get(2).map_or("", |m| m.as_str()));
-        format!("[{}]({})", inner.trim(), href)
-    }).to_string();
+    text = re_a
+        .replace_all(&text, |caps: &regex::Captures| {
+            let href = caps.get(1).map_or("", |m| m.as_str());
+            let inner = strip_tags(caps.get(2).map_or("", |m| m.as_str()));
+            format!("[{}]({})", inner.trim(), href)
+        })
+        .to_string();
 
     // Images
     let re_img = Regex::new(r#"(?i)<img\s[^>]*src\s*=\s*["']([^"']+)["'][^>]*/?\s*>"#).unwrap();
-    text = re_img.replace_all(&text, |caps: &regex::Captures| {
-        let src = caps.get(1).map_or("", |m| m.as_str());
-        format!("![image]({})", src)
-    }).to_string();
+    text = re_img
+        .replace_all(&text, |caps: &regex::Captures| {
+            let src = caps.get(1).map_or("", |m| m.as_str());
+            format!("![image]({})", src)
+        })
+        .to_string();
 
     // Bold
     let re_b = Regex::new(r"(?is)<(b|strong)\s*[^>]*>(.*?)</\1>").unwrap();
-    text = re_b.replace_all(&text, |caps: &regex::Captures| {
-        let inner = caps.get(2).map_or("", |m| m.as_str());
-        format!("**{}**", inner.trim())
-    }).to_string();
+    text = re_b
+        .replace_all(&text, |caps: &regex::Captures| {
+            let inner = caps.get(2).map_or("", |m| m.as_str());
+            format!("**{}**", inner.trim())
+        })
+        .to_string();
 
     // Italic
     let re_i = Regex::new(r"(?is)<(i|em)\s*[^>]*>(.*?)</\1>").unwrap();
-    text = re_i.replace_all(&text, |caps: &regex::Captures| {
-        let inner = caps.get(2).map_or("", |m| m.as_str());
-        format!("*{}*", inner.trim())
-    }).to_string();
+    text = re_i
+        .replace_all(&text, |caps: &regex::Captures| {
+            let inner = caps.get(2).map_or("", |m| m.as_str());
+            format!("*{}*", inner.trim())
+        })
+        .to_string();
 
     // Code
     let re_code = Regex::new(r"(?is)<code\s*[^>]*>(.*?)</code>").unwrap();
@@ -300,17 +407,22 @@ fn html_to_markdown(html: &str) -> String {
 
     // Pre blocks
     let re_pre = Regex::new(r"(?is)<pre\s*[^>]*>(.*?)</pre>").unwrap();
-    text = re_pre.replace_all(&text, |caps: &regex::Captures| {
-        let inner = strip_tags(caps.get(1).map_or("", |m| m.as_str()));
-        format!("\n```\n{}\n```\n", inner.trim())
-    }).to_string();
+    text = re_pre
+        .replace_all(&text, |caps: &regex::Captures| {
+            let inner = strip_tags(caps.get(1).map_or("", |m| m.as_str()));
+            format!("\n```\n{}\n```\n", inner.trim())
+        })
+        .to_string();
 
     // List items
     let re_li = Regex::new(r"(?i)<li\s*[^>]*>").unwrap();
     text = re_li.replace_all(&text, "\n- ").to_string();
 
     // Block elements → newlines
-    let re_block = Regex::new(r"(?i)</?(p|div|section|article|main|aside|blockquote|table|tr|ul|ol|dl)\s*[^>]*>").unwrap();
+    let re_block = Regex::new(
+        r"(?i)</?(p|div|section|article|main|aside|blockquote|table|tr|ul|ol|dl)\s*[^>]*>",
+    )
+    .unwrap();
     text = re_block.replace_all(&text, "\n").to_string();
 
     let re_br = Regex::new(r"(?i)<br\s*/?>").unwrap();
@@ -356,32 +468,50 @@ fn strip_tags(s: &str) -> String {
 
 fn decode_entities(text: &mut String) {
     let replacements = [
-        ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
-        ("&quot;", "\""), ("&#39;", "'"), ("&apos;", "'"),
-        ("&nbsp;", " "), ("&#x27;", "'"), ("&#x2F;", "/"),
-        ("&mdash;", "—"), ("&ndash;", "–"), ("&laquo;", "«"),
-        ("&raquo;", "»"), ("&bull;", "•"), ("&hellip;", "…"),
-        ("&copy;", "©"), ("&reg;", "®"), ("&trade;", "™"),
+        ("&amp;", "&"),
+        ("&lt;", "<"),
+        ("&gt;", ">"),
+        ("&quot;", "\""),
+        ("&#39;", "'"),
+        ("&apos;", "'"),
+        ("&nbsp;", " "),
+        ("&#x27;", "'"),
+        ("&#x2F;", "/"),
+        ("&mdash;", "—"),
+        ("&ndash;", "–"),
+        ("&laquo;", "«"),
+        ("&raquo;", "»"),
+        ("&bull;", "•"),
+        ("&hellip;", "…"),
+        ("&copy;", "©"),
+        ("&reg;", "®"),
+        ("&trade;", "™"),
     ];
     for (entity, replacement) in &replacements {
         *text = text.replace(entity, replacement);
     }
     // Numeric entities: &#NNN;
     let re_dec = Regex::new(r"&#(\d+);").unwrap();
-    *text = re_dec.replace_all(text, |caps: &regex::Captures| {
-        caps.get(1).and_then(|m| m.as_str().parse::<u32>().ok())
-            .and_then(char::from_u32)
-            .map(|c| c.to_string())
-            .unwrap_or_default()
-    }).to_string();
+    *text = re_dec
+        .replace_all(text, |caps: &regex::Captures| {
+            caps.get(1)
+                .and_then(|m| m.as_str().parse::<u32>().ok())
+                .and_then(char::from_u32)
+                .map(|c| c.to_string())
+                .unwrap_or_default()
+        })
+        .to_string();
     // Hex entities: &#xHHH;
     let re_hex = Regex::new(r"(?i)&#x([0-9a-f]+);").unwrap();
-    *text = re_hex.replace_all(text, |caps: &regex::Captures| {
-        caps.get(1).and_then(|m| u32::from_str_radix(m.as_str(), 16).ok())
-            .and_then(char::from_u32)
-            .map(|c| c.to_string())
-            .unwrap_or_default()
-    }).to_string();
+    *text = re_hex
+        .replace_all(text, |caps: &regex::Captures| {
+            caps.get(1)
+                .and_then(|m| u32::from_str_radix(m.as_str(), 16).ok())
+                .and_then(char::from_u32)
+                .map(|c| c.to_string())
+                .unwrap_or_default()
+        })
+        .to_string();
 }
 
 fn collapse_whitespace(text: &str) -> String {
@@ -391,7 +521,9 @@ fn collapse_whitespace(text: &str) -> String {
 
     for c in text.chars() {
         if c == '\n' || c == '\r' {
-            if c == '\r' { continue; }
+            if c == '\r' {
+                continue;
+            }
             consecutive_newlines += 1;
             if consecutive_newlines <= 2 {
                 result.push('\n');
@@ -421,7 +553,9 @@ fn truncate_text(text: &str, max: usize) -> String {
     let boundary = text[..max].rfind('\n').unwrap_or(max);
     format!(
         "{}\n\n... (truncated, showing first {} of {} characters)",
-        &text[..boundary], boundary, text.len()
+        &text[..boundary],
+        boundary,
+        text.len()
     )
 }
 

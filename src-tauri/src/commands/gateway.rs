@@ -48,9 +48,7 @@ struct CliToolConnectionState {
     connected_protocol: Option<QuickConnectProtocol>,
 }
 
-async fn load_gateway_runtime_settings(
-    state: &AppState,
-) -> Result<GatewayRuntimeSettings, String> {
+async fn load_gateway_runtime_settings(state: &AppState) -> Result<GatewayRuntimeSettings, String> {
     let settings = aqbot_core::repo::settings::get_settings(&state.sea_db)
         .await
         .map_err(|e| e.to_string())?;
@@ -281,10 +279,7 @@ async fn resolve_gateway_url_for_selected_protocol(
     .await
 }
 
-async fn resolve_gateway_runtime_value<T, F>(
-    state: &AppState,
-    build: F,
-) -> Result<T, String>
+async fn resolve_gateway_runtime_value<T, F>(state: &AppState, build: F) -> Result<T, String>
 where
     F: FnOnce(&str, u16, Option<u16>, bool) -> Result<T, String>,
 {
@@ -450,18 +445,14 @@ pub async fn toggle_gateway_key(
 }
 
 #[tauri::command]
-pub async fn get_gateway_metrics(
-    state: State<'_, AppState>,
-) -> Result<GatewayMetrics, String> {
+pub async fn get_gateway_metrics(state: State<'_, AppState>) -> Result<GatewayMetrics, String> {
     aqbot_core::repo::gateway::get_gateway_metrics(&state.sea_db)
         .await
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn start_gateway(
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+pub async fn start_gateway(state: State<'_, AppState>) -> Result<(), String> {
     {
         let gw = state.gateway.lock().await;
         if gw.as_ref().map_or(false, |s| s.is_running()) {
@@ -514,9 +505,7 @@ pub async fn start_gateway(
 }
 
 #[tauri::command]
-pub async fn stop_gateway(
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+pub async fn stop_gateway(state: State<'_, AppState>) -> Result<(), String> {
     let mut gw = state.gateway.lock().await;
     if let Some(mut server) = gw.take() {
         server.stop().await.map_err(|e| e.to_string())?;
@@ -525,9 +514,7 @@ pub async fn stop_gateway(
 }
 
 #[tauri::command]
-pub async fn get_gateway_status(
-    state: State<'_, AppState>,
-) -> Result<GatewayStatus, String> {
+pub async fn get_gateway_status(state: State<'_, AppState>) -> Result<GatewayStatus, String> {
     // Extract live addresses while holding the lock, then drop it before the
     // async settings fetch.
     struct LiveInfo {
@@ -568,7 +555,11 @@ pub async fn get_gateway_status(
             port: settings.port,
             ssl_enabled: settings.ssl_enabled,
             started_at: None,
-            https_port: if settings.ssl_enabled { Some(settings.ssl_port) } else { None },
+            https_port: if settings.ssl_enabled {
+                Some(settings.ssl_port)
+            } else {
+                None
+            },
             force_ssl: settings.force_ssl,
         })
     }
@@ -640,10 +631,7 @@ pub async fn save_program_policy(
 }
 
 #[tauri::command]
-pub async fn delete_program_policy(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_program_policy(state: State<'_, AppState>, id: String) -> Result<(), String> {
     aqbot_core::repo::program_policy::delete_program_policy(&state.sea_db, &id)
         .await
         .map_err(|e| e.to_string())
@@ -662,9 +650,7 @@ pub async fn list_gateway_templates() -> Result<Vec<GatewayTemplate>, String> {
   "openai.apiBaseUrl": "http://localhost:8080/v1"
 }"#
             .to_string(),
-            copy_hint: Some(
-                "Add to Cursor User settings.json".to_string(),
-            ),
+            copy_hint: Some("Add to Cursor User settings.json".to_string()),
         },
         GatewayTemplate {
             id: "vscode".to_string(),
@@ -690,9 +676,7 @@ pub async fn list_gateway_templates() -> Result<Vec<GatewayTemplate>, String> {
             content: r#"export ANTHROPIC_AUTH_TOKEN="YOUR_KEY"
 export ANTHROPIC_BASE_URL="http://localhost:8080/v1""#
                 .to_string(),
-            copy_hint: Some(
-                "Add to your shell profile (~/.bashrc or ~/.zshrc)".to_string(),
-            ),
+            copy_hint: Some("Add to your shell profile (~/.bashrc or ~/.zshrc)".to_string()),
         },
         GatewayTemplate {
             id: "openai_compatible".to_string(),
@@ -705,9 +689,7 @@ export ANTHROPIC_BASE_URL="http://localhost:8080/v1""#
   "model": "gpt-4"
 }"#
             .to_string(),
-            copy_hint: Some(
-                "Use these settings in any OpenAI-compatible client".to_string(),
-            ),
+            copy_hint: Some("Use these settings in any OpenAI-compatible client".to_string()),
         },
     ])
 }
@@ -738,9 +720,7 @@ pub async fn list_gateway_request_logs(
 }
 
 #[tauri::command]
-pub async fn clear_gateway_request_logs(
-    state: State<'_, AppState>,
-) -> Result<u64, String> {
+pub async fn clear_gateway_request_logs(state: State<'_, AppState>) -> Result<u64, String> {
     aqbot_core::repo::gateway_request_log::clear_request_logs(&state.sea_db)
         .await
         .map_err(|e| e.to_string())
@@ -760,7 +740,10 @@ pub async fn generate_self_signed_cert(
     let mut subject_alt_names = vec!["localhost".to_string(), "127.0.0.1".to_string()];
     let listen_address = settings.listen_address.trim();
     if !listen_address.is_empty()
-        && !matches!(listen_address, "localhost" | "127.0.0.1" | "0.0.0.0" | "::" | "[::]")
+        && !matches!(
+            listen_address,
+            "localhost" | "127.0.0.1" | "0.0.0.0" | "::" | "[::]"
+        )
         && !subject_alt_names.iter().any(|name| name == listen_address)
     {
         subject_alt_names.push(listen_address.to_string());

@@ -28,7 +28,10 @@ pub fn create_router(state: GatewayAppState) -> Router {
         .route("/v1/messages/count_tokens", post(anthropic_count_tokens))
         .route("/v1/models", get(list_models))
         .route("/v1beta/models", get(gemini_list_models))
-        .route("/v1beta/models/{model_action}", post(gemini_model_operation))
+        .route(
+            "/v1beta/models/{model_action}",
+            post(gemini_model_operation),
+        )
         .layer(middleware::from_fn_with_state(
             state.db.clone(),
             auth_middleware,
@@ -92,8 +95,11 @@ mod tests {
         assert_protected_route_exists(Method::POST, "/v1/messages").await;
         assert_protected_route_exists(Method::POST, "/v1/messages/count_tokens").await;
         assert_protected_route_exists(Method::GET, "/v1beta/models").await;
-        assert_protected_route_exists(Method::POST, "/v1beta/models/gemini-2.5-pro:generateContent")
-            .await;
+        assert_protected_route_exists(
+            Method::POST,
+            "/v1beta/models/gemini-2.5-pro:generateContent",
+        )
+        .await;
         assert_protected_route_exists(
             Method::POST,
             "/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse",

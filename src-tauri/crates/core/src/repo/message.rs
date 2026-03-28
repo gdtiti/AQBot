@@ -1,5 +1,5 @@
-use sea_orm::*;
 use sea_orm::sea_query::Expr;
+use sea_orm::*;
 use std::collections::HashSet;
 
 use crate::entity::messages;
@@ -31,8 +31,9 @@ fn parse_attachment_list(raw: &str) -> Result<Vec<Attachment>> {
 }
 
 fn stringify_attachment_list(attachments: &[Attachment]) -> Result<String> {
-    serde_json::to_string(attachments)
-        .map_err(|e| AQBotError::Validation(format!("Failed to serialize message attachments: {e}")))
+    serde_json::to_string(attachments).map_err(|e| {
+        AQBotError::Validation(format!("Failed to serialize message attachments: {e}"))
+    })
 }
 
 fn message_from_entity(m: messages::Model) -> Result<Message> {
@@ -58,10 +59,7 @@ fn message_from_entity(m: messages::Model) -> Result<Message> {
     })
 }
 
-pub async fn list_messages(
-    db: &DatabaseConnection,
-    conversation_id: &str,
-) -> Result<Vec<Message>> {
+pub async fn list_messages(db: &DatabaseConnection, conversation_id: &str) -> Result<Vec<Message>> {
     let rows = messages::Entity::find()
         .filter(messages::Column::ConversationId.eq(conversation_id))
         .filter(messages::Column::IsActive.eq(1))
@@ -280,17 +278,16 @@ pub async fn set_active_version(
     Ok(())
 }
 
-pub async fn delete_message_group(
-    db: &DatabaseConnection,
-    user_message_id: &str,
-) -> Result<u64> {
+pub async fn delete_message_group(db: &DatabaseConnection, user_message_id: &str) -> Result<u64> {
     // Delete all assistant versions for this user message
     let ai_result = messages::Entity::delete_many()
         .filter(messages::Column::ParentMessageId.eq(user_message_id))
         .exec(db)
         .await?;
     // Delete the user message itself
-    messages::Entity::delete_by_id(user_message_id).exec(db).await?;
+    messages::Entity::delete_by_id(user_message_id)
+        .exec(db)
+        .await?;
     Ok(ai_result.rows_affected + 1)
 }
 

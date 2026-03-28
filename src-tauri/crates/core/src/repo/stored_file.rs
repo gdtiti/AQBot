@@ -117,10 +117,7 @@ pub async fn count_stored_files_with_storage_path(
         .map_err(Into::into)
 }
 
-pub async fn find_by_hash(
-    db: &DatabaseConnection,
-    hash: &str,
-) -> Result<Option<StoredFile>> {
+pub async fn find_by_hash(db: &DatabaseConnection, hash: &str) -> Result<Option<StoredFile>> {
     let model = stored_files::Entity::find()
         .filter(stored_files::Column::Hash.eq(hash))
         .one(db)

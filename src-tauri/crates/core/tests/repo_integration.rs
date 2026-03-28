@@ -62,7 +62,9 @@ async fn test_category_crud() {
     assert_eq!(cats[0].name, "Work");
 
     // update
-    let updated = category::update_category(db, &cat.id, "Personal").await.unwrap();
+    let updated = category::update_category(db, &cat.id, "Personal")
+        .await
+        .unwrap();
     assert_eq!(updated.name, "Personal");
 
     // delete
@@ -128,11 +130,15 @@ async fn test_provider_crud() {
         proxy_config: None,
         sort_order: None,
     };
-    let updated = provider::update_provider(db, &prov.id, update).await.unwrap();
+    let updated = provider::update_provider(db, &prov.id, update)
+        .await
+        .unwrap();
     assert_eq!(updated.name, "OpenAI v2");
 
     // toggle
-    provider::toggle_provider(db, &prov.id, false).await.unwrap();
+    provider::toggle_provider(db, &prov.id, false)
+        .await
+        .unwrap();
     let fetched = provider::get_provider(db, &prov.id).await.unwrap();
     assert!(!fetched.enabled);
 
@@ -169,7 +175,9 @@ async fn test_provider_key_operations() {
     assert!(key.enabled);
 
     // list keys
-    let keys = provider::list_keys_for_provider(db, &prov.id).await.unwrap();
+    let keys = provider::list_keys_for_provider(db, &prov.id)
+        .await
+        .unwrap();
     assert_eq!(keys.len(), 1);
 
     // get key
@@ -177,13 +185,17 @@ async fn test_provider_key_operations() {
     assert_eq!(fetched.id, key.id);
 
     // toggle key
-    provider::toggle_provider_key(db, &key.id, false).await.unwrap();
+    provider::toggle_provider_key(db, &key.id, false)
+        .await
+        .unwrap();
     let fetched = provider::get_provider_key(db, &key.id).await.unwrap();
     assert!(!fetched.enabled);
 
     // delete key
     provider::delete_provider_key(db, &key.id).await.unwrap();
-    let keys = provider::list_keys_for_provider(db, &prov.id).await.unwrap();
+    let keys = provider::list_keys_for_provider(db, &prov.id)
+        .await
+        .unwrap();
     assert!(keys.is_empty());
 }
 
@@ -221,7 +233,9 @@ async fn test_provider_model_operations() {
     provider::save_models(db, &prov.id, &models).await.unwrap();
 
     // list models
-    let listed = provider::list_models_for_provider(db, &prov.id).await.unwrap();
+    let listed = provider::list_models_for_provider(db, &prov.id)
+        .await
+        .unwrap();
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].model_id, "claude-3");
     assert_eq!(listed[0].group_name.as_deref(), Some("claude-3"));
@@ -232,7 +246,9 @@ async fn test_provider_model_operations() {
     assert_eq!(m.group_name.as_deref(), Some("claude-3"));
 
     // toggle model
-    let toggled = provider::toggle_model(db, &prov.id, "claude-3", false).await.unwrap();
+    let toggled = provider::toggle_model(db, &prov.id, "claude-3", false)
+        .await
+        .unwrap();
     assert!(!toggled.enabled);
 }
 
@@ -246,9 +262,10 @@ async fn test_conversation_crud() {
     let db = &h.conn;
 
     // create
-    let conv = conversation::create_conversation(db, "Hello World", "gpt-4", "openai-1", None, None)
-        .await
-        .unwrap();
+    let conv =
+        conversation::create_conversation(db, "Hello World", "gpt-4", "openai-1", None, None)
+            .await
+            .unwrap();
     assert_eq!(conv.title, "Hello World");
     assert_eq!(conv.model_id, "gpt-4");
     assert_eq!(conv.provider_id, "openai-1");
@@ -275,17 +292,25 @@ async fn test_conversation_crud() {
     assert!(!unpinned.is_pinned);
 
     // message count
-    conversation::increment_message_count(db, &conv.id).await.unwrap();
-    conversation::increment_message_count(db, &conv.id).await.unwrap();
+    conversation::increment_message_count(db, &conv.id)
+        .await
+        .unwrap();
+    conversation::increment_message_count(db, &conv.id)
+        .await
+        .unwrap();
     let fetched = conversation::get_conversation(db, &conv.id).await.unwrap();
     assert_eq!(fetched.message_count, 2);
 
-    conversation::decrement_message_count(db, &conv.id).await.unwrap();
+    conversation::decrement_message_count(db, &conv.id)
+        .await
+        .unwrap();
     let fetched = conversation::get_conversation(db, &conv.id).await.unwrap();
     assert_eq!(fetched.message_count, 1);
 
     // delete
-    conversation::delete_conversation(db, &conv.id).await.unwrap();
+    conversation::delete_conversation(db, &conv.id)
+        .await
+        .unwrap();
     let convs = conversation::list_conversations(db).await.unwrap();
     assert!(convs.is_empty());
 }
@@ -327,9 +352,15 @@ async fn test_conversation_update_input() {
     assert!(updated.search_enabled);
     assert_eq!(updated.search_provider_id.as_deref(), Some("search-1"));
     assert_eq!(updated.thinking_budget, Some(4096));
-    assert_eq!(updated.enabled_mcp_server_ids, vec!["mcp-a".to_string(), "mcp-b".to_string()]);
+    assert_eq!(
+        updated.enabled_mcp_server_ids,
+        vec!["mcp-a".to_string(), "mcp-b".to_string()]
+    );
     assert_eq!(updated.enabled_knowledge_base_ids, vec!["kb-a".to_string()]);
-    assert_eq!(updated.enabled_memory_namespace_ids, vec!["mem-a".to_string()]);
+    assert_eq!(
+        updated.enabled_memory_namespace_ids,
+        vec!["mem-a".to_string()]
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -346,17 +377,9 @@ async fn test_message_crud() {
         .unwrap();
 
     // create message (no attachments)
-    let msg = message::create_message(
-        db,
-        &conv.id,
-        MessageRole::User,
-        "Hello!",
-        &[],
-        None,
-        0,
-    )
-    .await
-    .unwrap();
+    let msg = message::create_message(db, &conv.id, MessageRole::User, "Hello!", &[], None, 0)
+        .await
+        .unwrap();
     assert_eq!(msg.conversation_id, conv.id);
     assert_eq!(msg.role, MessageRole::User);
     assert_eq!(msg.content, "Hello!");

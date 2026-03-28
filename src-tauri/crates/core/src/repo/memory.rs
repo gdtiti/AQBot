@@ -2,7 +2,10 @@ use sea_orm::*;
 
 use crate::entity::{memory_items, memory_namespaces};
 use crate::error::{AQBotError, Result};
-use crate::types::{CreateMemoryItemInput, CreateMemoryNamespaceInput, MemoryItem, MemoryNamespace, UpdateMemoryNamespaceInput};
+use crate::types::{
+    CreateMemoryItemInput, CreateMemoryNamespaceInput, MemoryItem, MemoryNamespace,
+    UpdateMemoryNamespaceInput,
+};
 use crate::utils::gen_id;
 
 fn model_to_namespace(m: memory_namespaces::Model) -> MemoryNamespace {
@@ -62,9 +65,7 @@ pub async fn create_namespace(
 }
 
 pub async fn delete_namespace(db: &DatabaseConnection, id: &str) -> Result<()> {
-    let result = memory_namespaces::Entity::delete_by_id(id)
-        .exec(db)
-        .await?;
+    let result = memory_namespaces::Entity::delete_by_id(id).exec(db).await?;
 
     if result.rows_affected == 0 {
         return Err(AQBotError::NotFound(format!("MemoryNamespace {}", id)));

@@ -1,5 +1,5 @@
-use sea_orm::*;
 use sea_orm::sea_query::Expr;
+use sea_orm::*;
 
 use crate::entity::{models, provider_keys, providers};
 use crate::error::{AQBotError, Result};
@@ -70,9 +70,7 @@ fn provider_from_entity(
         enabled: row.enabled != 0,
         models,
         keys,
-        proxy_config: row
-            .proxy_config
-            .and_then(|s| serde_json::from_str(&s).ok()),
+        proxy_config: row.proxy_config.and_then(|s| serde_json::from_str(&s).ok()),
         custom_headers: row.custom_headers,
         icon: row.icon,
         sort_order: row.sort_order,
@@ -211,14 +209,14 @@ pub async fn toggle_provider(db: &DatabaseConnection, id: &str, enabled: bool) -
 
 // --- Provider Key CRUD ---
 
-pub async fn reorder_providers(
-    db: &DatabaseConnection,
-    provider_ids: &[String],
-) -> Result<()> {
+pub async fn reorder_providers(db: &DatabaseConnection, provider_ids: &[String]) -> Result<()> {
     for (i, id) in provider_ids.iter().enumerate() {
         providers::Entity::update_many()
             .col_expr(providers::Column::SortOrder, Expr::value(i as i32))
-            .col_expr(providers::Column::UpdatedAt, Expr::value(crate::utils::now_ts()))
+            .col_expr(
+                providers::Column::UpdatedAt,
+                Expr::value(crate::utils::now_ts()),
+            )
             .filter(providers::Column::Id.eq(id))
             .exec(db)
             .await?;
@@ -228,7 +226,10 @@ pub async fn reorder_providers(
 
 // --- Provider Key CRUD (continued) ---
 
-pub async fn list_keys_for_provider(db: &DatabaseConnection, provider_id: &str) -> Result<Vec<ProviderKey>> {
+pub async fn list_keys_for_provider(
+    db: &DatabaseConnection,
+    provider_id: &str,
+) -> Result<Vec<ProviderKey>> {
     let rows = provider_keys::Entity::find()
         .filter(provider_keys::Column::ProviderId.eq(provider_id))
         .order_by_asc(provider_keys::Column::RotationIndex)
@@ -287,7 +288,11 @@ pub async fn delete_provider_key(db: &DatabaseConnection, key_id: &str) -> Resul
     Ok(())
 }
 
-pub async fn toggle_provider_key(db: &DatabaseConnection, key_id: &str, enabled: bool) -> Result<()> {
+pub async fn toggle_provider_key(
+    db: &DatabaseConnection,
+    key_id: &str,
+    enabled: bool,
+) -> Result<()> {
     let row = provider_keys::Entity::find_by_id(key_id)
         .one(db)
         .await?
@@ -315,13 +320,23 @@ pub async fn get_active_key(db: &DatabaseConnection, provider_id: &str) -> Resul
         .order_by_asc(provider_keys::Column::RotationIndex)
         .one(db)
         .await?
-        .ok_or_else(|| AQBotError::NotFound(format!("No active key for provider {}", provider_id)))?;
+        .ok_or_else(|| {
+            AQBotError::NotFound(format!("No active key for provider {}", provider_id))
+        })?;
     Ok(key_from_entity(row))
 }
 
-pub async fn update_key_validation(db: &DatabaseConnection, key_id: &str, valid: bool) -> Result<()> {
+pub async fn update_key_validation(
+    db: &DatabaseConnection,
+    key_id: &str,
+    valid: bool,
+) -> Result<()> {
     if let Some(row) = provider_keys::Entity::find_by_id(key_id).one(db).await? {
-        let error = if valid { None } else { Some("Validation failed".to_string()) };
+        let error = if valid {
+            None
+        } else {
+            Some("Validation failed".to_string())
+        };
         let mut am: provider_keys::ActiveModel = row.into();
         am.last_validated_at = Set(Some(now_ts()));
         am.last_error = Set(error);
@@ -330,7 +345,10 @@ pub async fn update_key_validation(db: &DatabaseConnection, key_id: &str, valid:
     Ok(())
 }
 
-pub async fn get_enabled_keys(db: &DatabaseConnection, provider_id: &str) -> Result<Vec<ProviderKey>> {
+pub async fn get_enabled_keys(
+    db: &DatabaseConnection,
+    provider_id: &str,
+) -> Result<Vec<ProviderKey>> {
     let rows = provider_keys::Entity::find()
         .filter(provider_keys::Column::ProviderId.eq(provider_id))
         .filter(provider_keys::Column::Enabled.eq(1))
@@ -341,7 +359,11 @@ pub async fn get_enabled_keys(db: &DatabaseConnection, provider_id: &str) -> Res
     Ok(rows.into_iter().map(key_from_entity).collect())
 }
 
-pub async fn update_rotation_index(db: &DatabaseConnection, key_id: &str, index: u32) -> Result<()> {
+pub async fn update_rotation_index(
+    db: &DatabaseConnection,
+    key_id: &str,
+    index: u32,
+) -> Result<()> {
     if let Some(row) = provider_keys::Entity::find_by_id(key_id).one(db).await? {
         let mut am: provider_keys::ActiveModel = row.into();
         am.rotation_index = Set(index as i32);
@@ -394,8 +416,8 @@ pub async fn save_models(
                 .await?;
 
             for model in &input_models {
-                let capabilities = serde_json::to_string(&model.capabilities)
-                    .unwrap_or_else(|_| "[]".to_string());
+                let capabilities =
+                    serde_json::to_string(&model.capabilities).unwrap_or_else(|_| "[]".to_string());
                 let param_overrides = model
                     .param_overrides
                     .as_ref()

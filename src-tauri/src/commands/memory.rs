@@ -22,10 +22,7 @@ pub async fn create_memory_namespace(
 }
 
 #[tauri::command]
-pub async fn delete_memory_namespace(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_memory_namespace(state: State<'_, AppState>, id: String) -> Result<(), String> {
     aqbot_core::repo::memory::delete_namespace(&state.sea_db, &id)
         .await
         .map_err(|e| e.to_string())

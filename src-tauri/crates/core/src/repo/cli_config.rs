@@ -113,7 +113,11 @@ fn run_version_command(cmd: &str, arg: &str) -> Option<String> {
         .filter(|o| o.status.success())
         .and_then(|o| {
             let out = String::from_utf8_lossy(&o.stdout).trim().to_string();
-            if out.is_empty() { None } else { Some(out) }
+            if out.is_empty() {
+                None
+            } else {
+                Some(out)
+            }
         })
 }
 
@@ -136,7 +140,9 @@ fn check_cursor_installed() -> bool {
     #[cfg(target_os = "windows")]
     {
         if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
-            Path::new(&appdata).join("Programs/cursor/Cursor.exe").exists()
+            Path::new(&appdata)
+                .join("Programs/cursor/Cursor.exe")
+                .exists()
         } else {
             false
         }
@@ -154,9 +160,10 @@ fn home_dir() -> Result<PathBuf> {
 }
 
 fn dirs_next() -> Option<PathBuf> {
-    std::env::var("HOME").ok().map(PathBuf::from).or_else(|| {
-        std::env::var("USERPROFILE").ok().map(PathBuf::from)
-    })
+    std::env::var("HOME")
+        .ok()
+        .map(PathBuf::from)
+        .or_else(|| std::env::var("USERPROFILE").ok().map(PathBuf::from))
 }
 
 fn config_paths(tool: CliTool) -> Result<Vec<PathBuf>> {
@@ -174,14 +181,16 @@ fn config_paths(tool: CliTool) -> Result<Vec<PathBuf>> {
             home.join(".gemini").join(".env"),
             home.join(".gemini").join("settings.json"),
         ]),
-        CliTool::OpenCode => Ok(vec![
-            home.join(".config").join("opencode").join("opencode.json"),
-        ]),
+        CliTool::OpenCode => Ok(vec![home
+            .join(".config")
+            .join("opencode")
+            .join("opencode.json")]),
         CliTool::Cursor => {
             #[cfg(target_os = "macos")]
             {
-                Ok(vec![home
-                    .join("Library/Application Support/Cursor/User/settings.json")])
+                Ok(vec![home.join(
+                    "Library/Application Support/Cursor/User/settings.json",
+                )])
             }
             #[cfg(target_os = "windows")]
             {
@@ -193,9 +202,7 @@ fn config_paths(tool: CliTool) -> Result<Vec<PathBuf>> {
             }
             #[cfg(target_os = "linux")]
             {
-                Ok(vec![
-                    home.join(".config/Cursor/User/settings.json")
-                ])
+                Ok(vec![home.join(".config/Cursor/User/settings.json")])
             }
         }
     }
@@ -290,11 +297,15 @@ fn is_connected(tool: CliTool, gateway_url: &str) -> Result<bool> {
 /// connected = settings.json env.ANTHROPIC_BASE_URL == gateway_url AND
 ///             env.ANTHROPIC_AUTH_TOKEN is non-empty AND
 ///             config.json has primaryApiKey == "any".
-fn check_claude_code_connected(settings_path: &Path, config_path: &Path, gateway_url: &str) -> Result<bool> {
+fn check_claude_code_connected(
+    settings_path: &Path,
+    config_path: &Path,
+    gateway_url: &str,
+) -> Result<bool> {
     if !settings_path.exists() || !config_path.exists() {
         return Ok(false);
     }
-    
+
     // Check settings.json
     let settings = read_json_file(settings_path)?;
     let env = settings.get("env");
@@ -307,11 +318,11 @@ fn check_claude_code_connected(settings_path: &Path, config_path: &Path, gateway
         .and_then(|v| v.as_str())
         .map(|k| !k.is_empty())
         .unwrap_or(false);
-    
+
     // Check config.json
     let config = read_json_file(config_path)?;
     let primary_key_ok = config.get("primaryApiKey").and_then(|v| v.as_str()) == Some("any");
-    
+
     Ok(url_ok && key_ok && primary_key_ok)
 }
 
@@ -369,11 +380,15 @@ fn check_codex_connected(auth_path: &Path, config_path: &Path, gateway_url: &str
 /// Gemini CLI (~/.gemini/.env + ~/.gemini/settings.json):
 /// connected = .env has GEMINI_API_BASE_URL == gateway_url AND GEMINI_API_KEY is non-empty
 ///             AND settings.json has security.auth.selectedType == "gemini-api-key".
-fn check_gemini_connected(env_path: &Path, settings_path: &Path, gateway_url: &str) -> Result<bool> {
+fn check_gemini_connected(
+    env_path: &Path,
+    settings_path: &Path,
+    gateway_url: &str,
+) -> Result<bool> {
     if !env_path.exists() || !settings_path.exists() {
         return Ok(false);
     }
-    
+
     // Check .env
     let content = std::fs::read_to_string(env_path)
         .map_err(|e| AQBotError::Gateway(format!("Failed to read .env: {}", e)))?;
@@ -396,7 +411,7 @@ fn check_gemini_connected(env_path: &Path, settings_path: &Path, gateway_url: &s
             }
         }
     }
-    
+
     // Check settings.json
     let settings = read_json_file(settings_path)?;
     let selected_type_ok = settings
@@ -405,7 +420,7 @@ fn check_gemini_connected(env_path: &Path, settings_path: &Path, gateway_url: &s
         .and_then(|a| a.get("selectedType"))
         .and_then(|v| v.as_str())
         == Some("gemini-api-key");
-    
+
     Ok(base_url_ok && key_ok && selected_type_ok)
 }
 
@@ -417,7 +432,10 @@ fn check_opencode_connected(path: &Path, gateway_url: &str) -> Result<bool> {
     }
     let json = read_json_file(path)?;
     let aqbot = json.get("provider").and_then(|p| p.get("aqbot"));
-    let url_ok = aqbot.and_then(|a| a.get("baseURL")).and_then(|v| v.as_str()) == Some(gateway_url);
+    let url_ok = aqbot
+        .and_then(|a| a.get("baseURL"))
+        .and_then(|v| v.as_str())
+        == Some(gateway_url);
     let key_ok = aqbot
         .and_then(|a| a.get("apiKey"))
         .and_then(|v| v.as_str())
@@ -511,20 +529,31 @@ pub fn connect(tool: CliTool, gateway_url: &str, api_key: &str) -> Result<()> {
     }
 }
 
-fn connect_claude_code(settings_path: &Path, config_path: &Path, gateway_url: &str, api_key: &str) -> Result<()> {
+fn connect_claude_code(
+    settings_path: &Path,
+    config_path: &Path,
+    gateway_url: &str,
+    api_key: &str,
+) -> Result<()> {
     // Write settings.json
     let mut settings = read_json_or_empty(settings_path)?;
-    let obj = settings.as_object_mut().ok_or_else(|| {
-        AQBotError::Gateway("Claude Code settings is not a JSON object".into())
-    })?;
-    obj.insert("apiBaseUrl".into(), serde_json::Value::String(gateway_url.into()));
+    let obj = settings
+        .as_object_mut()
+        .ok_or_else(|| AQBotError::Gateway("Claude Code settings is not a JSON object".into()))?;
+    obj.insert(
+        "apiBaseUrl".into(),
+        serde_json::Value::String(gateway_url.into()),
+    );
     obj.insert("apiKey".into(), serde_json::Value::String(api_key.into()));
     if !obj.contains_key("env") {
         obj.insert("env".into(), serde_json::json!({}));
     }
-    let env = obj.get_mut("env").and_then(|value| value.as_object_mut()).ok_or_else(|| {
-        AQBotError::Gateway("Claude Code settings.env is not a JSON object".into())
-    })?;
+    let env = obj
+        .get_mut("env")
+        .and_then(|value| value.as_object_mut())
+        .ok_or_else(|| {
+            AQBotError::Gateway("Claude Code settings.env is not a JSON object".into())
+        })?;
     env.insert(
         "ANTHROPIC_BASE_URL".into(),
         serde_json::Value::String(gateway_url.into()),
@@ -536,13 +565,16 @@ fn connect_claude_code(settings_path: &Path, config_path: &Path, gateway_url: &s
     let content = serde_json::to_string_pretty(&settings)
         .map_err(|e| AQBotError::Gateway(format!("Failed to serialize JSON: {}", e)))?;
     atomic_write(settings_path, &content)?;
-    
+
     // Write config.json
     let mut config = read_json_or_empty(config_path)?;
-    let config_obj = config.as_object_mut().ok_or_else(|| {
-        AQBotError::Gateway("Claude Code config is not a JSON object".into())
-    })?;
-    config_obj.insert("primaryApiKey".into(), serde_json::Value::String("any".into()));
+    let config_obj = config
+        .as_object_mut()
+        .ok_or_else(|| AQBotError::Gateway("Claude Code config is not a JSON object".into()))?;
+    config_obj.insert(
+        "primaryApiKey".into(),
+        serde_json::Value::String("any".into()),
+    );
     let config_content = serde_json::to_string_pretty(&config)
         .map_err(|e| AQBotError::Gateway(format!("Failed to serialize config JSON: {}", e)))?;
     atomic_write(config_path, &config_content)
@@ -599,7 +631,12 @@ fn connect_codex(
     atomic_write(config_path, &doc.to_string())
 }
 
-fn connect_gemini(env_path: &Path, settings_path: &Path, gateway_url: &str, api_key: &str) -> Result<()> {
+fn connect_gemini(
+    env_path: &Path,
+    settings_path: &Path,
+    gateway_url: &str,
+    api_key: &str,
+) -> Result<()> {
     // Write .env
     let mut vars: Vec<(String, String)> = Vec::new();
     let mut comments: Vec<String> = Vec::new();
@@ -640,30 +677,37 @@ fn connect_gemini(env_path: &Path, settings_path: &Path, gateway_url: &str, api_
     }
 
     atomic_write(env_path, &output)?;
-    
+
     // Write/merge settings.json
     let mut settings = read_json_or_empty(settings_path)?;
-    let obj = settings.as_object_mut().ok_or_else(|| {
-        AQBotError::Gateway("Gemini settings is not a JSON object".into())
-    })?;
-    
+    let obj = settings
+        .as_object_mut()
+        .ok_or_else(|| AQBotError::Gateway("Gemini settings is not a JSON object".into()))?;
+
     // Ensure security.auth.selectedType == "gemini-api-key"
     if !obj.contains_key("security") {
         obj.insert("security".into(), serde_json::json!({}));
     }
-    let security = obj.get_mut("security").unwrap().as_object_mut().ok_or_else(|| {
-        AQBotError::Gateway("security is not a JSON object".into())
-    })?;
-    
+    let security = obj
+        .get_mut("security")
+        .unwrap()
+        .as_object_mut()
+        .ok_or_else(|| AQBotError::Gateway("security is not a JSON object".into()))?;
+
     if !security.contains_key("auth") {
         security.insert("auth".into(), serde_json::json!({}));
     }
-    let auth = security.get_mut("auth").unwrap().as_object_mut().ok_or_else(|| {
-        AQBotError::Gateway("security.auth is not a JSON object".into())
-    })?;
-    
-    auth.insert("selectedType".into(), serde_json::Value::String("gemini-api-key".into()));
-    
+    let auth = security
+        .get_mut("auth")
+        .unwrap()
+        .as_object_mut()
+        .ok_or_else(|| AQBotError::Gateway("security.auth is not a JSON object".into()))?;
+
+    auth.insert(
+        "selectedType".into(),
+        serde_json::Value::String("gemini-api-key".into()),
+    );
+
     let settings_content = serde_json::to_string_pretty(&settings)
         .map_err(|e| AQBotError::Gateway(format!("Failed to serialize settings JSON: {}", e)))?;
     atomic_write(settings_path, &settings_content)
@@ -671,9 +715,9 @@ fn connect_gemini(env_path: &Path, settings_path: &Path, gateway_url: &str, api_
 
 fn connect_opencode(config_path: &Path, gateway_url: &str, api_key: &str) -> Result<()> {
     let mut json = read_json_or_empty(config_path)?;
-    let obj = json.as_object_mut().ok_or_else(|| {
-        AQBotError::Gateway("OpenCode config is not a JSON object".into())
-    })?;
+    let obj = json
+        .as_object_mut()
+        .ok_or_else(|| AQBotError::Gateway("OpenCode config is not a JSON object".into()))?;
 
     if !obj.contains_key("$schema") {
         obj.insert(
@@ -687,9 +731,11 @@ fn connect_opencode(config_path: &Path, gateway_url: &str, api_key: &str) -> Res
         obj.insert("provider".into(), serde_json::json!({}));
     }
 
-    let provider = obj.get_mut("provider").unwrap().as_object_mut().ok_or_else(|| {
-        AQBotError::Gateway("provider is not a JSON object".into())
-    })?;
+    let provider = obj
+        .get_mut("provider")
+        .unwrap()
+        .as_object_mut()
+        .ok_or_else(|| AQBotError::Gateway("provider is not a JSON object".into()))?;
 
     provider.insert(
         "aqbot".into(),
@@ -711,11 +757,17 @@ fn connect_opencode(config_path: &Path, gateway_url: &str, api_key: &str) -> Res
 
 fn connect_cursor(settings_path: &Path, gateway_url: &str, api_key: &str) -> Result<()> {
     let mut json = read_json_or_empty(settings_path)?;
-    let obj = json.as_object_mut().ok_or_else(|| {
-        AQBotError::Gateway("Cursor settings is not a JSON object".into())
-    })?;
-    obj.insert("openai.apiBaseUrl".into(), serde_json::Value::String(gateway_url.into()));
-    obj.insert("openai.apiKey".into(), serde_json::Value::String(api_key.into()));
+    let obj = json
+        .as_object_mut()
+        .ok_or_else(|| AQBotError::Gateway("Cursor settings is not a JSON object".into()))?;
+    obj.insert(
+        "openai.apiBaseUrl".into(),
+        serde_json::Value::String(gateway_url.into()),
+    );
+    obj.insert(
+        "openai.apiKey".into(),
+        serde_json::Value::String(api_key.into()),
+    );
     let content = serde_json::to_string_pretty(&json)
         .map_err(|e| AQBotError::Gateway(format!("Failed to serialize JSON: {}", e)))?;
     atomic_write(settings_path, &content)
@@ -770,25 +822,23 @@ fn disconnect_remove_fields(tool: CliTool, gateway_url: &str) -> Result<()> {
         CliTool::Codex => {
             // Two-file operation: remove auth.json then clean config.toml.
             let auth_result = if paths[0].exists() {
-                std::fs::remove_file(&paths[0]).map_err(|e| {
-                    AQBotError::Gateway(format!("Failed to remove auth.json: {}", e))
-                })
+                std::fs::remove_file(&paths[0])
+                    .map_err(|e| AQBotError::Gateway(format!("Failed to remove auth.json: {}", e)))
             } else {
                 Ok(())
             };
             auth_result.and_then(|_| remove_toml_aqbot_config(&paths[1]))
         }
         CliTool::Gemini => {
-            let env_result = remove_env_keys(&paths[0], &["GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_BASE_URL"]);
+            let env_result = remove_env_keys(
+                &paths[0],
+                &["GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_BASE_URL"],
+            );
             let settings_result = remove_gemini_settings_selected_type(&paths[1]);
             env_result.and(settings_result)
         }
-        CliTool::OpenCode => {
-            remove_json_provider(&paths[0], "aqbot")
-        }
-        CliTool::Cursor => {
-            remove_json_fields(&paths[0], &["openai.apiBaseUrl", "openai.apiKey"])
-        }
+        CliTool::OpenCode => remove_json_provider(&paths[0], "aqbot"),
+        CliTool::Cursor => remove_json_fields(&paths[0], &["openai.apiBaseUrl", "openai.apiKey"]),
     };
 
     if let Err(e) = remove_result {
@@ -854,7 +904,10 @@ fn remove_toml_aqbot_config(path: &Path) -> Result<()> {
         doc.remove("model_provider");
     }
     // Remove model_providers.any
-    if let Some(providers) = doc.get_mut("model_providers").and_then(|v| v.as_table_mut()) {
+    if let Some(providers) = doc
+        .get_mut("model_providers")
+        .and_then(|v| v.as_table_mut())
+    {
         providers.remove("any");
         if providers.is_empty() {
             doc.remove("model_providers");
@@ -917,14 +970,14 @@ fn remove_claude_config_primary_api_key(path: &Path) -> Result<()> {
         .map_err(|e| AQBotError::Gateway(format!("Failed to read config.json: {}", e)))?;
     let mut json: serde_json::Value = serde_json::from_str(&content)
         .map_err(|e| AQBotError::Gateway(format!("Failed to parse JSON: {}", e)))?;
-    
+
     if let Some(obj) = json.as_object_mut() {
         // Only remove primaryApiKey if it's "any"
         if obj.get("primaryApiKey").and_then(|v| v.as_str()) == Some("any") {
             obj.remove("primaryApiKey");
         }
     }
-    
+
     let output = serde_json::to_string_pretty(&json)
         .map_err(|e| AQBotError::Gateway(format!("Failed to serialize JSON: {}", e)))?;
     atomic_write(path, &output)
@@ -974,7 +1027,7 @@ fn remove_gemini_settings_selected_type(path: &Path) -> Result<()> {
         .map_err(|e| AQBotError::Gateway(format!("Failed to read settings.json: {}", e)))?;
     let mut json: serde_json::Value = serde_json::from_str(&content)
         .map_err(|e| AQBotError::Gateway(format!("Failed to parse JSON: {}", e)))?;
-    
+
     if let Some(obj) = json.as_object_mut() {
         // Only remove selectedType if it's "gemini-api-key"
         if let Some(security) = obj.get_mut("security").and_then(|s| s.as_object_mut()) {
@@ -992,7 +1045,7 @@ fn remove_gemini_settings_selected_type(path: &Path) -> Result<()> {
             }
         }
     }
-    
+
     let output = serde_json::to_string_pretty(&json)
         .map_err(|e| AQBotError::Gateway(format!("Failed to serialize JSON: {}", e)))?;
     atomic_write(path, &output)
@@ -1002,8 +1055,9 @@ fn remove_gemini_settings_selected_type(path: &Path) -> Result<()> {
 
 fn read_json_or_empty(path: &Path) -> Result<serde_json::Value> {
     if path.exists() {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| AQBotError::Gateway(format!("Failed to read {}: {}", path.display(), e)))?;
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            AQBotError::Gateway(format!("Failed to read {}: {}", path.display(), e))
+        })?;
         serde_json::from_str(&content)
             .map_err(|e| AQBotError::Gateway(format!("Failed to parse JSON: {}", e)))
     } else {
@@ -1014,8 +1068,9 @@ fn read_json_or_empty(path: &Path) -> Result<serde_json::Value> {
 fn read_json_file(path: &Path) -> Result<serde_json::Value> {
     let content = std::fs::read_to_string(path)
         .map_err(|e| AQBotError::Gateway(format!("Failed to read {}: {}", path.display(), e)))?;
-    serde_json::from_str(&content)
-        .map_err(|e| AQBotError::Gateway(format!("Failed to parse JSON in {}: {}", path.display(), e)))
+    serde_json::from_str(&content).map_err(|e| {
+        AQBotError::Gateway(format!("Failed to parse JSON in {}: {}", path.display(), e))
+    })
 }
 
 /// Get the primary config path for display purposes

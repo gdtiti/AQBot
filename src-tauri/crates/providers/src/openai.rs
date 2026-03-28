@@ -1,12 +1,12 @@
-use async_trait::async_trait;
 use aqbot_core::error::{AQBotError, Result};
 use aqbot_core::types::*;
+use async_trait::async_trait;
+use futures::Stream;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
-use futures::Stream;
 
-use crate::{ProviderAdapter, ProviderRequestContext, build_http_client, resolve_chat_url};
+use crate::{build_http_client, resolve_chat_url, ProviderAdapter, ProviderRequestContext};
 
 const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
 
@@ -28,7 +28,11 @@ impl OpenAIAdapter {
     }
 
     fn chat_url(ctx: &ProviderRequestContext) -> String {
-        resolve_chat_url(&Self::base_url(ctx), ctx.api_path.as_deref(), "/chat/completions")
+        resolve_chat_url(
+            &Self::base_url(ctx),
+            ctx.api_path.as_deref(),
+            "/chat/completions",
+        )
     }
 
     fn get_client(&self, ctx: &ProviderRequestContext) -> Result<reqwest::Client> {
@@ -159,13 +163,12 @@ struct OpenAIEmbedData {
 fn extract_text_content(content: &ChatContent) -> String {
     match content {
         ChatContent::Text(text) => text.clone(),
-        ChatContent::Multipart(parts) => {
-            parts.iter()
-                .filter_map(|part| part.text.as_ref())
-                .cloned()
-                .collect::<Vec<String>>()
-                .join(" ")
-        }
+        ChatContent::Multipart(parts) => parts
+            .iter()
+            .filter_map(|part| part.text.as_ref())
+            .cloned()
+            .collect::<Vec<String>>()
+            .join(" "),
     }
 }
 
@@ -287,12 +290,26 @@ fn build_request(request: &ChatRequest, messages: &[ChatMessage], stream: bool) 
     OpenAIRequest {
         model: request.model.clone(),
         messages: convert_messages(messages),
-        temperature: if reasoning_effort.is_some() { None } else { request.temperature },
-        top_p: if reasoning_effort.is_some() { None } else { request.top_p },
+        temperature: if reasoning_effort.is_some() {
+            None
+        } else {
+            request.temperature
+        },
+        top_p: if reasoning_effort.is_some() {
+            None
+        } else {
+            request.top_p
+        },
         max_tokens,
         max_completion_tokens,
         stream,
-        stream_options: if stream { Some(StreamOptions { include_usage: true }) } else { None },
+        stream_options: if stream {
+            Some(StreamOptions {
+                include_usage: true,
+            })
+        } else {
+            None
+        },
         tools: request.tools.clone(),
         reasoning_effort,
     }
@@ -347,16 +364,15 @@ impl ProviderAdapter for OpenAIAdapter {
         let body = build_request(&request, &request.messages, false);
 
         let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
+            self.get_client(ctx)?
                 .post(&url)
                 .header("Authorization", format!("Bearer {}", ctx.api_key))
                 .json(&body),
             ctx,
         )
-            .send()
-            .await
-            .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
+        .send()
+        .await
+        .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
 
         if !resp.status().is_success() {
             let status = resp.status();
@@ -380,21 +396,38 @@ impl ProviderAdapter for OpenAIAdapter {
             .as_ref()
             .ok_or_else(|| AQBotError::Provider("No message in choice".into()))?;
 
-        let usage = oai.usage.map(|u| TokenUsage {
-            prompt_tokens: u.prompt_tokens,
-            completion_tokens: u.completion_tokens,
-            total_tokens: u.total_tokens,
-        }).unwrap_or(TokenUsage { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 });
+        let usage = oai
+            .usage
+            .map(|u| TokenUsage {
+                prompt_tokens: u.prompt_tokens,
+                completion_tokens: u.completion_tokens,
+                total_tokens: u.total_tokens,
+            })
+            .unwrap_or(TokenUsage {
+                prompt_tokens: 0,
+                completion_tokens: 0,
+                total_tokens: 0,
+            });
 
         let tool_calls = msg.tool_calls.as_ref().map(|tcs| {
-            tcs.iter().map(|tc| aqbot_core::types::ToolCall {
-                id: tc.id.clone().unwrap_or_default(),
-                call_type: tc.call_type.clone().unwrap_or_else(|| "function".into()),
-                function: aqbot_core::types::ToolCallFunction {
-                    name: tc.function.as_ref().and_then(|f| f.name.clone()).unwrap_or_default(),
-                    arguments: tc.function.as_ref().and_then(|f| f.arguments.clone()).unwrap_or_default(),
-                },
-            }).collect()
+            tcs.iter()
+                .map(|tc| aqbot_core::types::ToolCall {
+                    id: tc.id.clone().unwrap_or_default(),
+                    call_type: tc.call_type.clone().unwrap_or_else(|| "function".into()),
+                    function: aqbot_core::types::ToolCallFunction {
+                        name: tc
+                            .function
+                            .as_ref()
+                            .and_then(|f| f.name.clone())
+                            .unwrap_or_default(),
+                        arguments: tc
+                            .function
+                            .as_ref()
+                            .and_then(|f| f.arguments.clone())
+                            .unwrap_or_default(),
+                    },
+                })
+                .collect()
         });
 
         Ok(ChatResponse {
@@ -428,8 +461,8 @@ impl ProviderAdapter for OpenAIAdapter {
                     .json(&body),
                 &custom_headers,
             )
-                .send()
-                .await
+            .send()
+            .await
             {
                 Ok(r) if r.status().is_success() => r,
                 Ok(r) => {
@@ -441,9 +474,8 @@ impl ProviderAdapter for OpenAIAdapter {
                     return;
                 }
                 Err(e) => {
-                    let _ = tx.unbounded_send(Err(AQBotError::Provider(format!(
-                        "Request failed: {e}"
-                    ))));
+                    let _ = tx
+                        .unbounded_send(Err(AQBotError::Provider(format!("Request failed: {e}"))));
                     return;
                 }
             };
@@ -477,16 +509,21 @@ impl ProviderAdapter for OpenAIAdapter {
                                 let tool_calls = if pending_tool_calls.is_empty() {
                                     None
                                 } else {
-                                    Some(pending_tool_calls.iter().map(|(id, ct, name, args)| {
-                                        aqbot_core::types::ToolCall {
-                                            id: id.clone(),
-                                            call_type: ct.clone(),
-                                            function: aqbot_core::types::ToolCallFunction {
-                                                name: name.clone(),
-                                                arguments: args.clone(),
-                                            },
-                                        }
-                                    }).collect())
+                                    Some(
+                                        pending_tool_calls
+                                            .iter()
+                                            .map(|(id, ct, name, args)| {
+                                                aqbot_core::types::ToolCall {
+                                                    id: id.clone(),
+                                                    call_type: ct.clone(),
+                                                    function: aqbot_core::types::ToolCallFunction {
+                                                        name: name.clone(),
+                                                        arguments: args.clone(),
+                                                    },
+                                                }
+                                            })
+                                            .collect(),
+                                    )
                                 };
                                 let _ = tx.unbounded_send(Ok(ChatStreamChunk {
                                     content: None,
@@ -507,7 +544,12 @@ impl ProviderAdapter for OpenAIAdapter {
                                             for tc in tc_deltas {
                                                 let idx = tc.index;
                                                 while pending_tool_calls.len() <= idx {
-                                                    pending_tool_calls.push((String::new(), String::from("function"), String::new(), String::new()));
+                                                    pending_tool_calls.push((
+                                                        String::new(),
+                                                        String::from("function"),
+                                                        String::new(),
+                                                        String::new(),
+                                                    ));
                                                 }
                                                 if let Some(ref id) = tc.id {
                                                     pending_tool_calls[idx].0 = id.clone();
@@ -585,15 +627,14 @@ impl ProviderAdapter for OpenAIAdapter {
         let url = format!("{}/models", Self::base_url(ctx));
 
         let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
+            self.get_client(ctx)?
                 .get(&url)
                 .header("Authorization", format!("Bearer {}", ctx.api_key)),
             ctx,
         )
-            .send()
-            .await
-            .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
+        .send()
+        .await
+        .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
 
         if !resp.status().is_success() {
             let s = resp.status();
@@ -617,12 +658,17 @@ impl ProviderAdapter for OpenAIAdapter {
                     ModelType::Voice => vec![ModelCapability::RealtimeVoice],
                 };
                 let id_lower = m.id.to_lowercase();
-                if id_lower.contains("gpt-4o") || id_lower.contains("gpt-4-turbo")
-                    || id_lower.contains("claude") || id_lower.contains("vision")
+                if id_lower.contains("gpt-4o")
+                    || id_lower.contains("gpt-4-turbo")
+                    || id_lower.contains("claude")
+                    || id_lower.contains("vision")
                 {
                     caps.push(ModelCapability::Vision);
                 }
-                if id_lower.starts_with("o1") || id_lower.starts_with("o3") || id_lower.starts_with("o4") {
+                if id_lower.starts_with("o1")
+                    || id_lower.starts_with("o3")
+                    || id_lower.starts_with("o4")
+                {
                     caps.push(ModelCapability::Reasoning);
                 }
                 Model {
@@ -640,7 +686,11 @@ impl ProviderAdapter for OpenAIAdapter {
             .collect())
     }
 
-    async fn embed(&self, ctx: &ProviderRequestContext, request: EmbedRequest) -> Result<EmbedResponse> {
+    async fn embed(
+        &self,
+        ctx: &ProviderRequestContext,
+        request: EmbedRequest,
+    ) -> Result<EmbedResponse> {
         let url = format!("{}/embeddings", Self::base_url(ctx));
         let body = OpenAIEmbedRequest {
             model: request.model,
@@ -648,21 +698,22 @@ impl ProviderAdapter for OpenAIAdapter {
         };
 
         let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
+            self.get_client(ctx)?
                 .post(&url)
                 .header("Authorization", format!("Bearer {}", ctx.api_key))
                 .json(&body),
             ctx,
         )
-            .send()
-            .await
-            .map_err(|e| AQBotError::Provider(format!("Embed request failed: {e}")))?;
+        .send()
+        .await
+        .map_err(|e| AQBotError::Provider(format!("Embed request failed: {e}")))?;
 
         if !resp.status().is_success() {
             let s = resp.status();
             let t = resp.text().await.unwrap_or_default();
-            return Err(AQBotError::Provider(format!("OpenAI embed API error {s}: {t}")));
+            return Err(AQBotError::Provider(format!(
+                "OpenAI embed API error {s}: {t}"
+            )));
         }
 
         let result: OpenAIEmbedResponse = resp
@@ -673,6 +724,9 @@ impl ProviderAdapter for OpenAIAdapter {
         let dimensions = result.data.first().map(|d| d.embedding.len()).unwrap_or(0);
         let embeddings: Vec<Vec<f32>> = result.data.into_iter().map(|d| d.embedding).collect();
 
-        Ok(EmbedResponse { embeddings, dimensions })
+        Ok(EmbedResponse {
+            embeddings,
+            dimensions,
+        })
     }
 }

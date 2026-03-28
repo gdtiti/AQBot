@@ -19,6 +19,7 @@ pub struct AppState {
     pub app_data_dir: PathBuf,
     pub db_path: String,
     pub auto_backup_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    pub webdav_sync_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     pub vector_store: Arc<aqbot_core::vector_store::VectorStore>,
     pub stream_cancel_flags: Arc<Mutex<std::collections::HashMap<String, Arc<AtomicBool>>>>,
 }
@@ -189,6 +190,16 @@ pub fn run() {
             commands::backup::batch_delete_backups,
             commands::backup::get_backup_settings,
             commands::backup::update_backup_settings,
+            // webdav
+            commands::webdav::get_webdav_config,
+            commands::webdav::save_webdav_config,
+            commands::webdav::webdav_check_connection,
+            commands::webdav::webdav_backup,
+            commands::webdav::webdav_list_backups,
+            commands::webdav::webdav_restore,
+            commands::webdav::webdav_delete_backup,
+            commands::webdav::get_webdav_sync_status,
+            commands::webdav::restart_webdav_sync,
             // desktop
             commands::desktop::get_desktop_capabilities,
             commands::desktop::send_desktop_notification,
@@ -333,6 +344,7 @@ pub fn run() {
                 app_data_dir: app_dir.clone(),
                 db_path: db_path,
                 auto_backup_handle: Arc::new(Mutex::new(None)),
+                webdav_sync_handle: Arc::new(Mutex::new(None)),
                 vector_store: Arc::new(vector_store),
                 stream_cancel_flags: Arc::new(Mutex::new(std::collections::HashMap::new())),
             });
@@ -400,6 +412,28 @@ pub fn run() {
                                     }
                                 }
                             });
+                            *handle.lock().await = Some(task);
+                        }
+                    }
+                });
+            }
+
+            // Initialize WebDAV sync scheduler if enabled
+            {
+                let state = app.state::<AppState>();
+                let db = state.sea_db.clone();
+                let master_key = state.master_key;
+                let app_data_dir = app_dir.clone();
+                let handle = state.webdav_sync_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Ok(settings) = aqbot_core::repo::settings::get_settings(&db).await {
+                        if settings.webdav_sync_enabled && settings.webdav_sync_interval_minutes > 0 {
+                            let db2 = db.clone();
+                            let dir2 = app_data_dir.clone();
+                            let interval = settings.webdav_sync_interval_minutes;
+                            let task = commands::webdav::spawn_webdav_sync_task(
+                                db2, master_key, dir2, interval,
+                            );
                             *handle.lock().await = Some(task);
                         }
                     }

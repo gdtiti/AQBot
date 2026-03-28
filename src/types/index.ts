@@ -361,6 +361,15 @@ export interface AppSettings {
   notify_backup?: boolean;
   notify_import?: boolean;
   notify_errors?: boolean;
+  // WebDAV sync settings
+  webdav_host?: string | null;
+  webdav_username?: string | null;
+  webdav_path?: string | null;
+  webdav_accept_invalid_certs?: boolean;
+  webdav_sync_enabled?: boolean;
+  webdav_sync_interval_minutes?: number;
+  webdav_max_remote_backups?: number;
+  webdav_include_documents?: boolean;
 }
 
 // === Streaming ===

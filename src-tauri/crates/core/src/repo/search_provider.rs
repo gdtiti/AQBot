@@ -30,10 +30,7 @@ pub async fn list_search_providers(db: &DatabaseConnection) -> Result<Vec<Search
     Ok(rows.into_iter().map(model_to_search_provider).collect())
 }
 
-pub async fn get_search_provider(
-    db: &DatabaseConnection,
-    id: &str,
-) -> Result<SearchProvider> {
+pub async fn get_search_provider(db: &DatabaseConnection, id: &str) -> Result<SearchProvider> {
     let model = search_providers::Entity::find_by_id(id)
         .one(db)
         .await?
@@ -77,7 +74,11 @@ pub async fn update_search_provider(
         .await?
         .ok_or_else(|| AQBotError::NotFound(format!("SearchProvider {}", id)))?;
 
-    let name = if input.name.is_empty() { model.name.clone() } else { input.name };
+    let name = if input.name.is_empty() {
+        model.name.clone()
+    } else {
+        input.name
+    };
     let provider_type = if input.provider_type.is_empty() {
         model.provider_type.clone()
     } else {
@@ -109,9 +110,7 @@ pub async fn update_search_provider(
 }
 
 pub async fn delete_search_provider(db: &DatabaseConnection, id: &str) -> Result<()> {
-    let result = search_providers::Entity::delete_by_id(id)
-        .exec(db)
-        .await?;
+    let result = search_providers::Entity::delete_by_id(id).exec(db).await?;
 
     if result.rows_affected == 0 {
         return Err(AQBotError::NotFound(format!("SearchProvider {}", id)));

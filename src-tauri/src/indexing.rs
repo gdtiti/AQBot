@@ -14,7 +14,9 @@ use aqbot_core::types::*;
 use aqbot_core::vector_store::{EmbeddingRecord, VectorSearchResult, VectorStore};
 use aqbot_core::{document_parser, text_chunker};
 
-use aqbot_providers::{ProviderAdapter, ProviderRequestContext, registry::ProviderRegistry, resolve_base_url};
+use aqbot_providers::{
+    registry::ProviderRegistry, resolve_base_url, ProviderAdapter, ProviderRequestContext,
+};
 
 /// Parse an embedding_provider string like "providerId::modelId" into (provider_id, model_id).
 pub fn parse_embedding_provider(embedding_provider: &str) -> Result<(String, String)> {
@@ -61,7 +63,9 @@ pub async fn build_embed_context(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: None,
         proxy_config: resolved_proxy,
-        custom_headers: provider.custom_headers.as_ref()
+        custom_headers: provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
 
@@ -80,9 +84,9 @@ pub async fn generate_embeddings(
 
     let registry = ProviderRegistry::create_default();
     let registry_key = provider_type_to_registry_key(&provider_config.provider_type);
-    let adapter: &dyn ProviderAdapter = registry
-        .get(registry_key)
-        .ok_or_else(|| AQBotError::Provider(format!("Unsupported provider type: {}", registry_key)))?;
+    let adapter: &dyn ProviderAdapter = registry.get(registry_key).ok_or_else(|| {
+        AQBotError::Provider(format!("Unsupported provider type: {}", registry_key))
+    })?;
 
     let request = EmbedRequest {
         model: model_id,
@@ -133,7 +137,8 @@ pub async fn index_knowledge_document(
     let chunk_texts: Vec<String> = chunks.iter().map(|c| c.content.clone()).collect();
 
     // Generate embeddings (batch)
-    let embed_response = generate_embeddings(db, master_key, embedding_provider, chunk_texts).await?;
+    let embed_response =
+        generate_embeddings(db, master_key, embedding_provider, chunk_texts).await?;
 
     if embed_response.embeddings.len() != chunks.len() {
         return Err(AQBotError::Provider(format!(
@@ -185,8 +190,13 @@ pub async fn index_memory_item(
     let collection_id = format!("mem_{}", namespace_id);
 
     // Generate embedding for the content
-    let embed_response =
-        generate_embeddings(db, master_key, embedding_provider, vec![content.to_string()]).await?;
+    let embed_response = generate_embeddings(
+        db,
+        master_key,
+        embedding_provider,
+        vec![content.to_string()],
+    )
+    .await?;
 
     let embedding = embed_response
         .embeddings

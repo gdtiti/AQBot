@@ -1,9 +1,9 @@
 use crate::error::{AQBotError, Result};
 use rmcp::{
-    ServiceExt,
     model::{CallToolRequestParams, CallToolResult, Tool},
-    transport::{ConfigureCommandExt, TokioChildProcess},
     transport::streamable_http_client::StreamableHttpClientWorker,
+    transport::{ConfigureCommandExt, TokioChildProcess},
+    ServiceExt,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -43,9 +43,11 @@ fn value_to_map(v: Value) -> serde_json::Map<String, Value> {
 
 /// Extract text content from an rmcp CallToolResult.
 fn extract_call_result(result: &CallToolResult) -> (String, bool) {
-    let texts: Vec<String> = result.content.iter().filter_map(|c| {
-        c.as_text().map(|t| t.text.clone())
-    }).collect();
+    let texts: Vec<String> = result
+        .content
+        .iter()
+        .filter_map(|c| c.as_text().map(|t| t.text.clone()))
+        .collect();
     let content = if texts.is_empty() {
         serde_json::to_string_pretty(&result.content).unwrap_or_else(|_| "null".into())
     } else {
@@ -69,21 +71,27 @@ pub async fn call_tool_stdio(
     let env_clone = env.clone();
     let args_clone: Vec<String> = args.to_vec();
 
-    let transport = TokioChildProcess::new(
-        tokio::process::Command::new(command).configure(move |cmd| {
+    let transport =
+        TokioChildProcess::new(tokio::process::Command::new(command).configure(move |cmd| {
             cmd.args(&args_clone);
             for (k, v) in &env_clone {
                 cmd.env(k, v);
             }
-        }),
-    ).map_err(|e| AQBotError::Gateway(format!("Failed to spawn MCP server '{}': {}", command, e)))?;
+        }))
+        .map_err(|e| {
+            AQBotError::Gateway(format!("Failed to spawn MCP server '{}': {}", command, e))
+        })?;
 
-    let client = ().serve(transport).await
+    let client = ()
+        .serve(transport)
+        .await
         .map_err(|e| AQBotError::Gateway(format!("MCP handshake failed: {}", e)))?;
 
     let params = CallToolRequestParams::new(tool_name.to_string())
         .with_arguments(value_to_map(tool_arguments));
-    let result = client.call_tool(params).await
+    let result = client
+        .call_tool(params)
+        .await
         .map_err(|e| AQBotError::Gateway(format!("MCP tool call failed: {}", e)))?;
 
     let _ = client.cancel().await;
@@ -101,19 +109,25 @@ pub async fn discover_tools_stdio(
     let env_clone = env.clone();
     let args_clone: Vec<String> = args.to_vec();
 
-    let transport = TokioChildProcess::new(
-        tokio::process::Command::new(command).configure(move |cmd| {
+    let transport =
+        TokioChildProcess::new(tokio::process::Command::new(command).configure(move |cmd| {
             cmd.args(&args_clone);
             for (k, v) in &env_clone {
                 cmd.env(k, v);
             }
-        }),
-    ).map_err(|e| AQBotError::Gateway(format!("Failed to spawn MCP server '{}': {}", command, e)))?;
+        }))
+        .map_err(|e| {
+            AQBotError::Gateway(format!("Failed to spawn MCP server '{}': {}", command, e))
+        })?;
 
-    let client = ().serve(transport).await
+    let client = ()
+        .serve(transport)
+        .await
         .map_err(|e| AQBotError::Gateway(format!("MCP handshake failed: {}", e)))?;
 
-    let tools = client.list_all_tools().await
+    let tools = client
+        .list_all_tools()
+        .await
         .map_err(|e| AQBotError::Gateway(format!("MCP tools/list failed: {}", e)))?;
 
     let _ = client.cancel().await;
@@ -133,12 +147,16 @@ pub async fn call_tool_http(
 ) -> Result<McpToolResult> {
     let transport = StreamableHttpClientWorker::<reqwest::Client>::new_simple(endpoint);
 
-    let client = ().serve(transport).await
+    let client = ()
+        .serve(transport)
+        .await
         .map_err(|e| AQBotError::Gateway(format!("MCP HTTP connect failed: {}", e)))?;
 
     let params = CallToolRequestParams::new(tool_name.to_string())
         .with_arguments(value_to_map(tool_arguments));
-    let result = client.call_tool(params).await
+    let result = client
+        .call_tool(params)
+        .await
         .map_err(|e| AQBotError::Gateway(format!("MCP tool call failed: {}", e)))?;
 
     let _ = client.cancel().await;
@@ -163,29 +181,36 @@ pub async fn call_tool_sse(
         }
     });
     let response = sse_send_request(endpoint, request).await?;
-    let result_obj = response.get("result")
-        .ok_or_else(|| {
-            let err = response.get("error")
-                .map(|e| e.to_string())
-                .unwrap_or_else(|| "unknown error".into());
-            AQBotError::Gateway(format!("MCP tool call error: {}", err))
-        })?;
+    let result_obj = response.get("result").ok_or_else(|| {
+        let err = response
+            .get("error")
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "unknown error".into());
+        AQBotError::Gateway(format!("MCP tool call error: {}", err))
+    })?;
     let content_arr = result_obj.get("content").and_then(|c| c.as_array());
     let texts: Vec<String> = content_arr
-        .map(|arr| arr.iter().filter_map(|c| {
-            if c.get("type").and_then(|t| t.as_str()) == Some("text") {
-                c.get("text").and_then(|t| t.as_str()).map(String::from)
-            } else {
-                None
-            }
-        }).collect())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|c| {
+                    if c.get("type").and_then(|t| t.as_str()) == Some("text") {
+                        c.get("text").and_then(|t| t.as_str()).map(String::from)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        })
         .unwrap_or_default();
     let content = if texts.is_empty() {
         serde_json::to_string_pretty(result_obj).unwrap_or_else(|_| "null".into())
     } else {
         texts.join("\n")
     };
-    let is_error = result_obj.get("isError").and_then(|v| v.as_bool()).unwrap_or(false);
+    let is_error = result_obj
+        .get("isError")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     Ok(McpToolResult { content, is_error })
 }
 
@@ -193,10 +218,14 @@ pub async fn call_tool_sse(
 pub async fn discover_tools_http(endpoint: &str) -> Result<Vec<DiscoveredTool>> {
     let transport = StreamableHttpClientWorker::<reqwest::Client>::new_simple(endpoint);
 
-    let client = ().serve(transport).await
+    let client = ()
+        .serve(transport)
+        .await
         .map_err(|e| AQBotError::Gateway(format!("MCP HTTP connect failed: {}", e)))?;
 
-    let tools = client.list_all_tools().await
+    let tools = client
+        .list_all_tools()
+        .await
         .map_err(|e| AQBotError::Gateway(format!("MCP tools/list failed: {}", e)))?;
 
     let _ = client.cancel().await;
@@ -213,24 +242,35 @@ pub async fn discover_tools_sse(endpoint: &str) -> Result<Vec<DiscoveredTool>> {
         "params": {}
     });
     let response = sse_send_request(endpoint, request).await?;
-    tracing::info!("SSE tools/list response: {}", serde_json::to_string_pretty(&response).unwrap_or_default());
-    let result = response.get("result")
-        .ok_or_else(|| {
-            let err_msg = response.get("error")
-                .map(|e| format!("tools/list error: {}", e))
-                .unwrap_or_else(|| format!("tools/list unexpected response: {}", response));
-            AQBotError::Gateway(err_msg)
-        })?;
+    tracing::info!(
+        "SSE tools/list response: {}",
+        serde_json::to_string_pretty(&response).unwrap_or_default()
+    );
+    let result = response.get("result").ok_or_else(|| {
+        let err_msg = response
+            .get("error")
+            .map(|e| format!("tools/list error: {}", e))
+            .unwrap_or_else(|| format!("tools/list unexpected response: {}", response));
+        AQBotError::Gateway(err_msg)
+    })?;
     let empty_tools = Vec::new();
-    let tools = result.get("tools").and_then(|t| t.as_array())
+    let tools = result
+        .get("tools")
+        .and_then(|t| t.as_array())
         .unwrap_or(&empty_tools);
-    Ok(tools.iter().filter_map(|t| {
-        Some(DiscoveredTool {
-            name: t.get("name")?.as_str()?.to_string(),
-            description: t.get("description").and_then(|d| d.as_str()).map(String::from),
-            input_schema: t.get("inputSchema").cloned(),
+    Ok(tools
+        .iter()
+        .filter_map(|t| {
+            Some(DiscoveredTool {
+                name: t.get("name")?.as_str()?.to_string(),
+                description: t
+                    .get("description")
+                    .and_then(|d| d.as_str())
+                    .map(String::from),
+                input_schema: t.get("inputSchema").cloned(),
+            })
         })
-    }).collect())
+        .collect())
 }
 
 // ---------------------------------------------------------------------------
@@ -249,13 +289,18 @@ async fn sse_send_request(sse_url: &str, request: Value) -> Result<Value> {
 
     // 1. GET the SSE endpoint to open a persistent stream
     tracing::info!("SSE: connecting to {}", sse_url);
-    let sse_resp = client.get(sse_url)
+    let sse_resp = client
+        .get(sse_url)
         .header("Accept", "text/event-stream")
-        .send().await
+        .send()
+        .await
         .map_err(|e| AQBotError::Gateway(format!("SSE connect failed: {}", e)))?;
 
     if !sse_resp.status().is_success() {
-        return Err(AQBotError::Gateway(format!("SSE connect returned {}", sse_resp.status())));
+        return Err(AQBotError::Gateway(format!(
+            "SSE connect returned {}",
+            sse_resp.status()
+        )));
     }
     tracing::info!("SSE: connected, status={}", sse_resp.status());
 
@@ -270,10 +315,14 @@ async fn sse_send_request(sse_url: &str, request: Value) -> Result<Value> {
 
     // 2. Read SSE events until we get the `endpoint` event
     let messages_url = loop {
-        let chunk = byte_stream.next().await
+        let chunk = byte_stream
+            .next()
+            .await
             .ok_or_else(|| AQBotError::Gateway("SSE stream ended before endpoint event".into()))?
             .map_err(|e| AQBotError::Gateway(format!("SSE read error: {}", e)))?;
-        let text = String::from_utf8_lossy(&chunk).replace("\r\n", "\n").replace('\r', "\n");
+        let text = String::from_utf8_lossy(&chunk)
+            .replace("\r\n", "\n")
+            .replace('\r', "\n");
         buffer.push_str(&text);
 
         if let Some(url) = extract_sse_endpoint(&mut buffer, &base_url) {
@@ -293,35 +342,50 @@ async fn sse_send_request(sse_url: &str, request: Value) -> Result<Value> {
             "clientInfo": { "name": "AQBot", "version": "1.0.0" }
         }
     });
-    let init_resp = client.post(&messages_url)
+    let init_resp = client
+        .post(&messages_url)
         .json(&init_request)
-        .send().await
+        .send()
+        .await
         .map_err(|e| AQBotError::Gateway(format!("SSE initialize POST failed: {}", e)))?;
     if !init_resp.status().is_success() {
-        return Err(AQBotError::Gateway(format!("SSE initialize returned {}", init_resp.status())));
+        return Err(AQBotError::Gateway(format!(
+            "SSE initialize returned {}",
+            init_resp.status()
+        )));
     }
-    tracing::info!("SSE: initialize POST accepted, status={}", init_resp.status());
+    tracing::info!(
+        "SSE: initialize POST accepted, status={}",
+        init_resp.status()
+    );
 
     // Read init response from SSE stream
     let _init_result = sse_read_response(&mut byte_stream, &mut buffer).await?;
     tracing::info!("SSE: initialize handshake complete");
 
     // 4. POST initialized notification (no id — it's a notification)
-    let _ = client.post(&messages_url)
+    let _ = client
+        .post(&messages_url)
         .json(&serde_json::json!({
             "jsonrpc": "2.0",
             "method": "notifications/initialized",
             "params": {}
         }))
-        .send().await;
+        .send()
+        .await;
 
     // 5. POST the actual request
-    let resp = client.post(&messages_url)
+    let resp = client
+        .post(&messages_url)
         .json(&request)
-        .send().await
+        .send()
+        .await
         .map_err(|e| AQBotError::Gateway(format!("SSE request POST failed: {}", e)))?;
     if !resp.status().is_success() {
-        return Err(AQBotError::Gateway(format!("SSE request returned {}", resp.status())));
+        return Err(AQBotError::Gateway(format!(
+            "SSE request returned {}",
+            resp.status()
+        )));
     }
     tracing::info!("SSE: request POST accepted, reading response...");
 
@@ -381,10 +445,16 @@ where
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
         match tokio::time::timeout(remaining, stream.next()).await {
             Err(_) => return Err(AQBotError::Gateway("SSE response timed out".into())),
-            Ok(None) => return Err(AQBotError::Gateway("SSE stream ended before response".into())),
+            Ok(None) => {
+                return Err(AQBotError::Gateway(
+                    "SSE stream ended before response".into(),
+                ))
+            }
             Ok(Some(Err(e))) => return Err(AQBotError::Gateway(format!("SSE read error: {}", e))),
             Ok(Some(Ok(chunk))) => {
-                let text = String::from_utf8_lossy(chunk.as_ref()).replace("\r\n", "\n").replace('\r', "\n");
+                let text = String::from_utf8_lossy(chunk.as_ref())
+                    .replace("\r\n", "\n")
+                    .replace('\r', "\n");
                 buffer.push_str(&text);
             }
         }
@@ -442,18 +512,24 @@ mod tests {
 
     #[tokio::test]
     async fn call_tool_stdio_does_not_hang_when_initialize_stdout_is_non_json_then_eof() {
-        let args = vec![
-            "-c".to_string(),
-            "print('npm notice')".to_string(),
-        ];
+        let args = vec!["-c".to_string(), "print('npm notice')".to_string()];
 
         let result = tokio::time::timeout(
             std::time::Duration::from_millis(500),
-            call_tool_stdio("python3", &args, &HashMap::new(), "fetch_url", serde_json::json!({})),
+            call_tool_stdio(
+                "python3",
+                &args,
+                &HashMap::new(),
+                "fetch_url",
+                serde_json::json!({}),
+            ),
         )
         .await;
 
-        assert!(result.is_ok(), "call_tool_stdio hung after non-JSON initialize output");
+        assert!(
+            result.is_ok(),
+            "call_tool_stdio hung after non-JSON initialize output"
+        );
 
         let err = result.unwrap().unwrap_err().to_string();
         assert!(err.contains("MCP") || err.contains("handshake") || err.contains("spawn"));

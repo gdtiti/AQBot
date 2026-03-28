@@ -70,10 +70,7 @@ pub async fn remove_context_source(db: &DatabaseConnection, id: &str) -> Result<
     Ok(())
 }
 
-pub async fn toggle_context_source(
-    db: &DatabaseConnection,
-    id: &str,
-) -> Result<ContextSource> {
+pub async fn toggle_context_source(db: &DatabaseConnection, id: &str) -> Result<ContextSource> {
     let model = context_sources::Entity::find_by_id(id)
         .one(db)
         .await?

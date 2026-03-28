@@ -18,8 +18,16 @@ struct BuiltinDef {
 }
 
 const BUILTIN_DEFS: &[BuiltinDef] = &[
-    BuiltinDef { id: BUILTIN_FETCH_ID, name: "@aqbot/fetch", default_enabled: true },
-    BuiltinDef { id: BUILTIN_SEARCH_FILE_ID, name: "@aqbot/search-file", default_enabled: false },
+    BuiltinDef {
+        id: BUILTIN_FETCH_ID,
+        name: "@aqbot/fetch",
+        default_enabled: true,
+    },
+    BuiltinDef {
+        id: BUILTIN_SEARCH_FILE_ID,
+        name: "@aqbot/search-file",
+        default_enabled: false,
+    },
 ];
 
 fn builtin_setting_key(name: &str) -> String {
@@ -69,16 +77,29 @@ pub fn is_builtin_id(id: &str) -> bool {
 }
 
 /// Toggle enabled state for a builtin server (persists to settings table).
-pub async fn set_builtin_enabled(db: &DatabaseConnection, id: &str, enabled: bool) -> Result<McpServer> {
-    let def = BUILTIN_DEFS.iter().find(|d| d.id == id)
+pub async fn set_builtin_enabled(
+    db: &DatabaseConnection,
+    id: &str,
+    enabled: bool,
+) -> Result<McpServer> {
+    let def = BUILTIN_DEFS
+        .iter()
+        .find(|d| d.id == id)
         .ok_or_else(|| AQBotError::NotFound(format!("Builtin server {id}")))?;
-    settings::set_setting(db, &builtin_setting_key(def.name), if enabled { "true" } else { "false" }).await?;
+    settings::set_setting(
+        db,
+        &builtin_setting_key(def.name),
+        if enabled { "true" } else { "false" },
+    )
+    .await?;
     Ok(make_builtin_server(def, enabled))
 }
 
 /// Get a single builtin server by ID.
 pub async fn get_builtin_server(db: &DatabaseConnection, id: &str) -> Result<McpServer> {
-    let def = BUILTIN_DEFS.iter().find(|d| d.id == id)
+    let def = BUILTIN_DEFS
+        .iter()
+        .find(|d| d.id == id)
         .ok_or_else(|| AQBotError::NotFound(format!("Builtin server {id}")))?;
     let enabled = get_builtin_enabled(db, def.name, def.default_enabled).await;
     Ok(make_builtin_server(def, enabled))
@@ -156,11 +177,7 @@ pub async fn create_mcp_server(
         endpoint: Set(input.endpoint),
         env_json: Set(env_json),
         enabled: Set(if input.enabled.unwrap_or(true) { 1 } else { 0 }),
-        permission_policy: Set(
-            input
-                .permission_policy
-                .unwrap_or_else(|| "ask".to_string()),
-        ),
+        permission_policy: Set(input.permission_policy.unwrap_or_else(|| "ask".to_string())),
         source: Set(input.source.unwrap_or_else(|| "custom".to_string())),
         discover_timeout_secs: Set(input.discover_timeout_secs),
         execute_timeout_secs: Set(input.execute_timeout_secs),
@@ -187,7 +204,11 @@ pub async fn update_mcp_server(
 
     let existing = get_mcp_server(db, id).await?;
 
-    let name = if input.name.is_empty() { existing.name } else { input.name };
+    let name = if input.name.is_empty() {
+        existing.name
+    } else {
+        input.name
+    };
     let transport = if input.transport.is_empty() {
         existing.transport
     } else {
@@ -208,7 +229,9 @@ pub async fn update_mcp_server(
         Some(ref e) => Some(serde_json::to_string(e).unwrap_or_default()),
         None => existing.env_json,
     };
-    let discover_timeout_secs = input.discover_timeout_secs.or(existing.discover_timeout_secs);
+    let discover_timeout_secs = input
+        .discover_timeout_secs
+        .or(existing.discover_timeout_secs);
     let execute_timeout_secs = input.execute_timeout_secs.or(existing.execute_timeout_secs);
     let headers_json = input.headers_json.or(existing.headers_json);
     let icon_type = match input.icon_type {
@@ -250,7 +273,9 @@ pub async fn delete_mcp_server(db: &DatabaseConnection, id: &str) -> Result<()> 
     // Prevent deletion of built-in MCP servers
     let server = get_mcp_server(db, id).await?;
     if server.source == "builtin" {
-        return Err(AQBotError::Gateway("Cannot delete built-in MCP server".to_string()));
+        return Err(AQBotError::Gateway(
+            "Cannot delete built-in MCP server".to_string(),
+        ));
     }
 
     let result = mcp_servers::Entity::delete_by_id(id).exec(db).await?;
@@ -262,7 +287,10 @@ pub async fn delete_mcp_server(db: &DatabaseConnection, id: &str) -> Result<()> 
 }
 
 /// Return tool descriptors for a given MCP server.
-pub async fn list_tools_for_server(db: &DatabaseConnection, server_id: &str) -> Result<Vec<ToolDescriptor>> {
+pub async fn list_tools_for_server(
+    db: &DatabaseConnection,
+    server_id: &str,
+) -> Result<Vec<ToolDescriptor>> {
     // Builtins: resolve name from definition, no DB lookup needed
     if let Some(def) = BUILTIN_DEFS.iter().find(|d| d.id == server_id) {
         return Ok(builtin_tools(server_id, def.name));
@@ -273,13 +301,16 @@ pub async fn list_tools_for_server(db: &DatabaseConnection, server_id: &str) -> 
         .order_by_asc(tool_descriptors::Column::Name)
         .all(db)
         .await?;
-    Ok(rows.into_iter().map(|m| ToolDescriptor {
-        id: m.id,
-        server_id: m.server_id,
-        name: m.name,
-        description: m.description,
-        input_schema_json: m.input_schema_json,
-    }).collect())
+    Ok(rows
+        .into_iter()
+        .map(|m| ToolDescriptor {
+            id: m.id,
+            server_id: m.server_id,
+            name: m.name,
+            description: m.description,
+            input_schema_json: m.input_schema_json,
+        })
+        .collect())
 }
 
 /// Save discovered tool descriptors for a server (replaces existing).
@@ -298,7 +329,8 @@ pub async fn save_tool_descriptors(
     let mut result = Vec::with_capacity(tools.len());
     for tool in tools {
         let id = gen_id();
-        let input_schema_json = tool.input_schema
+        let input_schema_json = tool
+            .input_schema
             .as_ref()
             .map(|s| serde_json::to_string(s).unwrap_or_default());
 

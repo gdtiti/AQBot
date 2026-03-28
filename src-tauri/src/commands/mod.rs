@@ -16,3 +16,4 @@ pub mod providers;
 pub mod search;
 pub mod settings;
 pub mod storage;
+pub mod webdav;

@@ -91,7 +91,11 @@ async fn ssl_redirect_handler(
         bare_host, state.https_port, path_and_query
     );
     // 307 preserves the request method (POST stays POST), unlike 302.
-    (StatusCode::TEMPORARY_REDIRECT, [(header::LOCATION, location)]).into_response()
+    (
+        StatusCode::TEMPORARY_REDIRECT,
+        [(header::LOCATION, location)],
+    )
+        .into_response()
 }
 
 fn create_redirect_router(https_port: u16) -> Router {
@@ -167,7 +171,11 @@ impl GatewayServer {
                         .map_err(|e| {
                             AQBotError::Gateway(format!("Failed to load TLS certificate: {}", e))
                         })?;
-                Some(HttpsBinding { listener, rustls, addr })
+                Some(HttpsBinding {
+                    listener,
+                    rustls,
+                    addr,
+                })
             }
             None => None,
         };
@@ -196,12 +204,11 @@ impl GatewayServer {
         // the gateway never ends up half-dead.
         let running = Arc::new(AtomicBool::new(true));
         let http_handle = Handle::new();
-        let https_handle: Option<Handle> =
-            if https_binding.is_some() && https_router.is_some() {
-                Some(Handle::new())
-            } else {
-                None
-            };
+        let https_handle: Option<Handle> = if https_binding.is_some() && https_router.is_some() {
+            Some(Handle::new())
+        } else {
+            None
+        };
         let http_task = {
             let server_handle = http_handle.clone();
             let running_flag = running.clone();
@@ -240,11 +247,10 @@ impl GatewayServer {
                 let peer_handle = http_handle.clone();
                 let task = tokio::spawn(async move {
                     tracing::info!("Gateway HTTPS listener on https://{}", addr);
-                    let result =
-                        axum_server::from_tcp_rustls(binding.listener, binding.rustls)
-                            .handle(server_handle)
-                            .serve(router.into_make_service())
-                            .await;
+                    let result = axum_server::from_tcp_rustls(binding.listener, binding.rustls)
+                        .handle(server_handle)
+                        .serve(router.into_make_service())
+                        .await;
                     if let Err(e) = result {
                         tracing::error!("Gateway HTTPS server error: {}", e);
                     }

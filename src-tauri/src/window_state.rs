@@ -51,8 +51,8 @@ pub fn clamp_window_state_to_monitor(
 #[cfg(test)]
 mod tests {
     use super::{
-        clamp_window_state_to_monitor, load_window_state, logical_window_state_from_physical, save_window_state,
-        PersistedWindowState,
+        clamp_window_state_to_monitor, load_window_state, logical_window_state_from_physical,
+        save_window_state, PersistedWindowState,
     };
 
     #[test]

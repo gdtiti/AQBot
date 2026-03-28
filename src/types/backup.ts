@@ -2,6 +2,21 @@ export type BackupJobKind = 'backup' | 'restore' | 'indexing';
 export type BackupJobStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancelled';
 export type BackupTargetKind = 'local' | 'webdav' | 's3';
 
+export type WebDavConfig = {
+  host: string;
+  username: string;
+  password: string;
+  path: string;
+  acceptInvalidCerts: boolean;
+};
+
+export type WebDavFileInfo = {
+  fileName: string;
+  size: number;
+  lastModified: string;
+  hostname: string;
+};
+
 export type BackupManifest = {
   id: string;
   version: string;

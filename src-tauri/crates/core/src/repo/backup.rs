@@ -33,9 +33,8 @@ pub fn resolve_backup_dir(backup_dir_setting: Option<&str>, app_data_dir: &Path)
 
 /// Ensure the backup directory exists
 pub fn ensure_backup_dir(dir: &Path) -> Result<()> {
-    std::fs::create_dir_all(dir).map_err(|e| {
-        AQBotError::Gateway(format!("Failed to create backup directory: {}", e))
-    })
+    std::fs::create_dir_all(dir)
+        .map_err(|e| AQBotError::Gateway(format!("Failed to create backup directory: {}", e)))
 }
 
 /// Create a real backup file (SQLite copy or JSON export)
@@ -191,9 +190,7 @@ pub async fn delete_backup(db: &DatabaseConnection, id: &str) -> Result<()> {
         }
     }
 
-    let result = backup_manifests::Entity::delete_by_id(id)
-        .exec(db)
-        .await?;
+    let result = backup_manifests::Entity::delete_by_id(id).exec(db).await?;
 
     if result.rows_affected == 0 {
         return Err(AQBotError::NotFound(format!("BackupManifest {}", id)));
@@ -217,9 +214,8 @@ pub async fn restore_sqlite_backup(backup_path: &str, current_db_path: &str) -> 
             backup_path
         )));
     }
-    std::fs::copy(src, current_db_path).map_err(|e| {
-        AQBotError::Gateway(format!("Failed to restore backup: {}", e))
-    })?;
+    std::fs::copy(src, current_db_path)
+        .map_err(|e| AQBotError::Gateway(format!("Failed to restore backup: {}", e)))?;
     Ok(())
 }
 
@@ -248,7 +244,10 @@ mod tests {
     fn resolve_backup_dir_defaults_to_aqbot_backups_subdir() {
         let aqbot_home = PathBuf::from("/Users/test/.aqbot");
 
-        assert_eq!(resolve_backup_dir(None, &aqbot_home), aqbot_home.join("backups"));
+        assert_eq!(
+            resolve_backup_dir(None, &aqbot_home),
+            aqbot_home.join("backups")
+        );
         assert_eq!(
             resolve_backup_dir(Some(""), &aqbot_home),
             aqbot_home.join("backups")

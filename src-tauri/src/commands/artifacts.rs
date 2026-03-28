@@ -34,10 +34,7 @@ pub async fn update_artifact(
 }
 
 #[tauri::command]
-pub async fn delete_artifact(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_artifact(state: State<'_, AppState>, id: String) -> Result<(), String> {
     aqbot_core::repo::artifact::delete_artifact(&state.sea_db, &id)
         .await
         .map_err(|e| e.to_string())

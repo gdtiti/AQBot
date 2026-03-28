@@ -10,7 +10,11 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(McpServers::Table)
-                    .add_column(ColumnDef::new(McpServers::DiscoverTimeoutSecs).integer().null())
+                    .add_column(
+                        ColumnDef::new(McpServers::DiscoverTimeoutSecs)
+                            .integer()
+                            .null(),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -19,7 +23,11 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(McpServers::Table)
-                    .add_column(ColumnDef::new(McpServers::ExecuteTimeoutSecs).integer().null())
+                    .add_column(
+                        ColumnDef::new(McpServers::ExecuteTimeoutSecs)
+                            .integer()
+                            .null(),
+                    )
                     .to_owned(),
             )
             .await?;

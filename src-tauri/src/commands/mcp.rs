@@ -31,10 +31,7 @@ pub async fn update_mcp_server(
 }
 
 #[tauri::command]
-pub async fn delete_mcp_server(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_mcp_server(state: State<'_, AppState>, id: String) -> Result<(), String> {
     aqbot_core::repo::mcp_server::delete_mcp_server(&state.sea_db, &id)
         .await
         .map_err(|e| e.to_string())
@@ -79,37 +76,53 @@ pub async fn discover_mcp_tools(
 
     let tools = match server.transport.as_str() {
         "stdio" => {
-            let command = server.command.as_deref()
+            let command = server
+                .command
+                .as_deref()
                 .ok_or_else(|| "stdio server has no command configured".to_string())?;
-            let args: Vec<String> = server.args_json.as_ref()
+            let args: Vec<String> = server
+                .args_json
+                .as_ref()
                 .and_then(|s| serde_json::from_str(s).ok())
                 .unwrap_or_default();
-            let env: std::collections::HashMap<String, String> = server.env_json.as_ref()
+            let env: std::collections::HashMap<String, String> = server
+                .env_json
+                .as_ref()
                 .and_then(|s| serde_json::from_str(s).ok())
                 .unwrap_or_default();
-            tokio::time::timeout(timeout_duration,
-                aqbot_core::mcp_client::discover_tools_stdio(command, &args, &env)
-            ).await
-                .map_err(|_| format!("Tool discovery timed out after {}s", timeout_secs))?
-                .map_err(|e| e.to_string())?
+            tokio::time::timeout(
+                timeout_duration,
+                aqbot_core::mcp_client::discover_tools_stdio(command, &args, &env),
+            )
+            .await
+            .map_err(|_| format!("Tool discovery timed out after {}s", timeout_secs))?
+            .map_err(|e| e.to_string())?
         }
         "http" => {
-            let endpoint = server.endpoint.as_deref()
+            let endpoint = server
+                .endpoint
+                .as_deref()
                 .ok_or_else(|| "HTTP server has no endpoint configured".to_string())?;
-            tokio::time::timeout(timeout_duration,
-                aqbot_core::mcp_client::discover_tools_http(endpoint)
-            ).await
-                .map_err(|_| format!("Tool discovery timed out after {}s", timeout_secs))?
-                .map_err(|e| e.to_string())?
+            tokio::time::timeout(
+                timeout_duration,
+                aqbot_core::mcp_client::discover_tools_http(endpoint),
+            )
+            .await
+            .map_err(|_| format!("Tool discovery timed out after {}s", timeout_secs))?
+            .map_err(|e| e.to_string())?
         }
         "sse" => {
-            let endpoint = server.endpoint.as_deref()
+            let endpoint = server
+                .endpoint
+                .as_deref()
                 .ok_or_else(|| "SSE server has no endpoint configured".to_string())?;
-            tokio::time::timeout(timeout_duration,
-                aqbot_core::mcp_client::discover_tools_sse(endpoint)
-            ).await
-                .map_err(|_| format!("Tool discovery timed out after {}s", timeout_secs))?
-                .map_err(|e| e.to_string())?
+            tokio::time::timeout(
+                timeout_duration,
+                aqbot_core::mcp_client::discover_tools_sse(endpoint),
+            )
+            .await
+            .map_err(|_| format!("Tool discovery timed out after {}s", timeout_secs))?
+            .map_err(|e| e.to_string())?
         }
         other => return Err(format!("Unsupported transport: {}", other)),
     };

@@ -1,9 +1,11 @@
 use sea_orm::*;
 use serde_json;
 
-use crate::entity::{conversations, conversation_summaries};
+use crate::entity::{conversation_summaries, conversations};
 use crate::error::{AQBotError, Result};
-use crate::types::{Conversation, ConversationSearchResult, ConversationSummary, UpdateConversationInput};
+use crate::types::{
+    Conversation, ConversationSearchResult, ConversationSummary, UpdateConversationInput,
+};
 use crate::utils::{gen_id, now_ts};
 
 fn conversation_from_entity(m: conversations::Model) -> Conversation {
@@ -38,8 +40,7 @@ fn parse_string_list(raw: &str) -> Vec<String> {
 }
 
 fn stringify_string_list(values: &[String]) -> String {
-    serde_json::to_string(values)
-        .expect("failed to serialize conversation preference JSON")
+    serde_json::to_string(values).expect("failed to serialize conversation preference JSON")
 }
 
 pub async fn list_conversations(db: &DatabaseConnection) -> Result<Vec<Conversation>> {
@@ -126,7 +127,11 @@ pub async fn update_conversation(
     am.is_pinned = Set(if is_pinned { 1 } else { 0 });
     am.is_archived = Set(if is_archived { 1 } else { 0 });
     if let Some(ref sp) = input.system_prompt {
-        am.system_prompt = Set(if sp.is_empty() { None } else { Some(sp.clone()) });
+        am.system_prompt = Set(if sp.is_empty() {
+            None
+        } else {
+            Some(sp.clone())
+        });
     }
     if let Some(temp) = input.temperature {
         am.temperature = Set(Some(temp));
@@ -352,9 +357,11 @@ pub async fn upsert_summary(
         }
     }
 
-    get_summary(db, conversation_id)
-        .await?
-        .ok_or_else(|| AQBotError::Database(sea_orm::DbErr::Custom("Failed to read back upserted summary".into())))
+    get_summary(db, conversation_id).await?.ok_or_else(|| {
+        AQBotError::Database(sea_orm::DbErr::Custom(
+            "Failed to read back upserted summary".into(),
+        ))
+    })
 }
 
 pub async fn delete_summary(db: &DatabaseConnection, conversation_id: &str) -> Result<()> {

@@ -1,7 +1,7 @@
 use crate::AppState;
 use aqbot_core::types::*;
-use tauri::State;
 use std::time::Instant;
+use tauri::State;
 
 #[tauri::command]
 pub async fn list_providers(state: State<'_, AppState>) -> Result<Vec<ProviderConfig>, String> {
@@ -68,10 +68,7 @@ pub async fn add_provider_key(
 }
 
 #[tauri::command]
-pub async fn delete_provider_key(
-    state: State<'_, AppState>,
-    key_id: String,
-) -> Result<(), String> {
+pub async fn delete_provider_key(state: State<'_, AppState>, key_id: String) -> Result<(), String> {
     aqbot_core::repo::provider::delete_provider_key(&state.sea_db, &key_id)
         .await
         .map_err(|e| e.to_string())
@@ -110,12 +107,14 @@ pub async fn validate_provider_key(
         ProviderType::Gemini => "gemini",
         ProviderType::Custom => "openai",
     };
-    let adapter = registry.get(provider_type_str)
+    let adapter = registry
+        .get(provider_type_str)
         .ok_or_else(|| format!("No adapter for provider type: {}", provider_type_str))?;
     let global_settings = aqbot_core::repo::settings::get_settings(&state.sea_db)
         .await
         .unwrap_or_default();
-    let resolved_proxy = aqbot_core::types::ProviderProxyConfig::resolve(&provider.proxy_config, &global_settings);
+    let resolved_proxy =
+        aqbot_core::types::ProviderProxyConfig::resolve(&provider.proxy_config, &global_settings);
     let ctx = aqbot_providers::ProviderRequestContext {
         api_key: decrypted,
         key_id: key_id.clone(),
@@ -123,7 +122,9 @@ pub async fn validate_provider_key(
         base_url: Some(aqbot_providers::resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
-        custom_headers: provider.custom_headers.as_ref()
+        custom_headers: provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
     let valid = adapter.validate_key(&ctx).await.unwrap_or(false);
@@ -196,12 +197,14 @@ pub async fn fetch_remote_models(
         ProviderType::Gemini => "gemini",
         ProviderType::Custom => "openai",
     };
-    let adapter = registry.get(provider_type_str)
+    let adapter = registry
+        .get(provider_type_str)
         .ok_or_else(|| format!("No adapter for provider type: {}", provider_type_str))?;
     let global_settings = aqbot_core::repo::settings::get_settings(&state.sea_db)
         .await
         .unwrap_or_default();
-    let resolved_proxy = aqbot_core::types::ProviderProxyConfig::resolve(&provider.proxy_config, &global_settings);
+    let resolved_proxy =
+        aqbot_core::types::ProviderProxyConfig::resolve(&provider.proxy_config, &global_settings);
     let ctx = aqbot_providers::ProviderRequestContext {
         api_key: decrypted,
         key_id: key_row.id.clone(),
@@ -209,12 +212,12 @@ pub async fn fetch_remote_models(
         base_url: Some(aqbot_providers::resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
-        custom_headers: provider.custom_headers.as_ref()
+        custom_headers: provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
-    adapter.list_models(&ctx)
-        .await
-        .map_err(|e| e.to_string())
+    adapter.list_models(&ctx).await.map_err(|e| e.to_string())
 }
 
 /// Test a single model's availability by sending a minimal chat request.
@@ -241,12 +244,14 @@ pub async fn test_model(
         ProviderType::Gemini => "gemini",
         ProviderType::Custom => "openai",
     };
-    let adapter = registry.get(provider_type_str)
+    let adapter = registry
+        .get(provider_type_str)
         .ok_or_else(|| format!("No adapter for provider type: {}", provider_type_str))?;
     let global_settings = aqbot_core::repo::settings::get_settings(&state.sea_db)
         .await
         .unwrap_or_default();
-    let resolved_proxy = aqbot_core::types::ProviderProxyConfig::resolve(&provider.proxy_config, &global_settings);
+    let resolved_proxy =
+        aqbot_core::types::ProviderProxyConfig::resolve(&provider.proxy_config, &global_settings);
     let ctx = aqbot_providers::ProviderRequestContext {
         api_key: decrypted,
         key_id: key_row.id.clone(),
@@ -254,7 +259,9 @@ pub async fn test_model(
         base_url: Some(aqbot_providers::resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
-        custom_headers: provider.custom_headers.as_ref()
+        custom_headers: provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
     let request = ChatRequest {
@@ -274,7 +281,8 @@ pub async fn test_model(
         use_max_completion_tokens: None,
     };
     let start = Instant::now();
-    adapter.chat(&ctx, request)
+    adapter
+        .chat(&ctx, request)
         .await
         .map_err(|e| e.to_string())?;
     Ok(start.elapsed().as_millis() as u64)
@@ -335,17 +343,19 @@ pub async fn initialize_providers(
                 let models: Vec<aqbot_core::types::Model> = bp
                     .models
                     .into_iter()
-                    .map(|(model_id, name, caps, max_tokens)| aqbot_core::types::Model {
-                        provider_id: ex.id.clone(),
-                        model_id: model_id.to_string(),
-                        name: name.to_string(),
-                        group_name: None,
-                        model_type: aqbot_core::types::ModelType::detect(model_id),
-                        capabilities: caps,
-                        max_tokens,
-                        enabled: true,
-                        param_overrides: None,
-                    })
+                    .map(
+                        |(model_id, name, caps, max_tokens)| aqbot_core::types::Model {
+                            provider_id: ex.id.clone(),
+                            model_id: model_id.to_string(),
+                            name: name.to_string(),
+                            group_name: None,
+                            model_type: aqbot_core::types::ModelType::detect(model_id),
+                            capabilities: caps,
+                            max_tokens,
+                            enabled: true,
+                            param_overrides: None,
+                        },
+                    )
                     .collect();
 
                 aqbot_core::repo::provider::save_models(&state.sea_db, &ex.id, &models)
@@ -373,17 +383,19 @@ pub async fn initialize_providers(
             let models: Vec<aqbot_core::types::Model> = bp
                 .models
                 .into_iter()
-                .map(|(model_id, name, caps, max_tokens)| aqbot_core::types::Model {
-                    provider_id: prov.id.clone(),
-                    model_id: model_id.to_string(),
-                    name: name.to_string(),
-                    group_name: None,
-                    model_type: aqbot_core::types::ModelType::detect(model_id),
-                    capabilities: caps,
-                    max_tokens,
-                    enabled: true,
-                    param_overrides: None,
-                })
+                .map(
+                    |(model_id, name, caps, max_tokens)| aqbot_core::types::Model {
+                        provider_id: prov.id.clone(),
+                        model_id: model_id.to_string(),
+                        name: name.to_string(),
+                        group_name: None,
+                        model_type: aqbot_core::types::ModelType::detect(model_id),
+                        capabilities: caps,
+                        max_tokens,
+                        enabled: true,
+                        param_overrides: None,
+                    },
+                )
                 .collect();
 
             aqbot_core::repo::provider::save_models(&state.sea_db, &prov.id, &models)
@@ -405,5 +417,9 @@ pub async fn initialize_providers(
         }
     }
 
-    Ok(InitializeResult { added, updated, skipped })
+    Ok(InitializeResult {
+        added,
+        updated,
+        skipped,
+    })
 }

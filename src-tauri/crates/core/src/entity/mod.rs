@@ -1,7 +1,7 @@
 //! SeaORM entity definitions for AQBot database tables.
 
-pub mod conversations;
 pub mod conversation_summaries;
+pub mod conversations;
 pub mod desktop_state;
 pub mod gateway_diagnostics;
 pub mod gateway_keys;

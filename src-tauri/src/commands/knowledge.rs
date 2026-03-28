@@ -33,10 +33,7 @@ pub async fn update_knowledge_base(
 }
 
 #[tauri::command]
-pub async fn delete_knowledge_base(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_knowledge_base(state: State<'_, AppState>, id: String) -> Result<(), String> {
     aqbot_core::repo::knowledge::delete_knowledge_base(&state.sea_db, &id)
         .await
         .map_err(|e| e.to_string())
@@ -101,10 +98,8 @@ pub async fn add_knowledge_document(
 
             if let Err(e) = &result {
                 tracing::error!("Indexing failed for doc {}: {}", doc_id, e);
-                let _ = aqbot_core::repo::knowledge::update_document_status(
-                    &db, &doc_id, "failed",
-                )
-                .await;
+                let _ = aqbot_core::repo::knowledge::update_document_status(&db, &doc_id, "failed")
+                    .await;
             }
 
             // Emit event to notify frontend
@@ -184,9 +179,9 @@ pub async fn rebuild_knowledge_index(
 
     // Reset all document statuses to "indexing" before spawning
     for doc in &docs {
-        let _ = aqbot_core::repo::knowledge::update_document_status(
-            &state.sea_db, &doc.id, "indexing",
-        ).await;
+        let _ =
+            aqbot_core::repo::knowledge::update_document_status(&state.sea_db, &doc.id, "indexing")
+                .await;
     }
 
     let db = state.sea_db.clone();
@@ -210,14 +205,15 @@ pub async fn rebuild_knowledge_index(
 
             if let Err(e) = &result {
                 tracing::error!("Re-indexing failed for doc {}: {}", doc.id, e);
-                let _ = aqbot_core::repo::knowledge::update_document_status(
-                    &db, &doc.id, "failed",
-                )
-                .await;
+                let _ = aqbot_core::repo::knowledge::update_document_status(&db, &doc.id, "failed")
+                    .await;
             }
         }
 
-        let _ = app.emit("knowledge-rebuild-complete", serde_json::json!({ "baseId": base_id }));
+        let _ = app.emit(
+            "knowledge-rebuild-complete",
+            serde_json::json!({ "baseId": base_id }),
+        );
     });
 
     Ok(())
@@ -241,12 +237,9 @@ pub async fn clear_knowledge_index(
         .map_err(|e| e.to_string())?;
 
     for doc in docs {
-        let _ = aqbot_core::repo::knowledge::update_document_status(
-            &state.sea_db,
-            &doc.id,
-            "pending",
-        )
-        .await;
+        let _ =
+            aqbot_core::repo::knowledge::update_document_status(&state.sea_db, &doc.id, "pending")
+                .await;
     }
 
     Ok(())

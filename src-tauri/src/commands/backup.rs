@@ -9,9 +9,7 @@ use tauri::State;
 use tokio::sync::Mutex;
 
 #[tauri::command]
-pub async fn list_backups(
-    state: State<'_, AppState>,
-) -> Result<Vec<BackupManifest>, String> {
+pub async fn list_backups(state: State<'_, AppState>) -> Result<Vec<BackupManifest>, String> {
     backup::list_backups(&state.sea_db)
         .await
         .map_err(|e| e.to_string())
@@ -25,10 +23,8 @@ pub async fn create_backup(
     let settings = get_settings(&state.sea_db)
         .await
         .map_err(|e| e.to_string())?;
-    let backup_dir = backup::resolve_backup_dir(
-        settings.backup_dir.as_deref(),
-        &state.app_data_dir,
-    );
+    let backup_dir =
+        backup::resolve_backup_dir(settings.backup_dir.as_deref(), &state.app_data_dir);
     backup::create_backup(&state.sea_db, &format, &backup_dir)
         .await
         .map_err(|e| e.to_string())
@@ -36,6 +32,7 @@ pub async fn create_backup(
 
 #[tauri::command]
 pub async fn restore_backup(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     backup_id: String,
 ) -> Result<(), String> {
@@ -47,23 +44,27 @@ pub async fn restore_backup(
         return Err("Only SQLite backups can be restored directly".to_string());
     }
 
-    let backup_path = manifest
-        .file_path
-        .ok_or("Backup file path not available")?;
+    let backup_path = manifest.file_path.ok_or("Backup file path not available")?;
     let db_path = state
         .db_path
         .strip_prefix("sqlite:")
         .unwrap_or(&state.db_path);
     backup::restore_sqlite_backup(&backup_path, db_path)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    // Remove stale WAL/SHM files so SQLite doesn't replay an incompatible journal on restart
+    let _ = std::fs::remove_file(format!("{}-wal", db_path));
+    let _ = std::fs::remove_file(format!("{}-shm", db_path));
+
+    // Auto-restart to pick up the restored database
+    app.restart();
+
+    #[allow(unreachable_code)]
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn delete_backup(
-    state: State<'_, AppState>,
-    backup_id: String,
-) -> Result<(), String> {
+pub async fn delete_backup(state: State<'_, AppState>, backup_id: String) -> Result<(), String> {
     backup::delete_backup(&state.sea_db, &backup_id)
         .await
         .map_err(|e| e.to_string())
@@ -80,9 +81,7 @@ pub async fn batch_delete_backups(
 }
 
 #[tauri::command]
-pub async fn get_backup_settings(
-    state: State<'_, AppState>,
-) -> Result<AutoBackupSettings, String> {
+pub async fn get_backup_settings(state: State<'_, AppState>) -> Result<AutoBackupSettings, String> {
     let settings = get_settings(&state.sea_db)
         .await
         .map_err(|e| e.to_string())?;

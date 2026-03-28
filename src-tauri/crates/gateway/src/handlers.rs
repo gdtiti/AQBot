@@ -15,7 +15,7 @@ use tokio_stream::wrappers::ReceiverStream;
 
 use aqbot_core::crypto::decrypt_key;
 use aqbot_core::types::*;
-use aqbot_providers::{ProviderAdapter, ProviderRequestContext, resolve_base_url};
+use aqbot_providers::{resolve_base_url, ProviderAdapter, ProviderRequestContext};
 
 use crate::auth::AuthenticatedKey;
 use crate::server::GatewayAppState;
@@ -93,15 +93,16 @@ pub async fn chat_completions(
 
     // Fetch providers once — used for both model-field parsing and resolution.
     // Filter to only chat-completions-compatible provider types.
-    let providers: Vec<ProviderConfig> = match aqbot_core::repo::provider::list_providers(&state.db).await {
-        Ok(p) => p.into_iter().filter(|p| matches!(
-            p.provider_type,
-            ProviderType::OpenAI | ProviderType::Custom
-        )).collect(),
-        Err(e) => {
-            return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string());
-        }
-    };
+    let providers: Vec<ProviderConfig> =
+        match aqbot_core::repo::provider::list_providers(&state.db).await {
+            Ok(p) => p
+                .into_iter()
+                .filter(|p| matches!(p.provider_type, ProviderType::OpenAI | ProviderType::Custom))
+                .collect(),
+            Err(e) => {
+                return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string());
+            }
+        };
     let public_id_map = build_provider_public_id_map(&providers);
     let known_public_ids: HashSet<String> = public_id_map.values().cloned().collect();
 
@@ -110,21 +111,23 @@ pub async fn chat_completions(
     let parsed = parse_model_field(&request.model, &known_public_ids);
 
     // Resolve the provider and canonical model_id.
-    let (provider, model_id) = match resolve_provider_for_model(&providers, &public_id_map, &parsed) {
+    let (provider, model_id) = match resolve_provider_for_model(&providers, &public_id_map, &parsed)
+    {
         Ok(pair) => pair,
         Err(resp) => return resp,
     };
 
     // Get active key and decrypt
-    let provider_key = match aqbot_core::repo::provider::get_active_key(&state.db, &provider.id).await {
-        Ok(k) => k,
-        Err(_) => {
-            return error_response(
-                StatusCode::BAD_GATEWAY,
-                &format!("No active API key for provider '{}'", provider.name),
-            );
-        }
-    };
+    let provider_key =
+        match aqbot_core::repo::provider::get_active_key(&state.db, &provider.id).await {
+            Ok(k) => k,
+            Err(_) => {
+                return error_response(
+                    StatusCode::BAD_GATEWAY,
+                    &format!("No active API key for provider '{}'", provider.name),
+                );
+            }
+        };
 
     let api_key = match decrypt_key(&provider_key.key_encrypted, &state.master_key) {
         Ok(k) => k,
@@ -148,7 +151,9 @@ pub async fn chat_completions(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
-        custom_headers: provider.custom_headers.as_ref()
+        custom_headers: provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
 
@@ -170,9 +175,29 @@ pub async fn chat_completions(
     };
 
     if request.stream {
-        handle_stream(adapter, &ctx, request, &state, &gateway_key, &provider.id, &model_id, start_time).await
+        handle_stream(
+            adapter,
+            &ctx,
+            request,
+            &state,
+            &gateway_key,
+            &provider.id,
+            &model_id,
+            start_time,
+        )
+        .await
     } else {
-        handle_non_stream(adapter, &ctx, request, &state, &gateway_key, &provider.id, &model_id, start_time).await
+        handle_non_stream(
+            adapter,
+            &ctx,
+            request,
+            &state,
+            &gateway_key,
+            &provider.id,
+            &model_id,
+            start_time,
+        )
+        .await
     }
 }
 
@@ -276,15 +301,22 @@ async fn handle_stream(
 
                     if chunk.done {
                         // Send final chunk
-                        let data =
-                            build_stream_final_response_body(&model_str, total_prompt, total_completion);
+                        let data = build_stream_final_response_body(
+                            &model_str,
+                            total_prompt,
+                            total_completion,
+                        );
                         let _ = tx.send(Ok(Event::default().data(data.to_string()))).await;
                         let _ = tx.send(Ok(Event::default().data("[DONE]"))).await;
                         break;
                     }
 
                     if let Some(data) = build_stream_chunk_response_body(&model_str, &chunk) {
-                        if tx.send(Ok(Event::default().data(data.to_string()))).await.is_err() {
+                        if tx
+                            .send(Ok(Event::default().data(data.to_string())))
+                            .await
+                            .is_err()
+                        {
                             break;
                         }
                     }
@@ -341,7 +373,11 @@ fn build_non_stream_response_body(response: &ChatResponse) -> serde_json::Value 
         ("role".to_string(), json!("assistant")),
         ("content".to_string(), json!(response.content)),
     ]);
-    if let Some(reasoning) = response.thinking.as_deref().filter(|value| !value.is_empty()) {
+    if let Some(reasoning) = response
+        .thinking
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
         message.insert("reasoning_content".to_string(), json!(reasoning));
     }
 
@@ -362,7 +398,10 @@ fn build_non_stream_response_body(response: &ChatResponse) -> serde_json::Value 
     })
 }
 
-fn build_stream_chunk_response_body(model: &str, chunk: &ChatStreamChunk) -> Option<serde_json::Value> {
+fn build_stream_chunk_response_body(
+    model: &str,
+    chunk: &ChatStreamChunk,
+) -> Option<serde_json::Value> {
     let mut delta = serde_json::Map::new();
 
     if let Some(content) = chunk.content.as_deref().filter(|value| !value.is_empty()) {
@@ -434,7 +473,9 @@ fn provider_slug(name: &str) -> String {
 /// enabled providers share the same base slug (e.g. `"OpenAI"` and `"Open AI"`
 /// both normalise to `"openai"`), a numeric suffix is appended (`-2`, `-3`, …)
 /// in **internal-ID–sorted order** so the result is unique and deterministic.
-pub(crate) fn build_provider_public_id_map(providers: &[ProviderConfig]) -> HashMap<String, String> {
+pub(crate) fn build_provider_public_id_map(
+    providers: &[ProviderConfig],
+) -> HashMap<String, String> {
     // Group enabled providers by their base slug.
     let mut slug_groups: HashMap<String, Vec<String>> = HashMap::new();
     for p in providers.iter().filter(|p| p.enabled) {

@@ -1,12 +1,15 @@
-use async_trait::async_trait;
 use aqbot_core::error::{AQBotError, Result};
 use aqbot_core::types::*;
+use async_trait::async_trait;
+use futures::Stream;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
-use futures::Stream;
 
-use crate::{ProviderAdapter, ProviderRequestContext, build_http_client, parse_base64_data_url, resolve_chat_url};
+use crate::{
+    build_http_client, parse_base64_data_url, resolve_chat_url, ProviderAdapter,
+    ProviderRequestContext,
+};
 
 const DEFAULT_BASE_URL: &str = "https://api.anthropic.com/v1";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
@@ -121,13 +124,12 @@ struct AnthropicModelInfo {
 fn extract_text_content(content: &ChatContent) -> String {
     match content {
         ChatContent::Text(text) => text.clone(),
-        ChatContent::Multipart(parts) => {
-            parts.iter()
-                .filter_map(|part| part.text.as_ref())
-                .cloned()
-                .collect::<Vec<String>>()
-                .join(" ")
-        }
+        ChatContent::Multipart(parts) => parts
+            .iter()
+            .filter_map(|part| part.text.as_ref())
+            .cloned()
+            .collect::<Vec<String>>()
+            .join(" "),
     }
 }
 
@@ -154,7 +156,7 @@ fn convert_messages(messages: &[ChatMessage]) -> (Option<String>, Vec<AnthropicM
                         "content": extract_text_content(&msg.content)
                     }]),
                 });
-            },
+            }
             "assistant" if msg.tool_calls.is_some() => {
                 let mut blocks: Vec<serde_json::Value> = Vec::new();
                 let text = extract_text_content(&msg.content);
@@ -177,7 +179,7 @@ fn convert_messages(messages: &[ChatMessage]) -> (Option<String>, Vec<AnthropicM
                     role: "assistant".to_string(),
                     content: serde_json::json!(blocks),
                 });
-            },
+            }
             _ => {
                 let content = match &msg.content {
                     ChatContent::Text(text) => serde_json::Value::String(text.clone()),
@@ -188,7 +190,9 @@ fn convert_messages(messages: &[ChatMessage]) -> (Option<String>, Vec<AnthropicM
                                 if let Some(text) = &p.text {
                                     serde_json::json!({"type": "text", "text": text})
                                 } else if let Some(img) = &p.image_url {
-                                    if let Some((media_type, data)) = parse_base64_data_url(&img.url) {
+                                    if let Some((media_type, data)) =
+                                        parse_base64_data_url(&img.url)
+                                    {
                                         serde_json::json!({
                                             "type": "image",
                                             "source": {
@@ -230,7 +234,11 @@ fn convert_tools_to_anthropic(tools: &Option<Vec<ChatTool>>) -> Option<Vec<Anthr
             .map(|t| AnthropicTool {
                 name: t.function.name.clone(),
                 description: t.function.description.clone(),
-                input_schema: t.function.parameters.clone().unwrap_or(serde_json::json!({"type": "object"})),
+                input_schema: t
+                    .function
+                    .parameters
+                    .clone()
+                    .unwrap_or(serde_json::json!({"type": "object"})),
             })
             .collect()
     })
@@ -301,20 +309,27 @@ impl ProviderAdapter for AnthropicAdapter {
         let body = AnthropicRequest {
             model: request.model.clone(),
             messages,
-            max_tokens: request.max_tokens.unwrap_or(
-                if thinking.is_some() { 16000 } else { 4096 }
-            ),
+            max_tokens: request
+                .max_tokens
+                .unwrap_or(if thinking.is_some() { 16000 } else { 4096 }),
             system,
-            temperature: if thinking.is_some() { None } else { request.temperature },
-            top_p: if thinking.is_some() { None } else { request.top_p },
+            temperature: if thinking.is_some() {
+                None
+            } else {
+                request.temperature
+            },
+            top_p: if thinking.is_some() {
+                None
+            } else {
+                request.top_p
+            },
             stream: None,
             tools: convert_tools_to_anthropic(&request.tools),
             thinking,
         };
 
         let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
+            self.get_client(ctx)?
                 .post(&url)
                 .header("x-api-key", &ctx.api_key)
                 .header("anthropic-version", ANTHROPIC_VERSION)
@@ -322,9 +337,9 @@ impl ProviderAdapter for AnthropicAdapter {
                 .json(&body),
             ctx,
         )
-            .send()
-            .await
-            .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
+        .send()
+        .await
+        .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
 
         if !resp.status().is_success() {
             let s = resp.status();
@@ -358,7 +373,9 @@ impl ProviderAdapter for AnthropicAdapter {
                 }
                 "tool_use" => {
                     if let (Some(id), Some(name)) = (&block.id, &block.name) {
-                        let arguments = block.input.as_ref()
+                        let arguments = block
+                            .input
+                            .as_ref()
                             .map(|v| serde_json::to_string(v).unwrap_or_default())
                             .unwrap_or_default();
                         tool_calls.push(aqbot_core::types::ToolCall {
@@ -385,7 +402,11 @@ impl ProviderAdapter for AnthropicAdapter {
                 completion_tokens: ar.usage.output_tokens,
                 total_tokens: ar.usage.input_tokens + ar.usage.output_tokens,
             },
-            tool_calls: if tool_calls.is_empty() { None } else { Some(tool_calls) },
+            tool_calls: if tool_calls.is_empty() {
+                None
+            } else {
+                Some(tool_calls)
+            },
         })
     }
 
@@ -413,12 +434,20 @@ impl ProviderAdapter for AnthropicAdapter {
         let body = AnthropicRequest {
             model: request.model.clone(),
             messages,
-            max_tokens: request.max_tokens.unwrap_or(
-                if thinking.is_some() { 16000 } else { 4096 }
-            ),
+            max_tokens: request
+                .max_tokens
+                .unwrap_or(if thinking.is_some() { 16000 } else { 4096 }),
             system,
-            temperature: if thinking.is_some() { None } else { request.temperature },
-            top_p: if thinking.is_some() { None } else { request.top_p },
+            temperature: if thinking.is_some() {
+                None
+            } else {
+                request.temperature
+            },
+            top_p: if thinking.is_some() {
+                None
+            } else {
+                request.top_p
+            },
             stream: Some(true),
             tools: convert_tools_to_anthropic(&request.tools),
             thinking,
@@ -436,8 +465,8 @@ impl ProviderAdapter for AnthropicAdapter {
                     .json(&body),
                 &custom_headers,
             )
-                .send()
-                .await
+            .send()
+            .await
             {
                 Ok(r) if r.status().is_success() => r,
                 Ok(r) => {
@@ -449,16 +478,15 @@ impl ProviderAdapter for AnthropicAdapter {
                     return;
                 }
                 Err(e) => {
-                    let _ = tx.unbounded_send(Err(AQBotError::Provider(format!(
-                        "Request failed: {e}"
-                    ))));
+                    let _ = tx
+                        .unbounded_send(Err(AQBotError::Provider(format!("Request failed: {e}"))));
                     return;
                 }
             };
 
             let mut byte_stream = resp.bytes_stream();
             let mut buf = String::new();
-            
+
             struct PendingToolUse {
                 id: String,
                 name: String,
@@ -494,10 +522,8 @@ impl ProviderAdapter for AnthropicAdapter {
                                 Err(_) => continue,
                             };
 
-                            let event_type = json
-                                .get("type")
-                                .and_then(|t| t.as_str())
-                                .unwrap_or("");
+                            let event_type =
+                                json.get("type").and_then(|t| t.as_str()).unwrap_or("");
 
                             match event_type {
                                 "message_start" => {
@@ -512,10 +538,24 @@ impl ProviderAdapter for AnthropicAdapter {
                                 }
                                 "content_block_start" => {
                                     if let Some(cb) = json.get("content_block") {
-                                        if cb.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
-                                            let id = cb.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                                            let name = cb.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                                            current_tool_use = Some(PendingToolUse { id, name, arguments: String::new() });
+                                        if cb.get("type").and_then(|t| t.as_str())
+                                            == Some("tool_use")
+                                        {
+                                            let id = cb
+                                                .get("id")
+                                                .and_then(|v| v.as_str())
+                                                .unwrap_or("")
+                                                .to_string();
+                                            let name = cb
+                                                .get("name")
+                                                .and_then(|v| v.as_str())
+                                                .unwrap_or("")
+                                                .to_string();
+                                            current_tool_use = Some(PendingToolUse {
+                                                id,
+                                                name,
+                                                arguments: String::new(),
+                                            });
                                         }
                                     }
                                 }
@@ -550,11 +590,14 @@ impl ProviderAdapter for AnthropicAdapter {
                                             },
                                             "input_json_delta" => {
                                                 if let Some(ref mut tu) = current_tool_use {
-                                                    if let Some(partial) = delta.get("partial_json").and_then(|v| v.as_str()) {
+                                                    if let Some(partial) = delta
+                                                        .get("partial_json")
+                                                        .and_then(|v| v.as_str())
+                                                    {
                                                         tu.arguments.push_str(partial);
                                                     }
                                                 }
-                                                continue;  // Don't send a ChatStreamChunk for JSON delta
+                                                continue; // Don't send a ChatStreamChunk for JSON delta
                                             }
                                             _ => continue,
                                         };
@@ -571,7 +614,8 @@ impl ProviderAdapter for AnthropicAdapter {
                                         let out = u
                                             .get("output_tokens")
                                             .and_then(|v| v.as_u64())
-                                            .unwrap_or(0) as u32;
+                                            .unwrap_or(0)
+                                            as u32;
                                         accumulated_completion_tokens = out;
                                         let _ = tx.unbounded_send(Ok(ChatStreamChunk {
                                             content: None,
@@ -591,22 +635,28 @@ impl ProviderAdapter for AnthropicAdapter {
                                     let tool_calls = if pending_tool_uses.is_empty() {
                                         None
                                     } else {
-                                        Some(pending_tool_uses.iter().map(|tu| {
-                                            aqbot_core::types::ToolCall {
-                                                id: tu.id.clone(),
-                                                call_type: "function".to_string(),
-                                                function: aqbot_core::types::ToolCallFunction {
-                                                    name: tu.name.clone(),
-                                                    arguments: tu.arguments.clone(),
-                                                },
-                                            }
-                                        }).collect())
+                                        Some(
+                                            pending_tool_uses
+                                                .iter()
+                                                .map(|tu| aqbot_core::types::ToolCall {
+                                                    id: tu.id.clone(),
+                                                    call_type: "function".to_string(),
+                                                    function: aqbot_core::types::ToolCallFunction {
+                                                        name: tu.name.clone(),
+                                                        arguments: tu.arguments.clone(),
+                                                    },
+                                                })
+                                                .collect(),
+                                        )
                                     };
-                                    let final_usage = if accumulated_prompt_tokens > 0 || accumulated_completion_tokens > 0 {
+                                    let final_usage = if accumulated_prompt_tokens > 0
+                                        || accumulated_completion_tokens > 0
+                                    {
                                         Some(TokenUsage {
                                             prompt_tokens: accumulated_prompt_tokens,
                                             completion_tokens: accumulated_completion_tokens,
-                                            total_tokens: accumulated_prompt_tokens + accumulated_completion_tokens,
+                                            total_tokens: accumulated_prompt_tokens
+                                                + accumulated_completion_tokens,
                                         })
                                     } else {
                                         None
@@ -651,21 +701,22 @@ impl ProviderAdapter for AnthropicAdapter {
         let url = format!("{}/models", Self::base_url(ctx));
 
         let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
+            self.get_client(ctx)?
                 .get(&url)
                 .header("x-api-key", &ctx.api_key)
                 .header("anthropic-version", ANTHROPIC_VERSION),
             ctx,
         )
-            .send()
-            .await
-            .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
+        .send()
+        .await
+        .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
 
         if !resp.status().is_success() {
             let s = resp.status();
             let t = resp.text().await.unwrap_or_default();
-            return Err(AQBotError::Provider(format!("Anthropic API error {s}: {t}")));
+            return Err(AQBotError::Provider(format!(
+                "Anthropic API error {s}: {t}"
+            )));
         }
 
         let models: AnthropicModelsResponse = resp
@@ -687,8 +738,10 @@ impl ProviderAdapter for AnthropicAdapter {
                 if id_lower.contains("claude") && !id_lower.contains("haiku") {
                     caps.push(ModelCapability::Vision);
                 }
-                if id_lower.contains("opus") || id_lower.contains("sonnet-4")
-                    || id_lower.contains("3-7") || id_lower.contains("3.7")
+                if id_lower.contains("opus")
+                    || id_lower.contains("sonnet-4")
+                    || id_lower.contains("3-7")
+                    || id_lower.contains("3.7")
                 {
                     caps.push(ModelCapability::Reasoning);
                 }
@@ -719,8 +772,7 @@ impl ProviderAdapter for AnthropicAdapter {
         // that don't support the /models endpoint.
         let url = Self::chat_url(ctx);
         let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
+            self.get_client(ctx)?
                 .post(&url)
                 .header("x-api-key", &ctx.api_key)
                 .header("anthropic-version", ANTHROPIC_VERSION)
@@ -728,14 +780,18 @@ impl ProviderAdapter for AnthropicAdapter {
                 .body("{}"),
             ctx,
         )
-            .send()
-            .await
-            .map_err(|e| AQBotError::Provider(format!("Validation request failed: {e}")))?;
+        .send()
+        .await
+        .map_err(|e| AQBotError::Provider(format!("Validation request failed: {e}")))?;
         let status = resp.status().as_u16();
         Ok(status != 401 && status != 403)
     }
 
-    async fn embed(&self, _ctx: &ProviderRequestContext, _request: EmbedRequest) -> Result<EmbedResponse> {
+    async fn embed(
+        &self,
+        _ctx: &ProviderRequestContext,
+        _request: EmbedRequest,
+    ) -> Result<EmbedResponse> {
         Err(AQBotError::Provider("Anthropic does not support embedding API. Please use an OpenAI-compatible or Gemini provider for embeddings.".into()))
     }
 }

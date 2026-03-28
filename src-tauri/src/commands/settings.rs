@@ -20,6 +20,5 @@ pub async fn save_settings(
         .await
         .map_err(|e| e.to_string())?;
 
-    crate::tray::sync_tray_language(&app, &settings.language)
-        .map_err(|e| e.to_string())
+    crate::tray::sync_tray_language(&app, &settings.language).map_err(|e| e.to_string())
 }

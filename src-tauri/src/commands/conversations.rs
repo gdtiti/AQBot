@@ -1,10 +1,10 @@
 use crate::AppState;
 use aqbot_core::types::*;
-use aqbot_providers::{ProviderRequestContext, registry::ProviderRegistry, resolve_base_url};
+use aqbot_providers::{registry::ProviderRegistry, resolve_base_url, ProviderRequestContext};
 use base64::Engine;
 use sea_orm::*;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use tauri::{Emitter, State};
 
 fn provider_type_to_registry_key(pt: &ProviderType) -> &'static str {
@@ -27,36 +27,36 @@ async fn persist_attachments(
 
     let mut persisted = Vec::with_capacity(attachments.len());
     for attachment in attachments {
-            let data = base64::engine::general_purpose::STANDARD
-                .decode(&attachment.data)
-                .map_err(|e| {
-                    aqbot_core::error::AQBotError::Validation(format!(
-                        "Invalid attachment base64 for {}: {}",
-                        attachment.file_name, e
-                    ))
-                })?;
-            let saved = file_store.save_file(&data, &attachment.file_name, &attachment.file_type)?;
-            let stored_file_id = aqbot_core::utils::gen_id();
-            aqbot_core::repo::stored_file::create_stored_file(
-                &state.sea_db,
-                &stored_file_id,
-                &saved.hash,
-                &attachment.file_name,
-                &attachment.file_type,
-                saved.size_bytes,
-                &saved.storage_path,
-                Some(conversation_id),
-            )
-            .await?;
+        let data = base64::engine::general_purpose::STANDARD
+            .decode(&attachment.data)
+            .map_err(|e| {
+                aqbot_core::error::AQBotError::Validation(format!(
+                    "Invalid attachment base64 for {}: {}",
+                    attachment.file_name, e
+                ))
+            })?;
+        let saved = file_store.save_file(&data, &attachment.file_name, &attachment.file_type)?;
+        let stored_file_id = aqbot_core::utils::gen_id();
+        aqbot_core::repo::stored_file::create_stored_file(
+            &state.sea_db,
+            &stored_file_id,
+            &saved.hash,
+            &attachment.file_name,
+            &attachment.file_type,
+            saved.size_bytes,
+            &saved.storage_path,
+            Some(conversation_id),
+        )
+        .await?;
 
-            persisted.push(Attachment {
-                id: stored_file_id,
-                file_type: attachment.file_type.clone(),
-                file_name: attachment.file_name.clone(),
-                file_path: saved.storage_path,
-                file_size: attachment.file_size,
-                data: None,
-            });
+        persisted.push(Attachment {
+            id: stored_file_id,
+            file_type: attachment.file_type.clone(),
+            file_name: attachment.file_name.clone(),
+            file_path: saved.storage_path,
+            file_size: attachment.file_size,
+            data: None,
+        });
     }
 
     Ok(persisted)
@@ -143,9 +143,7 @@ fn chat_message_from_message(
 }
 
 #[tauri::command]
-pub async fn list_conversations(
-    state: State<'_, AppState>,
-) -> Result<Vec<Conversation>, String> {
+pub async fn list_conversations(state: State<'_, AppState>) -> Result<Vec<Conversation>, String> {
     aqbot_core::repo::conversation::list_conversations(&state.sea_db)
         .await
         .map_err(|e| e.to_string())
@@ -160,11 +158,14 @@ pub async fn create_conversation(
     system_prompt: Option<String>,
 ) -> Result<Conversation, String> {
     aqbot_core::repo::conversation::create_conversation(
-        &state.sea_db, &title, &model_id, &provider_id,
+        &state.sea_db,
+        &title,
+        &model_id,
+        &provider_id,
         system_prompt.as_deref(),
     )
-        .await
-        .map_err(|e| e.to_string())
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -179,12 +180,8 @@ pub async fn update_conversation(
 }
 
 #[tauri::command]
-pub async fn delete_conversation(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
-    delete_conversation_with_attachments(&state.sea_db, &id)
-        .await
+pub async fn delete_conversation(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    delete_conversation_with_attachments(&state.sea_db, &id).await
 }
 
 async fn delete_conversation_with_attachments(
@@ -200,9 +197,10 @@ async fn delete_conversation_with_attachments_using(
     file_store: &aqbot_core::file_store::FileStore,
     conversation_id: &str,
 ) -> Result<(), String> {
-    let files = aqbot_core::repo::stored_file::list_stored_files_by_conversation(db, conversation_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let files =
+        aqbot_core::repo::stored_file::list_stored_files_by_conversation(db, conversation_id)
+            .await
+            .map_err(|e| e.to_string())?;
     for file in files {
         super::file_cleanup::delete_attachment_reference(db, file_store, &file.id).await?;
     }
@@ -253,11 +251,19 @@ pub async fn list_archived_conversations(
 
 async fn consume_stream(
     app: &tauri::AppHandle,
-    stream: &mut std::pin::Pin<Box<dyn futures::Stream<Item = aqbot_core::error::Result<ChatStreamChunk>> + Send>>,
+    stream: &mut std::pin::Pin<
+        Box<dyn futures::Stream<Item = aqbot_core::error::Result<ChatStreamChunk>> + Send>,
+    >,
     conversation_id: &str,
     message_id: &str,
     cancel_flag: &AtomicBool,
-) -> (String, String, Option<TokenUsage>, Option<Vec<ToolCall>>, Option<String>) {
+) -> (
+    String,
+    String,
+    Option<TokenUsage>,
+    Option<Vec<ToolCall>>,
+    Option<String>,
+) {
     use futures::StreamExt;
     let mut full_content = String::new();
     let mut full_thinking = String::new();
@@ -303,9 +309,7 @@ async fn consume_stream(
                 if is_done
                     && full_content.is_empty()
                     && full_thinking.is_empty()
-                    && final_tool_calls
-                        .as_ref()
-                        .is_none_or(|tc| tc.is_empty())
+                    && final_tool_calls.as_ref().is_none_or(|tc| tc.is_empty())
                 {
                     let err_msg = "Provider returned empty response".to_string();
                     let _ = app.emit(
@@ -351,7 +355,13 @@ async fn consume_stream(
         }
     }
 
-    (full_content, full_thinking, final_usage, final_tool_calls, stream_error)
+    (
+        full_content,
+        full_thinking,
+        final_usage,
+        final_tool_calls,
+        stream_error,
+    )
 }
 
 async fn execute_tool_call(
@@ -360,14 +370,20 @@ async fn execute_tool_call(
     mcp_server_ids: &[String],
 ) -> (String, bool) {
     let server_and_tool = aqbot_core::repo::mcp_server::find_server_for_tool(
-        db, &tool_call.function.name, mcp_server_ids,
-    ).await;
+        db,
+        &tool_call.function.name,
+        mcp_server_ids,
+    )
+    .await;
 
     let (server, _td) = match server_and_tool {
         Ok(Some(pair)) => pair,
         _ => {
             return (
-                format!("Error: Tool '{}' not found on any enabled MCP server", tool_call.function.name),
+                format!(
+                    "Error: Tool '{}' not found on any enabled MCP server",
+                    tool_call.function.name
+                ),
                 true,
             );
         }
@@ -381,11 +397,23 @@ async fn execute_tool_call(
 
     let result = match server.transport.as_str() {
         "builtin" => {
-            match tokio::time::timeout(timeout_duration,
-                aqbot_core::builtin_tools::dispatch(&server.name, &tool_call.function.name, arguments)
-            ).await {
+            match tokio::time::timeout(
+                timeout_duration,
+                aqbot_core::builtin_tools::dispatch(
+                    &server.name,
+                    &tool_call.function.name,
+                    arguments,
+                ),
+            )
+            .await
+            {
                 Ok(r) => r,
-                Err(_) => return (format!("Error: Tool execution timed out after {}s", timeout_secs), true),
+                Err(_) => {
+                    return (
+                        format!("Error: Tool execution timed out after {}s", timeout_secs),
+                        true,
+                    )
+                }
             }
         }
         "stdio" => {
@@ -393,15 +421,35 @@ async fn execute_tool_call(
                 Some(cmd) => cmd.clone(),
                 None => return ("Error: stdio server has no command configured".into(), true),
             };
-            let args: Vec<String> = server.args_json.as_ref()
-                .and_then(|s| serde_json::from_str(s).ok()).unwrap_or_default();
-            let env: std::collections::HashMap<String, String> = server.env_json.as_ref()
-                .and_then(|s| serde_json::from_str(s).ok()).unwrap_or_default();
-            match tokio::time::timeout(timeout_duration,
-                aqbot_core::mcp_client::call_tool_stdio(&command, &args, &env, &tool_call.function.name, arguments)
-            ).await {
+            let args: Vec<String> = server
+                .args_json
+                .as_ref()
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or_default();
+            let env: std::collections::HashMap<String, String> = server
+                .env_json
+                .as_ref()
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or_default();
+            match tokio::time::timeout(
+                timeout_duration,
+                aqbot_core::mcp_client::call_tool_stdio(
+                    &command,
+                    &args,
+                    &env,
+                    &tool_call.function.name,
+                    arguments,
+                ),
+            )
+            .await
+            {
                 Ok(r) => r,
-                Err(_) => return (format!("Error: Tool execution timed out after {}s", timeout_secs), true),
+                Err(_) => {
+                    return (
+                        format!("Error: Tool execution timed out after {}s", timeout_secs),
+                        true,
+                    )
+                }
             }
         }
         "http" => {
@@ -409,11 +457,23 @@ async fn execute_tool_call(
                 Some(ep) => ep.clone(),
                 None => return ("Error: HTTP server has no endpoint configured".into(), true),
             };
-            match tokio::time::timeout(timeout_duration,
-                aqbot_core::mcp_client::call_tool_http(&endpoint, &tool_call.function.name, arguments)
-            ).await {
+            match tokio::time::timeout(
+                timeout_duration,
+                aqbot_core::mcp_client::call_tool_http(
+                    &endpoint,
+                    &tool_call.function.name,
+                    arguments,
+                ),
+            )
+            .await
+            {
                 Ok(r) => r,
-                Err(_) => return (format!("Error: Tool execution timed out after {}s", timeout_secs), true),
+                Err(_) => {
+                    return (
+                        format!("Error: Tool execution timed out after {}s", timeout_secs),
+                        true,
+                    )
+                }
             }
         }
         "sse" => {
@@ -421,11 +481,23 @@ async fn execute_tool_call(
                 Some(ep) => ep.clone(),
                 None => return ("Error: SSE server has no endpoint configured".into(), true),
             };
-            match tokio::time::timeout(timeout_duration,
-                aqbot_core::mcp_client::call_tool_sse(&endpoint, &tool_call.function.name, arguments)
-            ).await {
+            match tokio::time::timeout(
+                timeout_duration,
+                aqbot_core::mcp_client::call_tool_sse(
+                    &endpoint,
+                    &tool_call.function.name,
+                    arguments,
+                ),
+            )
+            .await
+            {
                 Ok(r) => r,
-                Err(_) => return (format!("Error: Tool execution timed out after {}s", timeout_secs), true),
+                Err(_) => {
+                    return (
+                        format!("Error: Tool execution timed out after {}s", timeout_secs),
+                        true,
+                    )
+                }
             }
         }
         other => return (format!("Error: Unsupported transport '{}'", other), true),
@@ -466,7 +538,10 @@ async fn generate_ai_title(
     };
 
     // Resolve title summary provider/model: settings override → fallback to conversation model
-    if let (Some(ref pid), Some(ref mid)) = (&settings.title_summary_provider_id, &settings.title_summary_model_id) {
+    if let (Some(ref pid), Some(ref mid)) = (
+        &settings.title_summary_provider_id,
+        &settings.title_summary_model_id,
+    ) {
         // Try to use the configured title summary provider
         let provider = match aqbot_core::repo::provider::get_provider(db, pid).await {
             Ok(p) => p,
@@ -474,20 +549,35 @@ async fn generate_ai_title(
                 tracing::warn!("Title summary provider not found, falling back: {}", e);
                 let umc = lookup_umc(&fallback_ctx.provider_id, fallback_model_id, db).await;
                 return generate_ai_title_with(
-                    fallback_provider, fallback_ctx, fallback_model_id,
-                    user_content, assistant_content, settings, umc,
-                ).await;
+                    fallback_provider,
+                    fallback_ctx,
+                    fallback_model_id,
+                    user_content,
+                    assistant_content,
+                    settings,
+                    umc,
+                )
+                .await;
             }
         };
         let key_row = match aqbot_core::repo::provider::get_active_key(db, pid).await {
             Ok(k) => k,
             Err(e) => {
-                tracing::warn!("Title summary provider has no active key, falling back: {}", e);
+                tracing::warn!(
+                    "Title summary provider has no active key, falling back: {}",
+                    e
+                );
                 let umc = lookup_umc(&fallback_ctx.provider_id, fallback_model_id, db).await;
                 return generate_ai_title_with(
-                    fallback_provider, fallback_ctx, fallback_model_id,
-                    user_content, assistant_content, settings, umc,
-                ).await;
+                    fallback_provider,
+                    fallback_ctx,
+                    fallback_model_id,
+                    user_content,
+                    assistant_content,
+                    settings,
+                    umc,
+                )
+                .await;
             }
         };
         let dk = match aqbot_core::crypto::decrypt_key(&key_row.key_encrypted, master_key) {
@@ -496,9 +586,15 @@ async fn generate_ai_title(
                 tracing::warn!("Title summary key decrypt failed, falling back: {}", e);
                 let umc = lookup_umc(&fallback_ctx.provider_id, fallback_model_id, db).await;
                 return generate_ai_title_with(
-                    fallback_provider, fallback_ctx, fallback_model_id,
-                    user_content, assistant_content, settings, umc,
-                ).await;
+                    fallback_provider,
+                    fallback_ctx,
+                    fallback_model_id,
+                    user_content,
+                    assistant_content,
+                    settings,
+                    umc,
+                )
+                .await;
             }
         };
         let proxy = ProviderProxyConfig::resolve(&provider.proxy_config, settings);
@@ -509,15 +605,35 @@ async fn generate_ai_title(
             base_url: Some(resolve_base_url(&provider.api_host)),
             api_path: provider.api_path.clone(),
             proxy_config: proxy,
-            custom_headers: provider.custom_headers.as_ref()
+            custom_headers: provider
+                .custom_headers
+                .as_ref()
                 .and_then(|s| serde_json::from_str(s).ok()),
         };
         let umc = lookup_umc(pid, mid, db).await;
-        generate_ai_title_with(&provider, &ctx, mid, user_content, assistant_content, settings, umc).await
+        generate_ai_title_with(
+            &provider,
+            &ctx,
+            mid,
+            user_content,
+            assistant_content,
+            settings,
+            umc,
+        )
+        .await
     } else {
         // No title summary provider configured, use conversation model
         let umc = lookup_umc(&fallback_ctx.provider_id, fallback_model_id, db).await;
-        generate_ai_title_with(fallback_provider, fallback_ctx, fallback_model_id, user_content, assistant_content, settings, umc).await
+        generate_ai_title_with(
+            fallback_provider,
+            fallback_ctx,
+            fallback_model_id,
+            user_content,
+            assistant_content,
+            settings,
+            umc,
+        )
+        .await
     }
 }
 
@@ -530,7 +646,10 @@ async fn generate_ai_title_with(
     settings: &AppSettings,
     use_max_completion_tokens: Option<bool>,
 ) -> Result<String, String> {
-    let prompt = settings.title_summary_prompt.as_deref().unwrap_or(DEFAULT_TITLE_PROMPT);
+    let prompt = settings
+        .title_summary_prompt
+        .as_deref()
+        .unwrap_or(DEFAULT_TITLE_PROMPT);
 
     // Build conversation context for title generation
     let mut conversation_text = format!("User: {}", user_content);
@@ -559,7 +678,10 @@ async fn generate_ai_title_with(
         model: model_id.to_string(),
         messages,
         stream: false,
-        temperature: settings.title_summary_temperature.map(|v| v as f64).or(Some(0.3)),
+        temperature: settings
+            .title_summary_temperature
+            .map(|v| v as f64)
+            .or(Some(0.3)),
         top_p: settings.title_summary_top_p.map(|v| v as f64),
         max_tokens: settings.title_summary_max_tokens.or(Some(50)),
         tools: None,
@@ -581,17 +703,20 @@ async fn generate_ai_title_with(
         }
     };
 
-    let response = adapter.chat(ctx, request).await
-        .map_err(|e| {
-            let err = format!("Chat API error: {}", e);
-            tracing::error!("[title-gen] {}", err);
-            err
-        })?;
+    let response = adapter.chat(ctx, request).await.map_err(|e| {
+        let err = format!("Chat API error: {}", e);
+        tracing::error!("[title-gen] {}", err);
+        err
+    })?;
 
-    let title = response.content.trim()
+    let title = response
+        .content
+        .trim()
         .trim_matches('"')
-        .trim_matches('「').trim_matches('」')
-        .trim_matches('《').trim_matches('》')
+        .trim_matches('「')
+        .trim_matches('」')
+        .trim_matches('《')
+        .trim_matches('》')
         .to_string();
     if title.is_empty() {
         let err = "AI returned empty title".to_string();
@@ -622,11 +747,13 @@ pub async fn regenerate_conversation_title(
         .await
         .map_err(|e| e.to_string())?;
 
-    let user_content = messages.iter()
+    let user_content = messages
+        .iter()
         .find(|m| m.role == MessageRole::User)
         .map(|m| m.content.clone())
         .unwrap_or_default();
-    let assistant_content = messages.iter()
+    let assistant_content = messages
+        .iter()
         .find(|m| m.role == MessageRole::Assistant)
         .map(|m| m.content.clone())
         .unwrap_or_default();
@@ -657,16 +784,21 @@ pub async fn regenerate_conversation_title(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
-        custom_headers: provider.custom_headers.as_ref()
+        custom_headers: provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
 
     // Emit generating event
-    let _ = app.emit("conversation-title-generating", ConversationTitleGeneratingEvent {
-        conversation_id: conversation_id.clone(),
-        generating: true,
-        error: None,
-    });
+    let _ = app.emit(
+        "conversation-title-generating",
+        ConversationTitleGeneratingEvent {
+            conversation_id: conversation_id.clone(),
+            generating: true,
+            error: None,
+        },
+    );
 
     // Spawn async task for title generation
     let app_clone = app.clone();
@@ -674,40 +806,60 @@ pub async fn regenerate_conversation_title(
     let conv_model_id = conversation.model_id.clone();
     tokio::spawn(async move {
         let ai_title = generate_ai_title(
-            &db, &user_content, &assistant_content,
-            &provider, &ctx, &conv_model_id, &global_settings, &master_key,
-        ).await;
+            &db,
+            &user_content,
+            &assistant_content,
+            &provider,
+            &ctx,
+            &conv_model_id,
+            &global_settings,
+            &master_key,
+        )
+        .await;
 
         match ai_title {
             Ok(title) => {
-                if let Err(e) = aqbot_core::repo::conversation::update_conversation_title(
-                    &db, &conv_id, &title,
-                ).await {
+                if let Err(e) =
+                    aqbot_core::repo::conversation::update_conversation_title(&db, &conv_id, &title)
+                        .await
+                {
                     tracing::error!("Failed to save regenerated title: {}", e);
-                    let _ = app_clone.emit("conversation-title-generating", ConversationTitleGeneratingEvent {
-                        conversation_id: conv_id,
-                        generating: false,
-                        error: Some(format!("Failed to save title: {}", e)),
-                    });
+                    let _ = app_clone.emit(
+                        "conversation-title-generating",
+                        ConversationTitleGeneratingEvent {
+                            conversation_id: conv_id,
+                            generating: false,
+                            error: Some(format!("Failed to save title: {}", e)),
+                        },
+                    );
                 } else {
-                    let _ = app_clone.emit("conversation-title-updated", ConversationTitleUpdatedEvent {
-                        conversation_id: conv_id.clone(),
-                        title,
-                    });
-                    let _ = app_clone.emit("conversation-title-generating", ConversationTitleGeneratingEvent {
-                        conversation_id: conv_id,
-                        generating: false,
-                        error: None,
-                    });
+                    let _ = app_clone.emit(
+                        "conversation-title-updated",
+                        ConversationTitleUpdatedEvent {
+                            conversation_id: conv_id.clone(),
+                            title,
+                        },
+                    );
+                    let _ = app_clone.emit(
+                        "conversation-title-generating",
+                        ConversationTitleGeneratingEvent {
+                            conversation_id: conv_id,
+                            generating: false,
+                            error: None,
+                        },
+                    );
                 }
             }
             Err(err) => {
                 tracing::warn!("Title regeneration failed: {}", err);
-                let _ = app_clone.emit("conversation-title-generating", ConversationTitleGeneratingEvent {
-                    conversation_id: conv_id,
-                    generating: false,
-                    error: Some(err),
-                });
+                let _ = app_clone.emit(
+                    "conversation-title-generating",
+                    ConversationTitleGeneratingEvent {
+                        conversation_id: conv_id,
+                        generating: false,
+                        error: Some(err),
+                    },
+                );
             }
         }
     });
@@ -723,7 +875,10 @@ pub async fn cancel_stream(
     let flags = state.stream_cancel_flags.lock().await;
     if let Some(flag) = flags.get(&conversation_id) {
         flag.store(true, std::sync::atomic::Ordering::Relaxed);
-        tracing::info!("[cancel_stream] Cancel requested for conversation {}", conversation_id);
+        tracing::info!(
+            "[cancel_stream] Cancel requested for conversation {}",
+            conversation_id
+        );
     }
     Ok(())
 }
@@ -762,11 +917,14 @@ fn spawn_stream_task(
         let adapter: &dyn aqbot_providers::ProviderAdapter = match registry.get(registry_key) {
             Some(a) => a,
             None => {
-                let _ = app.emit("chat-stream-error", ChatStreamErrorEvent {
-                    conversation_id: conversation_id.clone(),
-                    message_id: assistant_message_id.clone(),
-                    error: format!("Unsupported provider type: {}", registry_key),
-                });
+                let _ = app.emit(
+                    "chat-stream-error",
+                    ChatStreamErrorEvent {
+                        conversation_id: conversation_id.clone(),
+                        message_id: assistant_message_id.clone(),
+                        error: format!("Unsupported provider type: {}", registry_key),
+                    },
+                );
                 return;
             }
         };
@@ -812,13 +970,19 @@ fn spawn_stream_task(
         loop {
             iteration += 1;
             if iteration > MAX_TOOL_ITERATIONS {
-                tracing::warn!("Tool call loop exceeded max iterations ({})", MAX_TOOL_ITERATIONS);
+                tracing::warn!(
+                    "Tool call loop exceeded max iterations ({})",
+                    MAX_TOOL_ITERATIONS
+                );
                 break;
             }
 
             // Check cancellation before starting a new iteration
             if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
-                tracing::info!("[spawn_stream_task] Cancelled by user before iteration {}", iteration);
+                tracing::info!(
+                    "[spawn_stream_task] Cancelled by user before iteration {}",
+                    iteration
+                );
                 break;
             }
 
@@ -839,8 +1003,14 @@ fn spawn_stream_task(
             };
 
             let mut stream = adapter.chat_stream(&ctx, request);
-            let (content, thinking, usage, tool_calls, stream_error) =
-                consume_stream(&app, &mut stream, &conversation_id, &assistant_message_id, &cancel_flag).await;
+            let (content, thinking, usage, tool_calls, stream_error) = consume_stream(
+                &app,
+                &mut stream,
+                &conversation_id,
+                &assistant_message_id,
+                &cancel_flag,
+            )
+            .await;
 
             total_content.push_str(&content);
             total_thinking.push_str(&thinking);
@@ -880,22 +1050,29 @@ fn spawn_stream_task(
 
             // Persist the intermediate assistant message with tool_calls
             // Returns the generated ID so tool results can reference it as parent
-            let intermediate_msg_id = aqbot_core::repo::message::create_assistant_tool_call_message(
-                &db,
-                &conversation_id,
-                &content,
-                tc_json.as_deref(),
-                &provider.id,
-                &model_id,
-                &parent_message_id,
-            ).await.unwrap_or_else(|_| aqbot_core::utils::gen_id());
+            let intermediate_msg_id =
+                aqbot_core::repo::message::create_assistant_tool_call_message(
+                    &db,
+                    &conversation_id,
+                    &content,
+                    tc_json.as_deref(),
+                    &provider.id,
+                    &model_id,
+                    &parent_message_id,
+                )
+                .await
+                .unwrap_or_else(|_| aqbot_core::utils::gen_id());
 
             // Execute each tool call
             for tc in &tool_calls {
                 // Look up server name for events
                 let server_name = match aqbot_core::repo::mcp_server::find_server_for_tool(
-                    &db, &tc.function.name, &mcp_server_ids,
-                ).await {
+                    &db,
+                    &tc.function.name,
+                    &mcp_server_ids,
+                )
+                .await
+                {
                     Ok(Some((srv, _))) => srv.name.clone(),
                     _ => "unknown".to_string(),
                 };
@@ -913,23 +1090,38 @@ fn spawn_stream_task(
                 } else {
                     total_content.push_str(&mcp_opener);
                 }
-                let _ = app.emit("chat-stream-chunk", ChatStreamEvent {
-                    conversation_id: conversation_id.clone(),
-                    message_id: assistant_message_id.clone(),
-                    chunk: ChatStreamChunk {
-                        content: if mcp_in_thinking { None } else { Some(mcp_opener.clone()) },
-                        thinking: if mcp_in_thinking { Some(mcp_opener.clone()) } else { None },
-                        done: false,
-                        is_final: None,
-                        usage: None,
-                        tool_calls: None,
+                let _ = app.emit(
+                    "chat-stream-chunk",
+                    ChatStreamEvent {
+                        conversation_id: conversation_id.clone(),
+                        message_id: assistant_message_id.clone(),
+                        chunk: ChatStreamChunk {
+                            content: if mcp_in_thinking {
+                                None
+                            } else {
+                                Some(mcp_opener.clone())
+                            },
+                            thinking: if mcp_in_thinking {
+                                Some(mcp_opener.clone())
+                            } else {
+                                None
+                            },
+                            done: false,
+                            is_final: None,
+                            usage: None,
+                            tool_calls: None,
+                        },
                     },
-                });
+                );
 
                 // Create execution record
                 let server_id_for_exec = match aqbot_core::repo::mcp_server::find_server_for_tool(
-                    &db, &tc.function.name, &mcp_server_ids,
-                ).await {
+                    &db,
+                    &tc.function.name,
+                    &mcp_server_ids,
+                )
+                .await
+                {
                     Ok(Some((srv, _))) => srv.id.clone(),
                     _ => String::new(),
                 };
@@ -940,7 +1132,8 @@ fn spawn_stream_task(
                     &server_id_for_exec,
                     &tc.function.name,
                     Some(&tc.function.arguments),
-                ).await;
+                )
+                .await;
 
                 // Execute the tool
                 let start = std::time::Instant::now();
@@ -954,8 +1147,13 @@ fn spawn_stream_task(
                         &exec.id,
                         if is_error { "failed" } else { "success" },
                         Some(&result_content),
-                        if is_error { Some(&result_content) } else { None },
-                    ).await;
+                        if is_error {
+                            Some(&result_content)
+                        } else {
+                            None
+                        },
+                    )
+                    .await;
                 }
 
                 // Emit :::mcp result + closer as stream chunk — frontend shows completed state
@@ -965,18 +1163,29 @@ fn spawn_stream_task(
                 } else {
                     total_content.push_str(&mcp_closer);
                 }
-                let _ = app.emit("chat-stream-chunk", ChatStreamEvent {
-                    conversation_id: conversation_id.clone(),
-                    message_id: assistant_message_id.clone(),
-                    chunk: ChatStreamChunk {
-                        content: if mcp_in_thinking { None } else { Some(mcp_closer.clone()) },
-                        thinking: if mcp_in_thinking { Some(mcp_closer.clone()) } else { None },
-                        done: false,
-                        is_final: None,
-                        usage: None,
-                        tool_calls: None,
+                let _ = app.emit(
+                    "chat-stream-chunk",
+                    ChatStreamEvent {
+                        conversation_id: conversation_id.clone(),
+                        message_id: assistant_message_id.clone(),
+                        chunk: ChatStreamChunk {
+                            content: if mcp_in_thinking {
+                                None
+                            } else {
+                                Some(mcp_closer.clone())
+                            },
+                            thinking: if mcp_in_thinking {
+                                Some(mcp_closer.clone())
+                            } else {
+                                None
+                            },
+                            done: false,
+                            is_final: None,
+                            usage: None,
+                            tool_calls: None,
+                        },
                     },
-                });
+                );
 
                 // Persist tool result message to DB (parent is the intermediate assistant message)
                 let _ = aqbot_core::repo::message::create_tool_result_message(
@@ -985,7 +1194,8 @@ fn spawn_stream_task(
                     &tc.id,
                     &result_content,
                     &intermediate_msg_id,
-                ).await;
+                )
+                .await;
 
                 // Add tool result to in-memory chat messages for next provider call
                 chat_messages.push(ChatMessage {
@@ -1023,17 +1233,23 @@ fn spawn_stream_task(
         let token_count = total_usage.as_ref().map(|u| u.completion_tokens);
         let prompt_tokens = total_usage.as_ref().map(|u| u.prompt_tokens);
         let completion_tokens = total_usage.as_ref().map(|u| u.completion_tokens);
-        if let Err(e) = aqbot_core::entity::messages::Entity::update(aqbot_core::entity::messages::ActiveModel {
-            id: Set(assistant_message_id.clone()),
-            content: Set(total_content.clone()),
-            token_count: Set(token_count.map(|v| v as i64)),
-            prompt_tokens: Set(prompt_tokens.map(|v| v as i64)),
-            completion_tokens: Set(completion_tokens.map(|v| v as i64)),
-            thinking: Set(if total_thinking.is_empty() { None } else { Some(total_thinking.clone()) }),
-            tool_calls_json: Set(final_tool_calls_json),
-            status: Set(final_status.to_string()),
-            ..Default::default()
-        })
+        if let Err(e) = aqbot_core::entity::messages::Entity::update(
+            aqbot_core::entity::messages::ActiveModel {
+                id: Set(assistant_message_id.clone()),
+                content: Set(total_content.clone()),
+                token_count: Set(token_count.map(|v| v as i64)),
+                prompt_tokens: Set(prompt_tokens.map(|v| v as i64)),
+                completion_tokens: Set(completion_tokens.map(|v| v as i64)),
+                thinking: Set(if total_thinking.is_empty() {
+                    None
+                } else {
+                    Some(total_thinking.clone())
+                }),
+                tool_calls_json: Set(final_tool_calls_json),
+                status: Set(final_status.to_string()),
+                ..Default::default()
+            },
+        )
         .exec(&db)
         .await
         {
@@ -1041,7 +1257,9 @@ fn spawn_stream_task(
         }
 
         // Increment message count for the assistant message
-        if let Err(e) = aqbot_core::repo::conversation::increment_message_count(&db, &conversation_id).await {
+        if let Err(e) =
+            aqbot_core::repo::conversation::increment_message_count(&db, &conversation_id).await
+        {
             tracing::error!("Failed to increment message count: {}", e);
         }
 
@@ -1055,22 +1273,32 @@ fn spawn_stream_task(
             };
 
             if let Err(e) = aqbot_core::repo::conversation::update_conversation_title(
-                &db, &conversation_id, &fallback_title,
-            ).await {
+                &db,
+                &conversation_id,
+                &fallback_title,
+            )
+            .await
+            {
                 tracing::error!("Failed to auto-update title: {}", e);
             } else {
-                let _ = app.emit("conversation-title-updated", ConversationTitleUpdatedEvent {
-                    conversation_id: conversation_id.clone(),
-                    title: fallback_title,
-                });
+                let _ = app.emit(
+                    "conversation-title-updated",
+                    ConversationTitleUpdatedEvent {
+                        conversation_id: conversation_id.clone(),
+                        title: fallback_title,
+                    },
+                );
             }
 
             // Notify frontend that title generation is starting
-            let _ = app.emit("conversation-title-generating", ConversationTitleGeneratingEvent {
-                conversation_id: conversation_id.clone(),
-                generating: true,
-                error: None,
-            });
+            let _ = app.emit(
+                "conversation-title-generating",
+                ConversationTitleGeneratingEvent {
+                    conversation_id: conversation_id.clone(),
+                    generating: true,
+                    error: None,
+                },
+            );
 
             // Try AI-powered title generation
             let ai_title = generate_ai_title(
@@ -1082,38 +1310,55 @@ fn spawn_stream_task(
                 &model_id,
                 &settings,
                 &master_key,
-            ).await;
+            )
+            .await;
 
             match ai_title {
                 Ok(title) => {
                     if let Err(e) = aqbot_core::repo::conversation::update_conversation_title(
-                        &db, &conversation_id, &title,
-                    ).await {
+                        &db,
+                        &conversation_id,
+                        &title,
+                    )
+                    .await
+                    {
                         tracing::error!("Failed to update AI-generated title: {}", e);
-                        let _ = app.emit("conversation-title-generating", ConversationTitleGeneratingEvent {
-                            conversation_id: conversation_id.clone(),
-                            generating: false,
-                            error: Some(format!("Failed to save title: {}", e)),
-                        });
+                        let _ = app.emit(
+                            "conversation-title-generating",
+                            ConversationTitleGeneratingEvent {
+                                conversation_id: conversation_id.clone(),
+                                generating: false,
+                                error: Some(format!("Failed to save title: {}", e)),
+                            },
+                        );
                     } else {
-                        let _ = app.emit("conversation-title-updated", ConversationTitleUpdatedEvent {
-                            conversation_id: conversation_id.clone(),
-                            title,
-                        });
-                        let _ = app.emit("conversation-title-generating", ConversationTitleGeneratingEvent {
-                            conversation_id: conversation_id.clone(),
-                            generating: false,
-                            error: None,
-                        });
+                        let _ = app.emit(
+                            "conversation-title-updated",
+                            ConversationTitleUpdatedEvent {
+                                conversation_id: conversation_id.clone(),
+                                title,
+                            },
+                        );
+                        let _ = app.emit(
+                            "conversation-title-generating",
+                            ConversationTitleGeneratingEvent {
+                                conversation_id: conversation_id.clone(),
+                                generating: false,
+                                error: None,
+                            },
+                        );
                     }
                 }
                 Err(err) => {
                     tracing::warn!("Auto title generation failed: {}", err);
-                    let _ = app.emit("conversation-title-generating", ConversationTitleGeneratingEvent {
-                        conversation_id: conversation_id.clone(),
-                        generating: false,
-                        error: Some(err),
-                    });
+                    let _ = app.emit(
+                        "conversation-title-generating",
+                        ConversationTitleGeneratingEvent {
+                            conversation_id: conversation_id.clone(),
+                            generating: false,
+                            error: Some(err),
+                        },
+                    );
                 }
             }
         }
@@ -1167,16 +1412,16 @@ pub async fn send_message(
     let is_first_message = conversation.message_count <= 1;
 
     // 3. Get provider config + decrypt key
-    let provider = aqbot_core::repo::provider::get_provider(&state.sea_db, &conversation.provider_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let provider =
+        aqbot_core::repo::provider::get_provider(&state.sea_db, &conversation.provider_id)
+            .await
+            .map_err(|e| e.to_string())?;
     let key_row =
         aqbot_core::repo::provider::get_active_key(&state.sea_db, &conversation.provider_id)
             .await
             .map_err(|e| e.to_string())?;
-    let decrypted_key =
-        aqbot_core::crypto::decrypt_key(&key_row.key_encrypted, &state.master_key)
-            .map_err(|e| e.to_string())?;
+    let decrypted_key = aqbot_core::crypto::decrypt_key(&key_row.key_encrypted, &state.master_key)
+        .map_err(|e| e.to_string())?;
 
     // Get model info for param overrides and token budget
     let resolved_model = aqbot_core::repo::provider::get_model(
@@ -1186,10 +1431,19 @@ pub async fn send_message(
     )
     .await
     .ok();
-    let model_param_overrides = resolved_model.as_ref().and_then(|m| m.param_overrides.clone());
-    let no_system_role = model_param_overrides.as_ref().and_then(|p| p.no_system_role).unwrap_or(false);
-    let use_max_completion_tokens = model_param_overrides.as_ref().and_then(|p| p.use_max_completion_tokens);
-    let force_max_tokens = model_param_overrides.as_ref().and_then(|p| p.force_max_tokens);
+    let model_param_overrides = resolved_model
+        .as_ref()
+        .and_then(|m| m.param_overrides.clone());
+    let no_system_role = model_param_overrides
+        .as_ref()
+        .and_then(|p| p.no_system_role)
+        .unwrap_or(false);
+    let use_max_completion_tokens = model_param_overrides
+        .as_ref()
+        .and_then(|p| p.use_max_completion_tokens);
+    let force_max_tokens = model_param_overrides
+        .as_ref()
+        .and_then(|p| p.force_max_tokens);
 
     // 4. Build ChatRequest from conversation messages
     let db_messages = aqbot_core::repo::message::list_messages(&state.sea_db, &conversation_id)
@@ -1203,7 +1457,11 @@ pub async fn send_message(
     if let Some(ref sys) = conversation.system_prompt {
         if !sys.is_empty() {
             chat_messages.push(ChatMessage {
-                role: if no_system_role { "user".to_string() } else { "system".to_string() },
+                role: if no_system_role {
+                    "user".to_string()
+                } else {
+                    "system".to_string()
+                },
                 content: ChatContent::Text(sys.clone()),
                 tool_calls: None,
                 tool_call_id: None,
@@ -1227,10 +1485,7 @@ pub async fn send_message(
         .await
         {
             Ok(results) if !results.is_empty() => {
-                let snippets: Vec<String> = results
-                    .iter()
-                    .map(|r| r.content.clone())
-                    .collect();
+                let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
                 rag_context_parts.push(format!(
                     "[Knowledge Base Reference]\n{}",
                     snippets.join("\n---\n")
@@ -1256,14 +1511,8 @@ pub async fn send_message(
         .await
         {
             Ok(results) if !results.is_empty() => {
-                let snippets: Vec<String> = results
-                    .iter()
-                    .map(|r| r.content.clone())
-                    .collect();
-                rag_context_parts.push(format!(
-                    "[Memory Reference]\n{}",
-                    snippets.join("\n---\n")
-                ));
+                let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
+                rag_context_parts.push(format!("[Memory Reference]\n{}", snippets.join("\n---\n")));
             }
             Err(e) => {
                 tracing::debug!("RAG memory search failed for ns {}: {}", ns_id, e);
@@ -1313,7 +1562,8 @@ pub async fn send_message(
         if m.status == "error" {
             continue;
         }
-        history_messages.push(chat_message_from_message(&file_store, m).map_err(|e| e.to_string())?);
+        history_messages
+            .push(chat_message_from_message(&file_store, m).map_err(|e| e.to_string())?);
     }
 
     // Resolve proxy config early (needed for both summary generation and main request)
@@ -1327,13 +1577,11 @@ pub async fn send_message(
     let model_context_window = resolved_model.as_ref().and_then(|m| m.max_tokens);
 
     // Load existing summary for this conversation
-    let existing_summary = aqbot_core::repo::conversation::get_summary(
-        &state.sea_db,
-        &conversation_id,
-    )
-    .await
-    .ok()
-    .flatten();
+    let existing_summary =
+        aqbot_core::repo::conversation::get_summary(&state.sea_db, &conversation_id)
+            .await
+            .ok()
+            .flatten();
 
     // Auto-compression: if enabled and tokens exceed threshold, compress now
     if conversation.context_compression
@@ -1416,7 +1664,9 @@ pub async fn send_message(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
-        custom_headers: provider.custom_headers.as_ref()
+        custom_headers: provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
 
@@ -1427,7 +1677,9 @@ pub async fn send_message(
     } else {
         let mut all_tools = Vec::new();
         for server_id in &mcp_ids {
-            if let Ok(descriptors) = aqbot_core::repo::mcp_server::list_tools_for_server(&state.sea_db, server_id).await {
+            if let Ok(descriptors) =
+                aqbot_core::repo::mcp_server::list_tools_for_server(&state.sea_db, server_id).await
+            {
                 for td in descriptors {
                     let parameters: Option<serde_json::Value> = td
                         .input_schema_json
@@ -1444,7 +1696,11 @@ pub async fn send_message(
                 }
             }
         }
-        if all_tools.is_empty() { None } else { Some(all_tools) }
+        if all_tools.is_empty() {
+            None
+        } else {
+            Some(all_tools)
+        }
     };
 
     // 7. Spawn streaming in background
@@ -1459,7 +1715,11 @@ pub async fn send_message(
 
     let user_msg_id = user_message.id.clone();
     let cancel_flag = Arc::new(AtomicBool::new(false));
-    state.stream_cancel_flags.lock().await.insert(conversation_id.clone(), cancel_flag.clone());
+    state
+        .stream_cancel_flags
+        .lock()
+        .await
+        .insert(conversation_id.clone(), cancel_flag.clone());
     spawn_stream_task(
         app,
         state.sea_db.clone(),
@@ -1565,21 +1825,22 @@ pub async fn regenerate_message(
     }
 
     // 5. Get provider config + decrypt key
-    let provider = aqbot_core::repo::provider::get_provider(&state.sea_db, &conversation.provider_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let provider =
+        aqbot_core::repo::provider::get_provider(&state.sea_db, &conversation.provider_id)
+            .await
+            .map_err(|e| e.to_string())?;
     let key_row =
         aqbot_core::repo::provider::get_active_key(&state.sea_db, &conversation.provider_id)
             .await
             .map_err(|e| e.to_string())?;
-    let decrypted_key =
-        aqbot_core::crypto::decrypt_key(&key_row.key_encrypted, &state.master_key)
-            .map_err(|e| e.to_string())?;
+    let decrypted_key = aqbot_core::crypto::decrypt_key(&key_row.key_encrypted, &state.master_key)
+        .map_err(|e| e.to_string())?;
 
     // 6. Rebuild chat messages (active messages only — old inactive versions excluded)
-    let remaining_messages = aqbot_core::repo::message::list_messages(&state.sea_db, &conversation_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let remaining_messages =
+        aqbot_core::repo::message::list_messages(&state.sea_db, &conversation_id)
+            .await
+            .map_err(|e| e.to_string())?;
     let file_store = aqbot_core::file_store::FileStore::new();
 
     let mut chat_messages: Vec<ChatMessage> = Vec::new();
@@ -1601,12 +1862,21 @@ pub async fn regenerate_message(
         let kb_ids = enabled_knowledge_base_ids.unwrap_or_default();
         for kb_id in &kb_ids {
             match crate::indexing::search_knowledge(
-                &state.sea_db, &state.master_key, &state.vector_store,
-                kb_id, &last_user_msg.content, 5,
-            ).await {
+                &state.sea_db,
+                &state.master_key,
+                &state.vector_store,
+                kb_id,
+                &last_user_msg.content,
+                5,
+            )
+            .await
+            {
                 Ok(results) if !results.is_empty() => {
                     let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
-                    rag_parts.push(format!("[Knowledge Base Reference]\n{}", snippets.join("\n---\n")));
+                    rag_parts.push(format!(
+                        "[Knowledge Base Reference]\n{}",
+                        snippets.join("\n---\n")
+                    ));
                 }
                 Err(e) => {
                     tracing::debug!("RAG knowledge search failed for kb {}: {}", kb_id, e);
@@ -1617,9 +1887,15 @@ pub async fn regenerate_message(
         let mem_ids = enabled_memory_namespace_ids.unwrap_or_default();
         for ns_id in &mem_ids {
             match crate::indexing::search_memory(
-                &state.sea_db, &state.master_key, &state.vector_store,
-                ns_id, &last_user_msg.content, 5,
-            ).await {
+                &state.sea_db,
+                &state.master_key,
+                &state.vector_store,
+                ns_id,
+                &last_user_msg.content,
+                5,
+            )
+            .await
+            {
                 Ok(results) if !results.is_empty() => {
                     let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
                     rag_parts.push(format!("[Memory Reference]\n{}", snippets.join("\n---\n")));
@@ -1644,7 +1920,9 @@ pub async fn regenerate_message(
     }
 
     // Find the target user message position, then search for context-clear/compressed BEFORE it
-    let target_pos = remaining_messages.iter().position(|m| m.id == last_user_msg.id);
+    let target_pos = remaining_messages
+        .iter()
+        .position(|m| m.id == last_user_msg.id);
     let search_range = match target_pos {
         Some(pos) => &remaining_messages[..pos],
         None => &remaining_messages[..],
@@ -1693,7 +1971,9 @@ pub async fn regenerate_message(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
-        custom_headers: provider.custom_headers.as_ref()
+        custom_headers: provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
 
@@ -1704,7 +1984,9 @@ pub async fn regenerate_message(
     } else {
         let mut all_tools = Vec::new();
         for server_id in &mcp_ids {
-            if let Ok(descriptors) = aqbot_core::repo::mcp_server::list_tools_for_server(&state.sea_db, server_id).await {
+            if let Ok(descriptors) =
+                aqbot_core::repo::mcp_server::list_tools_for_server(&state.sea_db, server_id).await
+            {
                 for td in descriptors {
                     let parameters: Option<serde_json::Value> = td
                         .input_schema_json
@@ -1721,7 +2003,11 @@ pub async fn regenerate_message(
                 }
             }
         }
-        if all_tools.is_empty() { None } else { Some(all_tools) }
+        if all_tools.is_empty() {
+            None
+        } else {
+            Some(all_tools)
+        }
     };
 
     let regen_model_overrides = aqbot_core::repo::provider::get_model(
@@ -1732,9 +2018,16 @@ pub async fn regenerate_message(
     .await
     .ok()
     .and_then(|m| m.param_overrides);
-    let use_max_completion_tokens = regen_model_overrides.as_ref().and_then(|p| p.use_max_completion_tokens);
-    let force_max_tokens = regen_model_overrides.as_ref().and_then(|p| p.force_max_tokens);
-    let no_system_role = regen_model_overrides.as_ref().and_then(|p| p.no_system_role).unwrap_or(false);
+    let use_max_completion_tokens = regen_model_overrides
+        .as_ref()
+        .and_then(|p| p.use_max_completion_tokens);
+    let force_max_tokens = regen_model_overrides
+        .as_ref()
+        .and_then(|p| p.force_max_tokens);
+    let no_system_role = regen_model_overrides
+        .as_ref()
+        .and_then(|p| p.no_system_role)
+        .unwrap_or(false);
 
     // Convert system messages to user messages if model doesn't support system role
     if no_system_role {
@@ -1746,7 +2039,11 @@ pub async fn regenerate_message(
     }
 
     let cancel_flag = Arc::new(AtomicBool::new(false));
-    state.stream_cancel_flags.lock().await.insert(conversation_id.clone(), cancel_flag.clone());
+    state
+        .stream_cancel_flags
+        .lock()
+        .await
+        .insert(conversation_id.clone(), cancel_flag.clone());
     spawn_stream_task(
         app,
         state.sea_db.clone(),
@@ -1831,18 +2128,17 @@ pub async fn regenerate_with_model(
     let provider = aqbot_core::repo::provider::get_provider(&state.sea_db, &target_provider_id)
         .await
         .map_err(|e| e.to_string())?;
-    let key_row =
-        aqbot_core::repo::provider::get_active_key(&state.sea_db, &target_provider_id)
-            .await
-            .map_err(|e| e.to_string())?;
-    let decrypted_key =
-        aqbot_core::crypto::decrypt_key(&key_row.key_encrypted, &state.master_key)
-            .map_err(|e| e.to_string())?;
-
-    // Build context messages (same logic as regenerate_message)
-    let remaining_messages = aqbot_core::repo::message::list_messages(&state.sea_db, &conversation_id)
+    let key_row = aqbot_core::repo::provider::get_active_key(&state.sea_db, &target_provider_id)
         .await
         .map_err(|e| e.to_string())?;
+    let decrypted_key = aqbot_core::crypto::decrypt_key(&key_row.key_encrypted, &state.master_key)
+        .map_err(|e| e.to_string())?;
+
+    // Build context messages (same logic as regenerate_message)
+    let remaining_messages =
+        aqbot_core::repo::message::list_messages(&state.sea_db, &conversation_id)
+            .await
+            .map_err(|e| e.to_string())?;
     let file_store = aqbot_core::file_store::FileStore::new();
     let mut chat_messages: Vec<ChatMessage> = Vec::new();
 
@@ -1863,12 +2159,21 @@ pub async fn regenerate_with_model(
         let kb_ids = enabled_knowledge_base_ids.unwrap_or_default();
         for kb_id in &kb_ids {
             match crate::indexing::search_knowledge(
-                &state.sea_db, &state.master_key, &state.vector_store,
-                kb_id, &user_msg.content, 5,
-            ).await {
+                &state.sea_db,
+                &state.master_key,
+                &state.vector_store,
+                kb_id,
+                &user_msg.content,
+                5,
+            )
+            .await
+            {
                 Ok(results) if !results.is_empty() => {
                     let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
-                    rag_parts.push(format!("[Knowledge Base Reference]\n{}", snippets.join("\n---\n")));
+                    rag_parts.push(format!(
+                        "[Knowledge Base Reference]\n{}",
+                        snippets.join("\n---\n")
+                    ));
                 }
                 _ => {}
             }
@@ -1876,9 +2181,15 @@ pub async fn regenerate_with_model(
         let mem_ids = enabled_memory_namespace_ids.unwrap_or_default();
         for ns_id in &mem_ids {
             match crate::indexing::search_memory(
-                &state.sea_db, &state.master_key, &state.vector_store,
-                ns_id, &user_msg.content, 5,
-            ).await {
+                &state.sea_db,
+                &state.master_key,
+                &state.vector_store,
+                ns_id,
+                &user_msg.content,
+                5,
+            )
+            .await
+            {
                 Ok(results) if !results.is_empty() => {
                     let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
                     rag_parts.push(format!("[Memory Reference]\n{}", snippets.join("\n---\n")));
@@ -1944,7 +2255,9 @@ pub async fn regenerate_with_model(
         base_url: Some(resolve_base_url(&provider.api_host)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
-        custom_headers: provider.custom_headers.as_ref()
+        custom_headers: provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
 
@@ -1954,7 +2267,9 @@ pub async fn regenerate_with_model(
     } else {
         let mut all_tools = Vec::new();
         for server_id in &mcp_ids {
-            if let Ok(descriptors) = aqbot_core::repo::mcp_server::list_tools_for_server(&state.sea_db, server_id).await {
+            if let Ok(descriptors) =
+                aqbot_core::repo::mcp_server::list_tools_for_server(&state.sea_db, server_id).await
+            {
                 for td in descriptors {
                     let parameters: Option<serde_json::Value> = td
                         .input_schema_json
@@ -1971,7 +2286,11 @@ pub async fn regenerate_with_model(
                 }
             }
         }
-        if all_tools.is_empty() { None } else { Some(all_tools) }
+        if all_tools.is_empty() {
+            None
+        } else {
+            Some(all_tools)
+        }
     };
 
     let rwm_overrides = aqbot_core::repo::provider::get_model(
@@ -1982,9 +2301,14 @@ pub async fn regenerate_with_model(
     .await
     .ok()
     .and_then(|m| m.param_overrides);
-    let use_max_completion_tokens = rwm_overrides.as_ref().and_then(|p| p.use_max_completion_tokens);
+    let use_max_completion_tokens = rwm_overrides
+        .as_ref()
+        .and_then(|p| p.use_max_completion_tokens);
     let force_max_tokens = rwm_overrides.as_ref().and_then(|p| p.force_max_tokens);
-    let no_system_role = rwm_overrides.as_ref().and_then(|p| p.no_system_role).unwrap_or(false);
+    let no_system_role = rwm_overrides
+        .as_ref()
+        .and_then(|p| p.no_system_role)
+        .unwrap_or(false);
 
     if no_system_role {
         for msg in &mut chat_messages {
@@ -1995,7 +2319,11 @@ pub async fn regenerate_with_model(
     }
 
     let cancel_flag = Arc::new(AtomicBool::new(false));
-    state.stream_cancel_flags.lock().await.insert(conversation_id.clone(), cancel_flag.clone());
+    state
+        .stream_cancel_flags
+        .lock()
+        .await
+        .insert(conversation_id.clone(), cancel_flag.clone());
     spawn_stream_task(
         app,
         state.sea_db.clone(),
@@ -2031,8 +2359,12 @@ pub async fn list_message_versions(
     parent_message_id: String,
 ) -> Result<Vec<Message>, String> {
     aqbot_core::repo::message::list_message_versions(
-        &state.sea_db, &conversation_id, &parent_message_id
-    ).await.map_err(|e| e.to_string())
+        &state.sea_db,
+        &conversation_id,
+        &parent_message_id,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -2043,8 +2375,13 @@ pub async fn switch_message_version(
     message_id: String,
 ) -> Result<(), String> {
     aqbot_core::repo::message::set_active_version(
-        &state.sea_db, &conversation_id, &parent_message_id, &message_id
-    ).await.map_err(|e| e.to_string())
+        &state.sea_db,
+        &conversation_id,
+        &parent_message_id,
+        &message_id,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -2053,14 +2390,14 @@ pub async fn delete_message_group(
     conversation_id: String,
     user_message_id: String,
 ) -> Result<(), String> {
-    let deleted = aqbot_core::repo::message::delete_message_group(
-        &state.sea_db, &user_message_id
-    ).await.map_err(|e| e.to_string())?;
+    let deleted = aqbot_core::repo::message::delete_message_group(&state.sea_db, &user_message_id)
+        .await
+        .map_err(|e| e.to_string())?;
     // Decrement message count by deleted count
     for _ in 0..deleted {
-        aqbot_core::repo::conversation::decrement_message_count(
-            &state.sea_db, &conversation_id
-        ).await.map_err(|e| e.to_string())?;
+        aqbot_core::repo::conversation::decrement_message_count(&state.sea_db, &conversation_id)
+            .await
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -2081,37 +2418,65 @@ async fn do_compress(
     master_key: &[u8; 32],
 ) -> Result<String, String> {
     // Resolve compression model: settings override → fallback to conversation model
-    let (comp_provider, comp_key, comp_key_id, comp_proxy, comp_model_id, comp_use_max) =
-        if let (Some(ref pid), Some(ref mid)) = (&settings.compression_provider_id, &settings.compression_model_id) {
-            match aqbot_core::repo::provider::get_provider(db, pid).await {
-                Ok(p) => {
-                    match p.keys.first() {
-                        Some(k) => {
-                            let dk = aqbot_core::crypto::decrypt_key(&k.key_encrypted, master_key)
-                                .map_err(|e| e.to_string())?;
-                            let kid = k.id.clone();
-                            let proxy = ProviderProxyConfig::resolve(&p.proxy_config, settings);
-                            let override_umc = aqbot_core::repo::provider::get_model(db, pid, mid)
-                                .await
-                                .ok()
-                                .and_then(|m| m.param_overrides)
-                                .and_then(|po| po.use_max_completion_tokens);
-                            (p, dk, kid, proxy, mid.clone(), override_umc)
-                        }
-                        None => {
-                            tracing::warn!("Compression model provider has no key, falling back to conversation model");
-                            (provider.clone(), decrypted_key.to_string(), key_id.to_string(), proxy_config.clone(), model_id.to_string(), use_max_completion_tokens)
-                        }
+    let (comp_provider, comp_key, comp_key_id, comp_proxy, comp_model_id, comp_use_max) = if let (
+        Some(ref pid),
+        Some(ref mid),
+    ) = (
+        &settings.compression_provider_id,
+        &settings.compression_model_id,
+    ) {
+        match aqbot_core::repo::provider::get_provider(db, pid).await {
+            Ok(p) => {
+                match p.keys.first() {
+                    Some(k) => {
+                        let dk = aqbot_core::crypto::decrypt_key(&k.key_encrypted, master_key)
+                            .map_err(|e| e.to_string())?;
+                        let kid = k.id.clone();
+                        let proxy = ProviderProxyConfig::resolve(&p.proxy_config, settings);
+                        let override_umc = aqbot_core::repo::provider::get_model(db, pid, mid)
+                            .await
+                            .ok()
+                            .and_then(|m| m.param_overrides)
+                            .and_then(|po| po.use_max_completion_tokens);
+                        (p, dk, kid, proxy, mid.clone(), override_umc)
+                    }
+                    None => {
+                        tracing::warn!("Compression model provider has no key, falling back to conversation model");
+                        (
+                            provider.clone(),
+                            decrypted_key.to_string(),
+                            key_id.to_string(),
+                            proxy_config.clone(),
+                            model_id.to_string(),
+                            use_max_completion_tokens,
+                        )
                     }
                 }
-                Err(_) => {
-                    tracing::warn!("Compression model provider not found, falling back to conversation model");
-                    (provider.clone(), decrypted_key.to_string(), key_id.to_string(), proxy_config.clone(), model_id.to_string(), use_max_completion_tokens)
-                }
             }
-        } else {
-            (provider.clone(), decrypted_key.to_string(), key_id.to_string(), proxy_config.clone(), model_id.to_string(), use_max_completion_tokens)
-        };
+            Err(_) => {
+                tracing::warn!(
+                    "Compression model provider not found, falling back to conversation model"
+                );
+                (
+                    provider.clone(),
+                    decrypted_key.to_string(),
+                    key_id.to_string(),
+                    proxy_config.clone(),
+                    model_id.to_string(),
+                    use_max_completion_tokens,
+                )
+            }
+        }
+    } else {
+        (
+            provider.clone(),
+            decrypted_key.to_string(),
+            key_id.to_string(),
+            proxy_config.clone(),
+            model_id.to_string(),
+            use_max_completion_tokens,
+        )
+    };
 
     let sum_req = crate::context_manager::SummarizationRequest {
         existing_summary: existing_summary.map(|s| s.to_string()),
@@ -2129,7 +2494,10 @@ async fn do_compress(
         model: comp_model_id.clone(),
         messages: summary_messages,
         stream: false,
-        temperature: settings.compression_temperature.map(|v| v as f64).or(Some(0.3)),
+        temperature: settings
+            .compression_temperature
+            .map(|v| v as f64)
+            .or(Some(0.3)),
         top_p: settings.compression_top_p.map(|v| v as f64),
         max_tokens: settings.compression_max_tokens.or(Some(1024)),
         tools: None,
@@ -2144,7 +2512,9 @@ async fn do_compress(
         base_url: Some(resolve_base_url(&comp_provider.api_host)),
         api_path: comp_provider.api_path.clone(),
         proxy_config: comp_proxy,
-        custom_headers: comp_provider.custom_headers.as_ref()
+        custom_headers: comp_provider
+            .custom_headers
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok()),
     };
 
@@ -2171,7 +2541,11 @@ async fn do_compress(
     .await
     .map_err(|e| format!("Failed to save summary: {}", e))?;
 
-    tracing::debug!("Compressed context for {} ({} tokens)", conversation_id, token_count);
+    tracing::debug!(
+        "Compressed context for {} ({} tokens)",
+        conversation_id,
+        token_count
+    );
     Ok(response.content)
 }
 
@@ -2184,17 +2558,16 @@ pub async fn compress_context(
     state: State<'_, AppState>,
     conversation_id: String,
 ) -> Result<ConversationSummary, String> {
-    let conversation = aqbot_core::repo::conversation::get_conversation(
-        &state.sea_db,
-        &conversation_id,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
+    let conversation =
+        aqbot_core::repo::conversation::get_conversation(&state.sea_db, &conversation_id)
+            .await
+            .map_err(|e| e.to_string())?;
 
     // Get provider + key
-    let provider = aqbot_core::repo::provider::get_provider(&state.sea_db, &conversation.provider_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let provider =
+        aqbot_core::repo::provider::get_provider(&state.sea_db, &conversation.provider_id)
+            .await
+            .map_err(|e| e.to_string())?;
     let key_row = provider
         .keys
         .first()
@@ -2257,13 +2630,11 @@ pub async fn compress_context(
     }
 
     // Load existing summary
-    let existing_summary = aqbot_core::repo::conversation::get_summary(
-        &state.sea_db,
-        &conversation_id,
-    )
-    .await
-    .ok()
-    .flatten();
+    let existing_summary =
+        aqbot_core::repo::conversation::get_summary(&state.sea_db, &conversation_id)
+            .await
+            .ok()
+            .flatten();
 
     // Compress
     let use_max_completion_tokens = aqbot_core::repo::provider::get_model(
@@ -2312,13 +2683,10 @@ pub async fn compress_context(
     );
 
     // Return the updated summary
-    let summary = aqbot_core::repo::conversation::get_summary(
-        &state.sea_db,
-        &conversation_id,
-    )
-    .await
-    .map_err(|e| e.to_string())?
-    .ok_or_else(|| "Summary not found after compression".to_string())?;
+    let summary = aqbot_core::repo::conversation::get_summary(&state.sea_db, &conversation_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Summary not found after compression".to_string())?;
 
     Ok(summary)
 }
@@ -2348,7 +2716,10 @@ pub async fn delete_compression(
     // Delete all compression marker messages
     aqbot_core::entity::messages::Entity::delete_many()
         .filter(aqbot_core::entity::messages::Column::ConversationId.eq(&conversation_id))
-        .filter(aqbot_core::entity::messages::Column::Content.eq(crate::context_manager::COMPRESSION_MARKER))
+        .filter(
+            aqbot_core::entity::messages::Column::Content
+                .eq(crate::context_manager::COMPRESSION_MARKER),
+        )
         .exec(&state.sea_db)
         .await
         .map_err(|e| e.to_string())?;
@@ -2380,9 +2751,9 @@ pub async fn send_system_message(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
-    use std::sync::atomic::AtomicBool;
     use std::fs;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::Arc;
     use tokio::sync::Mutex;
 
     #[test]
@@ -2491,8 +2862,10 @@ mod tests {
     #[tokio::test]
     async fn delete_conversation_removes_attached_files_and_records() {
         let db = aqbot_core::db::create_test_pool().await.unwrap().conn;
-        let temp_dir =
-            std::env::temp_dir().join(format!("aqbot-conv-delete-test-{}", aqbot_core::utils::gen_id()));
+        let temp_dir = std::env::temp_dir().join(format!(
+            "aqbot-conv-delete-test-{}",
+            aqbot_core::utils::gen_id()
+        ));
         fs::create_dir_all(&temp_dir).unwrap();
 
         let conversation = aqbot_core::repo::conversation::create_conversation(
@@ -2510,7 +2883,10 @@ mod tests {
             .save_file(b"cleanup me", "cleanup.png", "image/png")
             .unwrap();
         let physical_path = temp_dir.join(&saved.storage_path);
-        assert!(physical_path.exists(), "fixture file must exist before deleting the conversation");
+        assert!(
+            physical_path.exists(),
+            "fixture file must exist before deleting the conversation"
+        );
 
         aqbot_core::repo::stored_file::create_stored_file(
             &db,
@@ -2525,7 +2901,8 @@ mod tests {
         .await
         .unwrap();
 
-        let result = delete_conversation_with_attachments_using(&db, &file_store, &conversation.id).await;
+        let result =
+            delete_conversation_with_attachments_using(&db, &file_store, &conversation.id).await;
         assert!(
             result.is_ok(),
             "deleting a conversation should clean up its attached files, got: {result:?}"
@@ -2556,8 +2933,10 @@ mod tests {
         use base64::Engine;
 
         let db = aqbot_core::db::create_test_pool().await.unwrap().conn;
-        let temp_dir =
-            std::env::temp_dir().join(format!("aqbot-persist-attachments-test-{}", aqbot_core::utils::gen_id()));
+        let temp_dir = std::env::temp_dir().join(format!(
+            "aqbot-persist-attachments-test-{}",
+            aqbot_core::utils::gen_id()
+        ));
         fs::create_dir_all(&temp_dir).unwrap();
         let conversation = aqbot_core::repo::conversation::create_conversation(
             &db,
@@ -2569,9 +2948,7 @@ mod tests {
         .await
         .unwrap();
 
-        let vector_store = Arc::new(
-            aqbot_core::vector_store::VectorStore::new(db.clone()),
-        );
+        let vector_store = Arc::new(aqbot_core::vector_store::VectorStore::new(db.clone()));
         let state = crate::AppState {
             sea_db: db.clone(),
             master_key: [0; 32],
@@ -2612,8 +2989,7 @@ mod tests {
         assert_eq!(stored_files[0].mime_type, "image/png");
 
         // Cleanup: remove file written to documents root
-        let _ = aqbot_core::file_store::FileStore::new()
-            .delete_file(&persisted[0].file_path);
+        let _ = aqbot_core::file_store::FileStore::new().delete_file(&persisted[0].file_path);
         let _ = fs::remove_dir_all(&temp_dir);
     }
 }

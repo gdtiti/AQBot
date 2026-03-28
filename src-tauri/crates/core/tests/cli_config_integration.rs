@@ -283,7 +283,10 @@ fn claude_connect_writes_anthropic_env_settings_and_config() {
             "expected Claude settings.json at {settings_path:?}"
         );
         let settings = read_json(&settings_path);
-        assert_eq!(settings["env"]["ANTHROPIC_BASE_URL"], "http://localhost:1234/v1");
+        assert_eq!(
+            settings["env"]["ANTHROPIC_BASE_URL"],
+            "http://localhost:1234/v1"
+        );
         assert_eq!(settings["env"]["ANTHROPIC_AUTH_TOKEN"], "test-api-key");
         assert!(
             config_path.exists(),
@@ -397,11 +400,11 @@ fn codex_connect_writes_openai_api_key_auth_and_proxy_provider_contract() {
 #[test]
 fn gemini_validation_requires_both_env_and_settings() {
     use aqbot_core::repo::cli_config::validate_connection;
-    
+
     with_temp_home(|temp_home| {
         let env_path = gemini_env_path(temp_home.home());
         let settings_path = gemini_settings_path(temp_home.home());
-        
+
         // Write only .env, missing settings.json
         std::fs::create_dir_all(env_path.parent().unwrap()).unwrap();
         std::fs::write(
@@ -409,13 +412,13 @@ fn gemini_validation_requires_both_env_and_settings() {
             "GEMINI_API_KEY=test-key\nGEMINI_API_BASE_URL=http://localhost:1234/v1\n",
         )
         .unwrap();
-        
+
         assert_eq!(
             validate_connection(CliTool::Gemini, "http://localhost:1234/v1").unwrap(),
             false,
             "should reject when settings.json is missing"
         );
-        
+
         // Add settings.json with correct selectedType
         write_json(
             &settings_path,
@@ -427,7 +430,7 @@ fn gemini_validation_requires_both_env_and_settings() {
                 }
             }),
         );
-        
+
         assert_eq!(
             validate_connection(CliTool::Gemini, "http://localhost:1234/v1").unwrap(),
             true,
@@ -496,17 +499,17 @@ requires_openai_auth = true
 #[test]
 fn gemini_validation_drift_rejects_wrong_selected_type() {
     use aqbot_core::repo::cli_config::validate_connection;
-    
+
     with_temp_home(|temp_home| {
         connect(CliTool::Gemini, "http://localhost:1234/v1", "test-api-key")
             .expect("connect should succeed");
-        
+
         // Verify initially connected
         assert_eq!(
             validate_connection(CliTool::Gemini, "http://localhost:1234/v1").unwrap(),
             true
         );
-        
+
         // User manually changes selectedType
         let settings_path = gemini_settings_path(temp_home.home());
         write_json(
@@ -519,7 +522,7 @@ fn gemini_validation_drift_rejects_wrong_selected_type() {
                 }
             }),
         );
-        
+
         // Should now be disconnected
         assert_eq!(
             validate_connection(CliTool::Gemini, "http://localhost:1234/v1").unwrap(),
@@ -532,11 +535,11 @@ fn gemini_validation_drift_rejects_wrong_selected_type() {
 #[test]
 fn claude_validation_requires_anthropic_env_and_primary_api_key() {
     use aqbot_core::repo::cli_config::validate_connection;
-    
+
     with_temp_home(|temp_home| {
         let settings_path = claude_settings_path(temp_home.home());
         let config_path = claude_config_path(temp_home.home());
-        
+
         // Write only settings.json, missing config.json
         write_json(
             &settings_path,
@@ -547,16 +550,16 @@ fn claude_validation_requires_anthropic_env_and_primary_api_key() {
                 }
             }),
         );
-        
+
         assert_eq!(
             validate_connection(CliTool::ClaudeCode, "http://localhost:1234/v1").unwrap(),
             false,
             "should reject when config.json is missing"
         );
-        
+
         // Add config.json with primaryApiKey == "any"
         write_json(&config_path, &json!({ "primaryApiKey": "any" }));
-        
+
         assert_eq!(
             validate_connection(CliTool::ClaudeCode, "http://localhost:1234/v1").unwrap(),
             true,
@@ -598,7 +601,7 @@ fn claude_validation_rejects_stale_anthropic_env_override() {
 #[test]
 fn claude_validation_drift_rejects_wrong_primary_api_key() {
     use aqbot_core::repo::cli_config::validate_connection;
-    
+
     with_temp_home(|temp_home| {
         connect(
             CliTool::ClaudeCode,
@@ -606,17 +609,20 @@ fn claude_validation_drift_rejects_wrong_primary_api_key() {
             "test-api-key",
         )
         .expect("connect should succeed");
-        
+
         // Verify initially connected
         assert_eq!(
             validate_connection(CliTool::ClaudeCode, "http://localhost:1234/v1").unwrap(),
             true
         );
-        
+
         // User manually changes primaryApiKey
         let config_path = claude_config_path(temp_home.home());
-        write_json(&config_path, &json!({ "primaryApiKey": "some-other-value" }));
-        
+        write_json(
+            &config_path,
+            &json!({ "primaryApiKey": "some-other-value" }),
+        );
+
         // Should now be disconnected
         assert_eq!(
             validate_connection(CliTool::ClaudeCode, "http://localhost:1234/v1").unwrap(),
@@ -629,11 +635,11 @@ fn claude_validation_drift_rejects_wrong_primary_api_key() {
 #[test]
 fn gemini_disconnect_restore_backup_restores_both_files() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let env_path = gemini_env_path(temp_home.home());
         let settings_path = gemini_settings_path(temp_home.home());
-        
+
         // Create original files
         write_json(
             &settings_path,
@@ -648,30 +654,33 @@ fn gemini_disconnect_restore_backup_restores_both_files() {
         );
         std::fs::create_dir_all(env_path.parent().unwrap()).unwrap();
         std::fs::write(&env_path, "ORIGINAL_VAR=original-value\n").unwrap();
-        
+
         // Connect (this creates backups)
         connect(CliTool::Gemini, "http://localhost:1234/v1", "test-api-key")
             .expect("connect should succeed");
-        
+
         // Verify files were modified
         let settings = read_json(&settings_path);
         assert_eq!(
             settings["security"]["auth"]["selectedType"],
             "gemini-api-key"
         );
-        
+
         // Disconnect with restore
         disconnect(CliTool::Gemini, true, "http://localhost:1234/v1")
             .expect("disconnect restore should succeed");
-        
+
         // Verify original files were restored
         let restored_settings = read_json(&settings_path);
-        assert_eq!(restored_settings["security"]["auth"]["selectedType"], "oauth");
+        assert_eq!(
+            restored_settings["security"]["auth"]["selectedType"],
+            "oauth"
+        );
         assert_eq!(
             restored_settings["security"]["auth"]["oauthToken"],
             "original-token"
         );
-        
+
         let restored_env = std::fs::read_to_string(&env_path).unwrap();
         assert!(restored_env.contains("ORIGINAL_VAR=original-value"));
         assert!(!restored_env.contains("GEMINI_API_KEY"));
@@ -681,11 +690,11 @@ fn gemini_disconnect_restore_backup_restores_both_files() {
 #[test]
 fn claude_disconnect_restore_backup_restores_both_files() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let settings_path = claude_settings_path(temp_home.home());
         let config_path = claude_config_path(temp_home.home());
-        
+
         // Create original files
         write_json(
             &settings_path,
@@ -695,7 +704,7 @@ fn claude_disconnect_restore_backup_restores_both_files() {
             }),
         );
         write_json(&config_path, &json!({ "primaryApiKey": "user-key-123" }));
-        
+
         // Connect (this creates backups)
         connect(
             CliTool::ClaudeCode,
@@ -703,22 +712,22 @@ fn claude_disconnect_restore_backup_restores_both_files() {
             "test-api-key",
         )
         .expect("connect should succeed");
-        
+
         // Verify files were modified
         let settings = read_json(&settings_path);
         assert_eq!(settings["apiBaseUrl"], "http://localhost:1234/v1");
         let config = read_json(&config_path);
         assert_eq!(config["primaryApiKey"], "any");
-        
+
         // Disconnect with restore
         disconnect(CliTool::ClaudeCode, true, "http://localhost:1234/v1")
             .expect("disconnect restore should succeed");
-        
+
         // Verify original files were restored
         let restored_settings = read_json(&settings_path);
         assert_eq!(restored_settings["apiBaseUrl"], "https://api.claude.ai");
         assert_eq!(restored_settings["apiKey"], "original-claude-key");
-        
+
         let restored_config = read_json(&config_path);
         assert_eq!(restored_config["primaryApiKey"], "user-key-123");
     });
@@ -727,11 +736,11 @@ fn claude_disconnect_restore_backup_restores_both_files() {
 #[test]
 fn gemini_disconnect_minimal_cleanup_removes_only_aqbot_keys() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let env_path = gemini_env_path(temp_home.home());
         let settings_path = gemini_settings_path(temp_home.home());
-        
+
         // Create files with mix of AQBot and user data
         std::fs::create_dir_all(env_path.parent().unwrap()).unwrap();
         std::fs::write(
@@ -739,7 +748,7 @@ fn gemini_disconnect_minimal_cleanup_removes_only_aqbot_keys() {
             "USER_VAR=keep-this\nGEMINI_API_KEY=aqbot-key\nANOTHER_VAR=also-keep\nGEMINI_API_BASE_URL=http://localhost:1234/v1\n",
         )
         .unwrap();
-        
+
         write_json(
             &settings_path,
             &json!({
@@ -752,22 +761,28 @@ fn gemini_disconnect_minimal_cleanup_removes_only_aqbot_keys() {
                 "otherSetting": "keep-this"
             }),
         );
-        
+
         // Disconnect without restore
         disconnect(CliTool::Gemini, false, "http://localhost:1234/v1")
             .expect("disconnect should succeed");
-        
+
         // Verify only AQBot keys removed from .env
         let env_content = std::fs::read_to_string(&env_path).unwrap();
         assert!(env_content.contains("USER_VAR=keep-this"));
         assert!(env_content.contains("ANOTHER_VAR=also-keep"));
         assert!(!env_content.contains("GEMINI_API_KEY"));
         assert!(!env_content.contains("GEMINI_API_BASE_URL"));
-        
+
         // Verify selectedType removed but other settings preserved
         let settings = read_json(&settings_path);
-        assert!(!settings["security"]["auth"].as_object().unwrap().contains_key("selectedType"));
-        assert_eq!(settings["security"]["auth"]["oauthToken"], "keep-this-token");
+        assert!(!settings["security"]["auth"]
+            .as_object()
+            .unwrap()
+            .contains_key("selectedType"));
+        assert_eq!(
+            settings["security"]["auth"]["oauthToken"],
+            "keep-this-token"
+        );
         assert_eq!(settings["otherSetting"], "keep-this");
     });
 }
@@ -775,11 +790,11 @@ fn gemini_disconnect_minimal_cleanup_removes_only_aqbot_keys() {
 #[test]
 fn claude_disconnect_minimal_cleanup_removes_only_aqbot_fields() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let settings_path = claude_settings_path(temp_home.home());
         let config_path = claude_config_path(temp_home.home());
-        
+
         // Create files with mix of AQBot and user data
         write_json(
             &settings_path,
@@ -789,7 +804,7 @@ fn claude_disconnect_minimal_cleanup_removes_only_aqbot_fields() {
                 "userSetting": "keep-this"
             }),
         );
-        
+
         write_json(
             &config_path,
             &json!({
@@ -797,17 +812,17 @@ fn claude_disconnect_minimal_cleanup_removes_only_aqbot_fields() {
                 "otherConfig": "keep-this"
             }),
         );
-        
+
         // Disconnect without restore
         disconnect(CliTool::ClaudeCode, false, "http://localhost:1234/v1")
             .expect("disconnect should succeed");
-        
+
         // Verify AQBot fields removed from settings.json
         let settings = read_json(&settings_path);
         assert!(!settings.as_object().unwrap().contains_key("apiBaseUrl"));
         assert!(!settings.as_object().unwrap().contains_key("apiKey"));
         assert_eq!(settings["userSetting"], "keep-this");
-        
+
         // Verify primaryApiKey removed from config.json
         let config = read_json(&config_path);
         assert!(!config.as_object().unwrap().contains_key("primaryApiKey"));
@@ -866,11 +881,11 @@ fn claude_disconnect_minimal_cleanup_removes_only_aqbot_anthropic_env_fields() {
 #[test]
 fn gemini_disconnect_minimal_cleanup_preserves_non_aqbot_selected_type() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let env_path = gemini_env_path(temp_home.home());
         let settings_path = gemini_settings_path(temp_home.home());
-        
+
         // User manually set selectedType to something else
         std::fs::create_dir_all(env_path.parent().unwrap()).unwrap();
         std::fs::write(
@@ -878,7 +893,7 @@ fn gemini_disconnect_minimal_cleanup_preserves_non_aqbot_selected_type() {
             "GEMINI_API_KEY=key\nGEMINI_API_BASE_URL=http://localhost:1234/v1\n",
         )
         .unwrap();
-        
+
         write_json(
             &settings_path,
             &json!({
@@ -889,25 +904,27 @@ fn gemini_disconnect_minimal_cleanup_preserves_non_aqbot_selected_type() {
                 }
             }),
         );
-        
+
         // Disconnect should succeed but leave selectedType alone
         disconnect(CliTool::Gemini, false, "http://localhost:1234/v1")
             .expect("disconnect should succeed");
-        
+
         let settings = read_json(&settings_path);
-        assert_eq!(settings["security"]["auth"]["selectedType"], "oauth",
-            "should preserve non-gemini-api-key selectedType");
+        assert_eq!(
+            settings["security"]["auth"]["selectedType"], "oauth",
+            "should preserve non-gemini-api-key selectedType"
+        );
     });
 }
 
 #[test]
 fn claude_disconnect_minimal_cleanup_preserves_non_any_primary_api_key() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let settings_path = claude_settings_path(temp_home.home());
         let config_path = claude_config_path(temp_home.home());
-        
+
         // Create files where primaryApiKey is not "any"
         write_json(
             &settings_path,
@@ -916,21 +933,23 @@ fn claude_disconnect_minimal_cleanup_preserves_non_any_primary_api_key() {
                 "apiKey": "test-api-key"
             }),
         );
-        
+
         write_json(
             &config_path,
             &json!({
                 "primaryApiKey": "user-custom-key"
             }),
         );
-        
+
         // Disconnect should remove settings fields but preserve primaryApiKey
         disconnect(CliTool::ClaudeCode, false, "http://localhost:1234/v1")
             .expect("disconnect should succeed");
-        
+
         let config = read_json(&config_path);
-        assert_eq!(config["primaryApiKey"], "user-custom-key",
-            "should preserve non-any primaryApiKey");
+        assert_eq!(
+            config["primaryApiKey"], "user-custom-key",
+            "should preserve non-any primaryApiKey"
+        );
     });
 }
 
@@ -1006,7 +1025,7 @@ fn claude_connect_rollback_on_post_write_validation_failure() {
 fn opencode_connect_preserves_existing_non_aqbot_providers() {
     with_temp_home(|temp_home| {
         let config_path = opencode_config_path(temp_home.home());
-        
+
         // Create config with existing providers
         write_json(
             &config_path,
@@ -1032,12 +1051,16 @@ fn opencode_connect_preserves_existing_non_aqbot_providers() {
                 }
             }),
         );
-        
-        connect(CliTool::OpenCode, "http://localhost:1234/v1", "test-api-key")
-            .expect("connect should succeed");
-        
+
+        connect(
+            CliTool::OpenCode,
+            "http://localhost:1234/v1",
+            "test-api-key",
+        )
+        .expect("connect should succeed");
+
         let config = read_json(&config_path);
-        
+
         // Verify aqbot was added
         assert!(
             config
@@ -1046,16 +1069,22 @@ fn opencode_connect_preserves_existing_non_aqbot_providers() {
                 .is_some(),
             "aqbot provider should be added"
         );
-        
+
         // Verify existing providers are preserved
         let provider = config.get("provider").unwrap();
         assert_eq!(
-            provider.get("anthropic").and_then(|p| p.get("apiKey")).and_then(|k| k.as_str()),
+            provider
+                .get("anthropic")
+                .and_then(|p| p.get("apiKey"))
+                .and_then(|k| k.as_str()),
             Some("existing-key"),
             "anthropic provider should be preserved"
         );
         assert_eq!(
-            provider.get("openai").and_then(|p| p.get("apiKey")).and_then(|k| k.as_str()),
+            provider
+                .get("openai")
+                .and_then(|p| p.get("apiKey"))
+                .and_then(|k| k.as_str()),
             Some("openai-key"),
             "openai provider should be preserved"
         );
@@ -1065,10 +1094,10 @@ fn opencode_connect_preserves_existing_non_aqbot_providers() {
 #[test]
 fn opencode_disconnect_without_restore_removes_only_aqbot_provider() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let config_path = opencode_config_path(temp_home.home());
-        
+
         // Create config with multiple providers including aqbot
         write_json(
             &config_path,
@@ -1096,12 +1125,12 @@ fn opencode_disconnect_without_restore_removes_only_aqbot_provider() {
                 "otherSetting": "value"
             }),
         );
-        
+
         disconnect(CliTool::OpenCode, false, "http://localhost:1234/v1")
             .expect("disconnect without restore should succeed");
-        
+
         let config = read_json(&config_path);
-        
+
         // Verify aqbot was removed
         assert!(
             config
@@ -1110,11 +1139,14 @@ fn opencode_disconnect_without_restore_removes_only_aqbot_provider() {
                 .is_none(),
             "aqbot provider should be removed"
         );
-        
+
         // Verify other providers and settings are preserved
         let provider = config.get("provider").unwrap();
         assert_eq!(
-            provider.get("anthropic").and_then(|p| p.get("apiKey")).and_then(|k| k.as_str()),
+            provider
+                .get("anthropic")
+                .and_then(|p| p.get("apiKey"))
+                .and_then(|k| k.as_str()),
             Some("existing-key"),
             "anthropic provider should be preserved"
         );
@@ -1129,10 +1161,10 @@ fn opencode_disconnect_without_restore_removes_only_aqbot_provider() {
 #[test]
 fn opencode_disconnect_with_restore_restores_original_config() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let config_path = opencode_config_path(temp_home.home());
-        
+
         // Create original config
         let original_config = json!({
             "$schema": "https://opencode.ai/config.json",
@@ -1149,11 +1181,15 @@ fn opencode_disconnect_with_restore_restores_original_config() {
             "theme": "dark"
         });
         write_json(&config_path, &original_config);
-        
+
         // Connect (this should create a backup)
-        connect(CliTool::OpenCode, "http://localhost:1234/v1", "test-api-key")
-            .expect("connect should succeed");
-        
+        connect(
+            CliTool::OpenCode,
+            "http://localhost:1234/v1",
+            "test-api-key",
+        )
+        .expect("connect should succeed");
+
         // Verify connected state has aqbot
         let connected_config = read_json(&config_path);
         assert!(
@@ -1163,16 +1199,15 @@ fn opencode_disconnect_with_restore_restores_original_config() {
                 .is_some(),
             "aqbot should be present after connect"
         );
-        
+
         // Disconnect with restore
         disconnect(CliTool::OpenCode, true, "http://localhost:1234/v1")
             .expect("disconnect with restore should succeed");
-        
+
         // Verify original config is restored
         let restored_config = read_json(&config_path);
         assert_eq!(
-            restored_config,
-            original_config,
+            restored_config, original_config,
             "config should be restored to original state"
         );
     });
@@ -1181,17 +1216,17 @@ fn opencode_disconnect_with_restore_restores_original_config() {
 #[test]
 fn opencode_validation_requires_aqbot_provider_with_correct_fields() {
     use aqbot_core::repo::cli_config::validate_connection;
-    
+
     with_temp_home(|temp_home| {
         let config_path = opencode_config_path(temp_home.home());
-        
+
         // Test 1: Missing config file
         assert_eq!(
             validate_connection(CliTool::OpenCode, "http://localhost:1234/v1").unwrap(),
             false,
             "should reject when config file is missing"
         );
-        
+
         // Test 2: Config without provider section
         write_json(
             &config_path,
@@ -1204,7 +1239,7 @@ fn opencode_validation_requires_aqbot_provider_with_correct_fields() {
             false,
             "should reject when provider section is missing"
         );
-        
+
         // Test 3: Provider without aqbot
         write_json(
             &config_path,
@@ -1222,7 +1257,7 @@ fn opencode_validation_requires_aqbot_provider_with_correct_fields() {
             false,
             "should reject when aqbot provider is missing"
         );
-        
+
         // Test 4: aqbot with wrong baseURL
         write_json(
             &config_path,
@@ -1240,7 +1275,7 @@ fn opencode_validation_requires_aqbot_provider_with_correct_fields() {
             false,
             "should reject when baseURL doesn't match"
         );
-        
+
         // Test 5: aqbot with empty apiKey
         write_json(
             &config_path,
@@ -1258,10 +1293,14 @@ fn opencode_validation_requires_aqbot_provider_with_correct_fields() {
             false,
             "should reject when apiKey is empty"
         );
-        
+
         // Test 6: Valid configuration
-        connect(CliTool::OpenCode, "http://localhost:1234/v1", "test-api-key")
-            .expect("connect should succeed");
+        connect(
+            CliTool::OpenCode,
+            "http://localhost:1234/v1",
+            "test-api-key",
+        )
+        .expect("connect should succeed");
         assert_eq!(
             validate_connection(CliTool::OpenCode, "http://localhost:1234/v1").unwrap(),
             true,
@@ -1276,7 +1315,7 @@ fn opencode_validation_requires_aqbot_provider_with_correct_fields() {
 fn cursor_connect_sets_gateway_fields_without_removing_other_settings() {
     with_temp_home(|temp_home| {
         let settings_path = cursor_settings_path(temp_home.home(), temp_home.appdata());
-        
+
         // Create settings with existing configuration
         write_json(
             &settings_path,
@@ -1287,12 +1326,12 @@ fn cursor_connect_sets_gateway_fields_without_removing_other_settings() {
                 "extensions.autoUpdate": true
             }),
         );
-        
+
         connect(CliTool::Cursor, "http://localhost:1234/v1", "test-api-key")
             .expect("connect should succeed");
-        
+
         let settings = read_json(&settings_path);
-        
+
         // Verify gateway fields were added
         assert_eq!(
             settings.get("openai.apiBaseUrl").and_then(|v| v.as_str()),
@@ -1304,7 +1343,7 @@ fn cursor_connect_sets_gateway_fields_without_removing_other_settings() {
             Some("test-api-key"),
             "openai.apiKey should be set"
         );
-        
+
         // Verify existing settings are preserved
         assert_eq!(
             settings.get("editor.fontSize").and_then(|v| v.as_i64()),
@@ -1312,7 +1351,9 @@ fn cursor_connect_sets_gateway_fields_without_removing_other_settings() {
             "editor.fontSize should be preserved"
         );
         assert_eq!(
-            settings.get("workbench.colorTheme").and_then(|v| v.as_str()),
+            settings
+                .get("workbench.colorTheme")
+                .and_then(|v| v.as_str()),
             Some("Dark+"),
             "workbench.colorTheme should be preserved"
         );
@@ -1322,37 +1363,36 @@ fn cursor_connect_sets_gateway_fields_without_removing_other_settings() {
 #[test]
 fn cursor_disconnect_with_restore_restores_original_settings() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let settings_path = cursor_settings_path(temp_home.home(), temp_home.appdata());
-        
+
         // Create original settings
         let original_settings = json!({
             "editor.fontSize": 14,
             "workbench.colorTheme": "Dark+"
         });
         write_json(&settings_path, &original_settings);
-        
+
         // Connect (this should create a backup)
         connect(CliTool::Cursor, "http://localhost:1234/v1", "test-api-key")
             .expect("connect should succeed");
-        
+
         // Verify connected state has gateway fields
         let connected_settings = read_json(&settings_path);
         assert!(
             connected_settings.get("openai.apiBaseUrl").is_some(),
             "openai.apiBaseUrl should be present after connect"
         );
-        
+
         // Disconnect with restore
         disconnect(CliTool::Cursor, true, "http://localhost:1234/v1")
             .expect("disconnect with restore should succeed");
-        
+
         // Verify original settings are restored
         let restored_settings = read_json(&settings_path);
         assert_eq!(
-            restored_settings,
-            original_settings,
+            restored_settings, original_settings,
             "settings should be restored to original state"
         );
     });
@@ -1361,10 +1401,10 @@ fn cursor_disconnect_with_restore_restores_original_settings() {
 #[test]
 fn cursor_disconnect_without_restore_removes_only_gateway_fields() {
     use aqbot_core::repo::cli_config::disconnect;
-    
+
     with_temp_home(|temp_home| {
         let settings_path = cursor_settings_path(temp_home.home(), temp_home.appdata());
-        
+
         // Create settings with gateway fields and other settings
         write_json(
             &settings_path,
@@ -1376,12 +1416,12 @@ fn cursor_disconnect_without_restore_removes_only_gateway_fields() {
                 "extensions.autoUpdate": true
             }),
         );
-        
+
         disconnect(CliTool::Cursor, false, "http://localhost:1234/v1")
             .expect("disconnect without restore should succeed");
-        
+
         let settings = read_json(&settings_path);
-        
+
         // Verify gateway fields were removed
         assert!(
             settings.get("openai.apiBaseUrl").is_none(),
@@ -1391,7 +1431,7 @@ fn cursor_disconnect_without_restore_removes_only_gateway_fields() {
             settings.get("openai.apiKey").is_none(),
             "openai.apiKey should be removed"
         );
-        
+
         // Verify other settings are preserved
         assert_eq!(
             settings.get("editor.fontSize").and_then(|v| v.as_i64()),
@@ -1399,7 +1439,9 @@ fn cursor_disconnect_without_restore_removes_only_gateway_fields() {
             "editor.fontSize should be preserved"
         );
         assert_eq!(
-            settings.get("workbench.colorTheme").and_then(|v| v.as_str()),
+            settings
+                .get("workbench.colorTheme")
+                .and_then(|v| v.as_str()),
             Some("Dark+"),
             "workbench.colorTheme should be preserved"
         );
@@ -1409,17 +1451,17 @@ fn cursor_disconnect_without_restore_removes_only_gateway_fields() {
 #[test]
 fn cursor_validation_requires_gateway_fields_with_correct_values() {
     use aqbot_core::repo::cli_config::validate_connection;
-    
+
     with_temp_home(|temp_home| {
         let settings_path = cursor_settings_path(temp_home.home(), temp_home.appdata());
-        
+
         // Test 1: Missing settings file
         assert_eq!(
             validate_connection(CliTool::Cursor, "http://localhost:1234/v1").unwrap(),
             false,
             "should reject when settings file is missing"
         );
-        
+
         // Test 2: Settings without gateway fields
         write_json(
             &settings_path,
@@ -1432,7 +1474,7 @@ fn cursor_validation_requires_gateway_fields_with_correct_values() {
             false,
             "should reject when gateway fields are missing"
         );
-        
+
         // Test 3: Only apiBaseUrl present
         write_json(
             &settings_path,
@@ -1445,7 +1487,7 @@ fn cursor_validation_requires_gateway_fields_with_correct_values() {
             false,
             "should reject when apiKey is missing"
         );
-        
+
         // Test 4: Wrong apiBaseUrl
         write_json(
             &settings_path,
@@ -1459,7 +1501,7 @@ fn cursor_validation_requires_gateway_fields_with_correct_values() {
             false,
             "should reject when apiBaseUrl doesn't match"
         );
-        
+
         // Test 5: Empty apiKey
         write_json(
             &settings_path,
@@ -1473,7 +1515,7 @@ fn cursor_validation_requires_gateway_fields_with_correct_values() {
             false,
             "should reject when apiKey is empty"
         );
-        
+
         // Test 6: Valid configuration
         connect(CliTool::Cursor, "http://localhost:1234/v1", "test-api-key")
             .expect("connect should succeed");

@@ -6,7 +6,9 @@ use sea_orm::EntityTrait;
 use tauri::State;
 
 #[tauri::command]
-pub async fn list_search_providers(state: State<'_, AppState>) -> Result<Vec<SearchProvider>, String> {
+pub async fn list_search_providers(
+    state: State<'_, AppState>,
+) -> Result<Vec<SearchProvider>, String> {
     aqbot_core::repo::search_provider::list_search_providers(&state.sea_db)
         .await
         .map_err(|e| e.to_string())
@@ -19,8 +21,8 @@ pub async fn create_search_provider(
 ) -> Result<SearchProvider, String> {
     if let Some(ref raw_key) = input.api_key {
         if !raw_key.is_empty() {
-            let encrypted =
-                aqbot_core::crypto::encrypt_key(raw_key, &state.master_key).map_err(|e| e.to_string())?;
+            let encrypted = aqbot_core::crypto::encrypt_key(raw_key, &state.master_key)
+                .map_err(|e| e.to_string())?;
             input.api_key = Some(encrypted);
         }
     }
@@ -37,8 +39,8 @@ pub async fn update_search_provider(
 ) -> Result<SearchProvider, String> {
     if let Some(ref raw_key) = input.api_key {
         if !raw_key.is_empty() {
-            let encrypted =
-                aqbot_core::crypto::encrypt_key(raw_key, &state.master_key).map_err(|e| e.to_string())?;
+            let encrypted = aqbot_core::crypto::encrypt_key(raw_key, &state.master_key)
+                .map_err(|e| e.to_string())?;
             input.api_key = Some(encrypted);
         }
     }
@@ -48,10 +50,7 @@ pub async fn update_search_provider(
 }
 
 #[tauri::command]
-pub async fn delete_search_provider(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_search_provider(state: State<'_, AppState>, id: String) -> Result<(), String> {
     aqbot_core::repo::search_provider::delete_search_provider(&state.sea_db, &id)
         .await
         .map_err(|e| e.to_string())

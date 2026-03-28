@@ -1,14 +1,14 @@
+use aqbot_core::{
+    crypto::decrypt_key,
+    types::{GatewayKey, ProviderConfig, ProviderProxyConfig, ProviderType, TokenUsage},
+};
+use aqbot_providers::{build_http_client, resolve_base_url, ProviderRequestContext};
 use axum::{
     body::{to_bytes, Body, Bytes},
     extract::{Extension, Path, Request, State},
     http::{header, HeaderMap, HeaderName, Method, StatusCode},
     response::IntoResponse,
 };
-use aqbot_core::{
-    crypto::decrypt_key,
-    types::{GatewayKey, ProviderConfig, ProviderProxyConfig, ProviderType, TokenUsage},
-};
-use aqbot_providers::{build_http_client, ProviderRequestContext, resolve_base_url};
 use futures::StreamExt;
 use std::{convert::Infallible, time::Instant};
 use tokio_stream::wrappers::ReceiverStream;
@@ -16,8 +16,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use crate::{
     auth::AuthenticatedKey,
     handlers::{
-        build_provider_public_id_map, error_response, parse_model_field,
-        resolve_provider_for_model,
+        build_provider_public_id_map, error_response, parse_model_field, resolve_provider_for_model,
     },
     server::GatewayAppState,
 };
@@ -39,9 +38,7 @@ impl NativeProtocol {
     fn provider_family(self) -> &'static str {
         match self {
             NativeProtocol::OpenAiResponses => "OpenAI-compatible",
-            NativeProtocol::AnthropicMessages | NativeProtocol::AnthropicCountTokens => {
-                "Anthropic"
-            }
+            NativeProtocol::AnthropicMessages | NativeProtocol::AnthropicCountTokens => "Anthropic",
             NativeProtocol::GeminiModels
             | NativeProtocol::GeminiGenerateContent
             | NativeProtocol::GeminiStreamGenerateContent
@@ -52,7 +49,10 @@ impl NativeProtocol {
     fn matches_provider_type(self, provider_type: &ProviderType) -> bool {
         match self {
             NativeProtocol::OpenAiResponses => {
-                matches!(provider_type, &ProviderType::OpenAI | &ProviderType::OpenAIResponses | &ProviderType::Custom)
+                matches!(
+                    provider_type,
+                    &ProviderType::OpenAI | &ProviderType::OpenAIResponses | &ProviderType::Custom
+                )
             }
             NativeProtocol::AnthropicMessages | NativeProtocol::AnthropicCountTokens => {
                 matches!(provider_type, &ProviderType::Anthropic)
@@ -288,9 +288,11 @@ fn parse_sse_json_line(line: &str) -> Option<serde_json::Value> {
 }
 
 fn extract_openai_response_usage(value: &serde_json::Value) -> Option<TokenUsage> {
-    let usage = value
-        .get("usage")
-        .or_else(|| value.get("response").and_then(|response| response.get("usage")))?;
+    let usage = value.get("usage").or_else(|| {
+        value
+            .get("response")
+            .and_then(|response| response.get("usage"))
+    })?;
 
     let prompt_tokens = usage.get("input_tokens")?.as_u64()? as u32;
     let completion_tokens = usage.get("output_tokens")?.as_u64()? as u32;
@@ -389,7 +391,10 @@ fn should_forward_request_header(name: &HeaderName) -> bool {
 }
 
 fn should_copy_response_header(name: &HeaderName) -> bool {
-    !matches!(name.as_str(), "content-length" | "connection" | "transfer-encoding")
+    !matches!(
+        name.as_str(),
+        "content-length" | "connection" | "transfer-encoding"
+    )
 }
 
 fn extract_model_from_body(
@@ -479,13 +484,18 @@ async fn resolve_native_context(
         .map_err(|e| error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()))?;
     let candidates: Vec<ProviderConfig> = providers
         .into_iter()
-        .filter(|provider| provider.enabled && protocol.matches_provider_type(&provider.provider_type))
+        .filter(|provider| {
+            provider.enabled && protocol.matches_provider_type(&provider.provider_type)
+        })
         .collect();
 
     if candidates.is_empty() {
         return Err(error_response(
             StatusCode::BAD_GATEWAY,
-            &format!("No enabled {} provider is configured", protocol.provider_family()),
+            &format!(
+                "No enabled {} provider is configured",
+                protocol.provider_family()
+            ),
         ));
     }
 
@@ -559,7 +569,9 @@ async fn resolve_native_context(
             base_url: Some(resolve_base_url(&provider.api_host)),
             api_path: provider.api_path.clone(),
             proxy_config: resolved_proxy,
-            custom_headers: provider.custom_headers.as_ref()
+            custom_headers: provider
+                .custom_headers
+                .as_ref()
                 .and_then(|s| serde_json::from_str(s).ok()),
         },
         model_id,
@@ -839,10 +851,12 @@ async fn handle_native_request(
     let model_hint = match protocol {
         NativeProtocol::OpenAiResponses
         | NativeProtocol::AnthropicMessages
-        | NativeProtocol::AnthropicCountTokens => match extract_model_from_body(body_json.as_ref(), protocol) {
-            Ok(model) => Some(model),
-            Err(response) => return response,
-        },
+        | NativeProtocol::AnthropicCountTokens => {
+            match extract_model_from_body(body_json.as_ref(), protocol) {
+                Ok(model) => Some(model),
+                Err(response) => return response,
+            }
+        }
         NativeProtocol::GeminiGenerateContent
         | NativeProtocol::GeminiStreamGenerateContent
         | NativeProtocol::GeminiCountTokens => gemini_model.clone(),
@@ -1001,7 +1015,14 @@ pub async fn gemini_list_models(
     request: Request,
 ) -> impl IntoResponse {
     let AuthenticatedKey(gateway_key) = auth;
-    handle_native_request(NativeProtocol::GeminiModels, state, gateway_key, request, None).await
+    handle_native_request(
+        NativeProtocol::GeminiModels,
+        state,
+        gateway_key,
+        request,
+        None,
+    )
+    .await
 }
 
 pub async fn gemini_model_operation(
@@ -1029,9 +1050,7 @@ mod tests {
         crypto::{encrypt_key, key_prefix},
         db::{create_test_pool, DbHandle},
         repo::{gateway, gateway_request_log, provider},
-        types::{
-            CreateProviderInput, Model, ModelCapability, ModelType, ProviderType, TokenUsage,
-        },
+        types::{CreateProviderInput, Model, ModelCapability, ModelType, ProviderType, TokenUsage},
     };
     use axum::{
         body::{to_bytes, Body},
@@ -1076,30 +1095,34 @@ mod tests {
             serde_json::from_slice(&bytes).unwrap()
         };
 
-        state.captures.lock().unwrap().push(CapturedUpstreamRequest {
-            method: parts.method.to_string(),
-            path_and_query: parts
-                .uri
-                .path_and_query()
-                .map(|value| value.as_str().to_string())
-                .unwrap_or_else(|| parts.uri.path().to_string()),
-            authorization: parts
-                .headers
-                .get(header::AUTHORIZATION)
-                .and_then(|value| value.to_str().ok())
-                .map(ToOwned::to_owned),
-            x_api_key: parts
-                .headers
-                .get("x-api-key")
-                .and_then(|value| value.to_str().ok())
-                .map(ToOwned::to_owned),
-            anthropic_version: parts
-                .headers
-                .get("anthropic-version")
-                .and_then(|value| value.to_str().ok())
-                .map(ToOwned::to_owned),
-            body: json_body,
-        });
+        state
+            .captures
+            .lock()
+            .unwrap()
+            .push(CapturedUpstreamRequest {
+                method: parts.method.to_string(),
+                path_and_query: parts
+                    .uri
+                    .path_and_query()
+                    .map(|value| value.as_str().to_string())
+                    .unwrap_or_else(|| parts.uri.path().to_string()),
+                authorization: parts
+                    .headers
+                    .get(header::AUTHORIZATION)
+                    .and_then(|value| value.to_str().ok())
+                    .map(ToOwned::to_owned),
+                x_api_key: parts
+                    .headers
+                    .get("x-api-key")
+                    .and_then(|value| value.to_str().ok())
+                    .map(ToOwned::to_owned),
+                anthropic_version: parts
+                    .headers
+                    .get("anthropic-version")
+                    .and_then(|value| value.to_str().ok())
+                    .map(ToOwned::to_owned),
+                body: json_body,
+            });
 
         let mut response = Response::builder().status(state.status);
         for (name, value) in state.headers.iter() {
@@ -1322,9 +1345,8 @@ mod tests {
         assert_usage(openai.usage(), 55, 21, 76);
 
         let mut anthropic = AnthropicMessagesStreamState::default();
-        anthropic.observe_sse_line(
-            r#"data: {"type":"message_delta","usage":{"output_tokens":17}}"#,
-        );
+        anthropic
+            .observe_sse_line(r#"data: {"type":"message_delta","usage":{"output_tokens":17}}"#);
         anthropic.observe_sse_line(
             r#"data: {"type":"message_start","message":{"usage":{"input_tokens":61}}}"#,
         );
@@ -1403,7 +1425,10 @@ mod tests {
         assert_eq!(captured.len(), 1);
         assert_eq!(captured[0].method, "POST");
         assert_eq!(captured[0].path_and_query, "/v1/responses");
-        assert_eq!(captured[0].authorization.as_deref(), Some("Bearer upstream-secret"));
+        assert_eq!(
+            captured[0].authorization.as_deref(),
+            Some("Bearer upstream-secret")
+        );
         assert_eq!(captured[0].body["model"], "gpt-5");
         drop(captured);
 
@@ -1472,7 +1497,11 @@ mod tests {
         let content_type = response.headers().get(header::CONTENT_TYPE).cloned();
         let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let body_text = String::from_utf8(body.to_vec()).unwrap();
-        assert_eq!(status, StatusCode::OK, "unexpected anthropic body: {body_text}");
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "unexpected anthropic body: {body_text}"
+        );
         assert_eq!(content_type.unwrap(), "text/event-stream");
         assert_eq!(body_text, upstream_body);
 
@@ -1532,7 +1561,11 @@ mod tests {
         let status = response.status();
         let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let body_text = String::from_utf8(body.to_vec()).unwrap();
-        assert_eq!(status, StatusCode::OK, "unexpected gemini body: {body_text}");
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "unexpected gemini body: {body_text}"
+        );
         assert_eq!(
             serde_json::from_str::<serde_json::Value>(&body_text).unwrap(),
             serde_json::from_str::<serde_json::Value>(&upstream_body).unwrap()
@@ -1614,7 +1647,10 @@ mod tests {
                 Request::builder()
                     .method(Method::POST)
                     .uri("/v1/responses")
-                    .header(header::AUTHORIZATION, format!("Bearer {}", gateway_key.plain_key))
+                    .header(
+                        header::AUTHORIZATION,
+                        format!("Bearer {}", gateway_key.plain_key),
+                    )
                     .header(header::CONTENT_TYPE, "application/json")
                     .body(Body::from(
                         json!({

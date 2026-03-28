@@ -82,7 +82,11 @@ pub async fn update_knowledge_base(
     am.name = Set(input.name.unwrap_or(existing.name));
     am.description = Set(input.description.or(existing.description));
     am.embedding_provider = Set(input.embedding_provider.or(existing.embedding_provider));
-    am.enabled = Set(if input.enabled.unwrap_or(existing.enabled) { 1 } else { 0 });
+    am.enabled = Set(if input.enabled.unwrap_or(existing.enabled) {
+        1
+    } else {
+        0
+    });
     am.update(db).await?;
 
     get_knowledge_base(db, id).await
@@ -138,11 +142,7 @@ pub async fn add_document(
     Ok(model_to_doc(model))
 }
 
-pub async fn update_document_status(
-    db: &DatabaseConnection,
-    id: &str,
-    status: &str,
-) -> Result<()> {
+pub async fn update_document_status(db: &DatabaseConnection, id: &str, status: &str) -> Result<()> {
     let mut am: knowledge_documents::ActiveModel = knowledge_documents::Entity::find_by_id(id)
         .one(db)
         .await?

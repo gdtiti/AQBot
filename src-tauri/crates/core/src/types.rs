@@ -143,7 +143,11 @@ impl ModelType {
         let id = model_id.to_lowercase();
         if id.contains("embed") {
             ModelType::Embedding
-        } else if id.contains("realtime") || id.contains("tts") || id.contains("whisper") || id.contains("audio") {
+        } else if id.contains("realtime")
+            || id.contains("tts")
+            || id.contains("whisper")
+            || id.contains("audio")
+        {
             ModelType::Voice
         } else {
             ModelType::Chat
@@ -521,6 +525,15 @@ pub struct AppSettings {
     pub auto_backup_enabled: bool,
     pub auto_backup_interval_hours: u32,
     pub auto_backup_max_count: u32,
+    // WebDAV sync settings
+    pub webdav_host: Option<String>,
+    pub webdav_username: Option<String>,
+    pub webdav_path: Option<String>,
+    pub webdav_accept_invalid_certs: bool,
+    pub webdav_sync_enabled: bool,
+    pub webdav_sync_interval_minutes: u32,
+    pub webdav_max_remote_backups: u32,
+    pub webdav_include_documents: bool,
 }
 
 impl Default for AppSettings {
@@ -600,6 +613,14 @@ impl Default for AppSettings {
             auto_backup_enabled: false,
             auto_backup_interval_hours: 24,
             auto_backup_max_count: 10,
+            webdav_host: None,
+            webdav_username: None,
+            webdav_path: None,
+            webdav_accept_invalid_certs: false,
+            webdav_sync_enabled: false,
+            webdav_sync_interval_minutes: 60,
+            webdav_max_remote_backups: 10,
+            webdav_include_documents: false,
         }
     }
 }
@@ -732,8 +753,6 @@ pub struct ChatStreamErrorEvent {
     pub message_id: String,
     pub error: String,
 }
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConversationTitleUpdatedEvent {
@@ -1023,7 +1042,7 @@ pub struct ProgramPolicy {
 pub struct GatewayDiagnostic {
     pub id: String,
     pub category: String, // provider_latency | provider_error | proxy | auth | port
-    pub status: String, // ok | warning | error
+    pub status: String,   // ok | warning | error
     pub message: String,
     pub created_at: String,
 }

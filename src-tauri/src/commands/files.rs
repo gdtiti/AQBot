@@ -41,10 +41,7 @@ pub async fn upload_file(
 }
 
 #[tauri::command]
-pub async fn download_file(
-    state: State<'_, AppState>,
-    file_id: String,
-) -> Result<String, String> {
+pub async fn download_file(state: State<'_, AppState>, file_id: String) -> Result<String, String> {
     use base64::Engine;
     let file = aqbot_core::repo::stored_file::get_stored_file(&state.sea_db, &file_id)
         .await
@@ -73,11 +70,7 @@ pub async fn list_files(
 }
 
 #[tauri::command]
-pub async fn delete_file(
-    state: State<'_, AppState>,
-    file_id: String,
-) -> Result<(), String> {
+pub async fn delete_file(state: State<'_, AppState>, file_id: String) -> Result<(), String> {
     let file_store = aqbot_core::file_store::FileStore::new();
-    super::file_cleanup::delete_attachment_reference(&state.sea_db, &file_store, &file_id)
-        .await
+    super::file_cleanup::delete_attachment_reference(&state.sea_db, &file_store, &file_id).await
 }

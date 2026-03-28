@@ -29,11 +29,7 @@ pub fn message_tokens(msg: &ChatMessage) -> usize {
                     .filter_map(|p| p.text.as_deref())
                     .collect::<Vec<_>>()
                     .join(" "),
-            ) + parts
-                .iter()
-                .filter(|p| p.image_url.is_some())
-                .count()
-                * 85
+            ) + parts.iter().filter(|p| p.image_url.is_some()).count() * 85
                 + 4;
         }
     };
@@ -190,7 +186,11 @@ pub fn build_summary_prompt(request: &SummarizationRequest) -> Vec<ChatMessage> 
         role: "user".to_string(),
         content: ChatContent::Text(format!(
             "{}对话内容：\n{}",
-            if request.existing_summary.is_some() { "新增" } else { "" },
+            if request.existing_summary.is_some() {
+                "新增"
+            } else {
+                ""
+            },
             conversation_text.join("\n")
         )),
         tool_calls: None,
@@ -248,7 +248,11 @@ pub fn build_summary_prompt_with_custom(
         role: "user".to_string(),
         content: ChatContent::Text(format!(
             "{}对话内容：\n{}",
-            if request.existing_summary.is_some() { "新增" } else { "" },
+            if request.existing_summary.is_some() {
+                "新增"
+            } else {
+                ""
+            },
             conversation_text.join("\n")
         )),
         tool_calls: None,

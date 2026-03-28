@@ -454,14 +454,29 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Providers::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Providers::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Providers::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Providers::Name).string().not_null())
                     .col(ColumnDef::new(Providers::ProviderType).string().not_null())
                     .col(ColumnDef::new(Providers::ApiHost).string().not_null())
                     .col(ColumnDef::new(Providers::ApiPath).string().null())
-                    .col(ColumnDef::new(Providers::Enabled).integer().not_null().default(1))
+                    .col(
+                        ColumnDef::new(Providers::Enabled)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
                     .col(ColumnDef::new(Providers::ProxyConfig).string().null())
-                    .col(ColumnDef::new(Providers::SortOrder).integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(Providers::SortOrder)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .col(ColumnDef::new(Providers::CreatedAt).integer().not_null())
                     .col(ColumnDef::new(Providers::UpdatedAt).integer().not_null())
                     .to_owned(),
@@ -476,14 +491,42 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ProviderKeys::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ProviderKeys::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(ProviderKeys::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(ProviderKeys::ProviderId).string().not_null())
-                    .col(ColumnDef::new(ProviderKeys::KeyEncrypted).string().not_null())
-                    .col(ColumnDef::new(ProviderKeys::KeyPrefix).string().not_null().default(""))
-                    .col(ColumnDef::new(ProviderKeys::Enabled).integer().not_null().default(1))
-                    .col(ColumnDef::new(ProviderKeys::LastValidatedAt).integer().null())
+                    .col(
+                        ColumnDef::new(ProviderKeys::KeyEncrypted)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProviderKeys::KeyPrefix)
+                            .string()
+                            .not_null()
+                            .default(""),
+                    )
+                    .col(
+                        ColumnDef::new(ProviderKeys::Enabled)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
+                    .col(
+                        ColumnDef::new(ProviderKeys::LastValidatedAt)
+                            .integer()
+                            .null(),
+                    )
                     .col(ColumnDef::new(ProviderKeys::LastError).string().null())
-                    .col(ColumnDef::new(ProviderKeys::RotationIndex).integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(ProviderKeys::RotationIndex)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .col(ColumnDef::new(ProviderKeys::CreatedAt).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
@@ -506,17 +549,28 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Models::ProviderId).string().not_null())
                     .col(ColumnDef::new(Models::ModelId).string().not_null())
                     .col(ColumnDef::new(Models::Name).string().not_null())
-                    .col(ColumnDef::new(Models::Capabilities).string().not_null().default("[]"))
-                    .col(ColumnDef::new(Models::MaxTokens).integer().null())
-                    .col(ColumnDef::new(Models::Enabled).integer().not_null().default(1))
-                    .col(ColumnDef::new(Models::ParamOverrides).string().null())
-                    .col(ColumnDef::new(Models::ModelType).string().not_null().default("chat"))
-                    .col(ColumnDef::new(Models::GroupName).string().null())
-                    .primary_key(
-                        Index::create()
-                            .col(Models::ProviderId)
-                            .col(Models::ModelId),
+                    .col(
+                        ColumnDef::new(Models::Capabilities)
+                            .string()
+                            .not_null()
+                            .default("[]"),
                     )
+                    .col(ColumnDef::new(Models::MaxTokens).integer().null())
+                    .col(
+                        ColumnDef::new(Models::Enabled)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
+                    .col(ColumnDef::new(Models::ParamOverrides).string().null())
+                    .col(
+                        ColumnDef::new(Models::ModelType)
+                            .string()
+                            .not_null()
+                            .default("chat"),
+                    )
+                    .col(ColumnDef::new(Models::GroupName).string().null())
+                    .primary_key(Index::create().col(Models::ProviderId).col(Models::ModelId))
                     .foreign_key(
                         ForeignKey::create()
                             .from(Models::Table, Models::ProviderId)
@@ -535,10 +589,19 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Conversations::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Conversations::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Conversations::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Conversations::Title).string().not_null())
                     .col(ColumnDef::new(Conversations::ModelId).string().not_null())
-                    .col(ColumnDef::new(Conversations::ProviderId).string().not_null())
+                    .col(
+                        ColumnDef::new(Conversations::ProviderId)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(Conversations::AppId).string().null())
                     .col(ColumnDef::new(Conversations::SystemPrompt).string().null())
                     .col(
@@ -560,21 +623,90 @@ impl MigrationTrait for Migration {
                             .null()
                             .to_owned(),
                     )
-                    .col(ColumnDef::new(Conversations::MessageCount).integer().not_null().default(0))
-                    .col(ColumnDef::new(Conversations::IsPinned).integer().not_null().default(0))
-                    .col(ColumnDef::new(Conversations::IsArchived).integer().not_null().default(0))
-                    .col(ColumnDef::new(Conversations::WorkspaceSnapshotJson).string().not_null().default("{}"))
-                    .col(ColumnDef::new(Conversations::ActiveBranchId).string().null())
-                    .col(ColumnDef::new(Conversations::ActiveArtifactId).string().null())
-                    .col(ColumnDef::new(Conversations::ResearchMode).integer().not_null().default(0))
-                    .col(ColumnDef::new(Conversations::SearchEnabled).integer().not_null().default(0))
-                    .col(ColumnDef::new(Conversations::SearchProviderId).string().null())
-                    .col(ColumnDef::new(Conversations::ThinkingBudget).integer().null())
-                    .col(ColumnDef::new(Conversations::EnabledMcpServerIds).string().not_null().default("[]"))
-                    .col(ColumnDef::new(Conversations::EnabledKnowledgeBaseIds).string().not_null().default("[]"))
-                    .col(ColumnDef::new(Conversations::EnabledMemoryNamespaceIds).string().not_null().default("[]"))
-                    .col(ColumnDef::new(Conversations::CreatedAt).integer().not_null())
-                    .col(ColumnDef::new(Conversations::UpdatedAt).integer().not_null())
+                    .col(
+                        ColumnDef::new(Conversations::MessageCount)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::IsPinned)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::IsArchived)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::WorkspaceSnapshotJson)
+                            .string()
+                            .not_null()
+                            .default("{}"),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::ActiveBranchId)
+                            .string()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::ActiveArtifactId)
+                            .string()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::ResearchMode)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::SearchEnabled)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::SearchProviderId)
+                            .string()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::ThinkingBudget)
+                            .integer()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::EnabledMcpServerIds)
+                            .string()
+                            .not_null()
+                            .default("[]"),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::EnabledKnowledgeBaseIds)
+                            .string()
+                            .not_null()
+                            .default("[]"),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::EnabledMemoryNamespaceIds)
+                            .string()
+                            .not_null()
+                            .default("[]"),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::CreatedAt)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Conversations::UpdatedAt)
+                            .integer()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -587,18 +719,38 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Messages::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Messages::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Messages::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Messages::ConversationId).string().not_null())
                     .col(ColumnDef::new(Messages::Role).string().not_null())
                     .col(ColumnDef::new(Messages::Content).string().not_null())
                     .col(ColumnDef::new(Messages::ProviderId).string().null())
                     .col(ColumnDef::new(Messages::ModelId).string().null())
                     .col(ColumnDef::new(Messages::TokenCount).integer().null())
-                    .col(ColumnDef::new(Messages::Attachments).string().not_null().default("[]"))
+                    .col(
+                        ColumnDef::new(Messages::Attachments)
+                            .string()
+                            .not_null()
+                            .default("[]"),
+                    )
                     .col(ColumnDef::new(Messages::Thinking).string().null())
                     .col(ColumnDef::new(Messages::ParentMessageId).string().null())
-                    .col(ColumnDef::new(Messages::VersionIndex).integer().not_null().default(0))
-                    .col(ColumnDef::new(Messages::IsActive).integer().not_null().default(1))
+                    .col(
+                        ColumnDef::new(Messages::VersionIndex)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Messages::IsActive)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
                     .col(ColumnDef::new(Messages::BranchId).string().null())
                     .col(ColumnDef::new(Messages::ToolCallsJson).string().null())
                     .col(ColumnDef::new(Messages::ToolCallId).string().null())
@@ -621,9 +773,19 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Categories::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Categories::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Categories::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Categories::Name).string().not_null())
-                    .col(ColumnDef::new(Categories::SortOrder).integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(Categories::SortOrder)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -638,28 +800,38 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(ColumnDef::new(Apps::Id).string().not_null().primary_key())
                     .col(ColumnDef::new(Apps::Name).string().not_null())
-                    .col(ColumnDef::new(Apps::Description).string().not_null().default(""))
+                    .col(
+                        ColumnDef::new(Apps::Description)
+                            .string()
+                            .not_null()
+                            .default(""),
+                    )
                     .col(ColumnDef::new(Apps::Icon).string().not_null().default("🤖"))
-                    .col(ColumnDef::new(Apps::IconColor).string().not_null().default("#22c55e"))
+                    .col(
+                        ColumnDef::new(Apps::IconColor)
+                            .string()
+                            .not_null()
+                            .default("#22c55e"),
+                    )
                     .col(ColumnDef::new(Apps::SystemPrompt).string().not_null())
                     .col(ColumnDef::new(Apps::DefaultModelId).string().null())
                     .col(ColumnDef::new(Apps::DefaultProviderId).string().null())
-                    .col(
-                        ColumnDef::new(Apps::Temperature)
-                            .float()
-                            .null()
-                            .to_owned(),
-                    )
+                    .col(ColumnDef::new(Apps::Temperature).float().null().to_owned())
                     .col(ColumnDef::new(Apps::MaxTokens).integer().null())
-                    .col(
-                        ColumnDef::new(Apps::TopP)
-                            .float()
-                            .null()
-                            .to_owned(),
-                    )
+                    .col(ColumnDef::new(Apps::TopP).float().null().to_owned())
                     .col(ColumnDef::new(Apps::CategoryId).string().null())
-                    .col(ColumnDef::new(Apps::IsFavorite).integer().not_null().default(0))
-                    .col(ColumnDef::new(Apps::Variables).string().not_null().default("[]"))
+                    .col(
+                        ColumnDef::new(Apps::IsFavorite)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Apps::Variables)
+                            .string()
+                            .not_null()
+                            .default("[]"),
+                    )
                     .col(ColumnDef::new(Apps::SearchPolicyJson).string().null())
                     .col(ColumnDef::new(Apps::ToolBindingJson).string().null())
                     .col(ColumnDef::new(Apps::KnowledgeBindingJson).string().null())
@@ -684,7 +856,12 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(GatewayKeys::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(GatewayKeys::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(GatewayKeys::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(GatewayKeys::Name).string().not_null())
                     .col(
                         ColumnDef::new(GatewayKeys::KeyHash)
@@ -695,7 +872,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(GatewayKeys::KeyPrefix).string().not_null())
                     .col(ColumnDef::new(GatewayKeys::EncryptedKey).string().null())
-                    .col(ColumnDef::new(GatewayKeys::Enabled).integer().not_null().default(1))
+                    .col(
+                        ColumnDef::new(GatewayKeys::Enabled)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
                     .col(ColumnDef::new(GatewayKeys::CreatedAt).integer().not_null())
                     .col(ColumnDef::new(GatewayKeys::LastUsedAt).integer().null())
                     .to_owned(),
@@ -721,8 +903,18 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(GatewayUsage::KeyId).string().not_null())
                     .col(ColumnDef::new(GatewayUsage::ProviderId).string().not_null())
                     .col(ColumnDef::new(GatewayUsage::ModelId).string().null())
-                    .col(ColumnDef::new(GatewayUsage::RequestTokens).integer().not_null().default(0))
-                    .col(ColumnDef::new(GatewayUsage::ResponseTokens).integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(GatewayUsage::RequestTokens)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(GatewayUsage::ResponseTokens)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .col(ColumnDef::new(GatewayUsage::CreatedAt).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
@@ -742,7 +934,12 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Settings::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Settings::Key).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Settings::Key)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Settings::Value).string().not_null())
                     .to_owned(),
             )
@@ -756,17 +953,42 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(SearchProviders::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(SearchProviders::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(SearchProviders::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(SearchProviders::Name).string().not_null())
-                    .col(ColumnDef::new(SearchProviders::ProviderType).string().not_null().default("tavily"))
+                    .col(
+                        ColumnDef::new(SearchProviders::ProviderType)
+                            .string()
+                            .not_null()
+                            .default("tavily"),
+                    )
                     .col(ColumnDef::new(SearchProviders::Endpoint).string().null())
                     .col(ColumnDef::new(SearchProviders::ApiKeyRef).string().null())
-                    .col(ColumnDef::new(SearchProviders::Enabled).integer().not_null().default(1))
+                    .col(
+                        ColumnDef::new(SearchProviders::Enabled)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
                     .col(ColumnDef::new(SearchProviders::Region).string().null())
                     .col(ColumnDef::new(SearchProviders::Language).string().null())
                     .col(ColumnDef::new(SearchProviders::SafeSearch).integer().null())
-                    .col(ColumnDef::new(SearchProviders::ResultLimit).integer().not_null().default(10))
-                    .col(ColumnDef::new(SearchProviders::TimeoutMs).integer().not_null().default(5000))
+                    .col(
+                        ColumnDef::new(SearchProviders::ResultLimit)
+                            .integer()
+                            .not_null()
+                            .default(10),
+                    )
+                    .col(
+                        ColumnDef::new(SearchProviders::TimeoutMs)
+                            .integer()
+                            .not_null()
+                            .default(5000),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -790,14 +1012,36 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(SearchCitations::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(SearchCitations::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(SearchCitations::ConversationId).string().not_null())
-                    .col(ColumnDef::new(SearchCitations::MessageId).string().not_null())
+                    .col(
+                        ColumnDef::new(SearchCitations::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(SearchCitations::ConversationId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(SearchCitations::MessageId)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(SearchCitations::Title).string().not_null())
                     .col(ColumnDef::new(SearchCitations::Url).string().not_null())
                     .col(ColumnDef::new(SearchCitations::Snippet).string().null())
-                    .col(ColumnDef::new(SearchCitations::ProviderId).string().not_null())
-                    .col(ColumnDef::new(SearchCitations::Rank).integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(SearchCitations::ProviderId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(SearchCitations::Rank)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .foreign_key(
                         ForeignKey::create()
                             .from(SearchCitations::Table, SearchCitations::ConversationId)
@@ -838,16 +1082,41 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(McpServers::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(McpServers::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(McpServers::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(McpServers::Name).string().not_null())
-                    .col(ColumnDef::new(McpServers::Transport).string().not_null().default("stdio"))
+                    .col(
+                        ColumnDef::new(McpServers::Transport)
+                            .string()
+                            .not_null()
+                            .default("stdio"),
+                    )
                     .col(ColumnDef::new(McpServers::Command).string().null())
                     .col(ColumnDef::new(McpServers::ArgsJson).string().null())
                     .col(ColumnDef::new(McpServers::Endpoint).string().null())
                     .col(ColumnDef::new(McpServers::EnvJson).string().null())
-                    .col(ColumnDef::new(McpServers::Enabled).integer().not_null().default(1))
-                    .col(ColumnDef::new(McpServers::PermissionPolicy).string().not_null().default("ask"))
-                    .col(ColumnDef::new(McpServers::Source).string().not_null().default("custom"))
+                    .col(
+                        ColumnDef::new(McpServers::Enabled)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
+                    .col(
+                        ColumnDef::new(McpServers::PermissionPolicy)
+                            .string()
+                            .not_null()
+                            .default("ask"),
+                    )
+                    .col(
+                        ColumnDef::new(McpServers::Source)
+                            .string()
+                            .not_null()
+                            .default("custom"),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -871,11 +1140,24 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ToolDescriptors::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ToolDescriptors::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(ToolDescriptors::ServerId).string().not_null())
+                    .col(
+                        ColumnDef::new(ToolDescriptors::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(ToolDescriptors::ServerId)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ToolDescriptors::Name).string().not_null())
                     .col(ColumnDef::new(ToolDescriptors::Description).string().null())
-                    .col(ColumnDef::new(ToolDescriptors::InputSchemaJson).string().null())
+                    .col(
+                        ColumnDef::new(ToolDescriptors::InputSchemaJson)
+                            .string()
+                            .null(),
+                    )
                     .foreign_key(
                         ForeignKey::create()
                             .from(ToolDescriptors::Table, ToolDescriptors::ServerId)
@@ -905,14 +1187,32 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ToolExecutions::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ToolExecutions::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(ToolExecutions::ConversationId).string().not_null())
+                    .col(
+                        ColumnDef::new(ToolExecutions::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(ToolExecutions::ConversationId)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ToolExecutions::MessageId).string().null())
                     .col(ColumnDef::new(ToolExecutions::ServerId).string().not_null())
                     .col(ColumnDef::new(ToolExecutions::ToolName).string().not_null())
-                    .col(ColumnDef::new(ToolExecutions::Status).string().not_null().default("pending"))
+                    .col(
+                        ColumnDef::new(ToolExecutions::Status)
+                            .string()
+                            .not_null()
+                            .default("pending"),
+                    )
                     .col(ColumnDef::new(ToolExecutions::InputPreview).string().null())
-                    .col(ColumnDef::new(ToolExecutions::OutputPreview).string().null())
+                    .col(
+                        ColumnDef::new(ToolExecutions::OutputPreview)
+                            .string()
+                            .null(),
+                    )
                     .col(ColumnDef::new(ToolExecutions::ErrorMessage).string().null())
                     .col(ColumnDef::new(ToolExecutions::DurationMs).integer().null())
                     .col(
@@ -972,11 +1272,25 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(KnowledgeBases::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(KnowledgeBases::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(KnowledgeBases::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(KnowledgeBases::Name).string().not_null())
                     .col(ColumnDef::new(KnowledgeBases::Description).string().null())
-                    .col(ColumnDef::new(KnowledgeBases::EmbeddingProvider).string().null())
-                    .col(ColumnDef::new(KnowledgeBases::Enabled).integer().not_null().default(1))
+                    .col(
+                        ColumnDef::new(KnowledgeBases::EmbeddingProvider)
+                            .string()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(KnowledgeBases::Enabled)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -1000,13 +1314,44 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(KnowledgeDocuments::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(KnowledgeDocuments::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(KnowledgeDocuments::KnowledgeBaseId).string().not_null())
-                    .col(ColumnDef::new(KnowledgeDocuments::Title).string().not_null())
-                    .col(ColumnDef::new(KnowledgeDocuments::SourcePath).string().not_null())
-                    .col(ColumnDef::new(KnowledgeDocuments::MimeType).string().not_null())
-                    .col(ColumnDef::new(KnowledgeDocuments::SizeBytes).integer().not_null().default(0))
-                    .col(ColumnDef::new(KnowledgeDocuments::IndexingStatus).string().not_null().default("pending"))
+                    .col(
+                        ColumnDef::new(KnowledgeDocuments::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(KnowledgeDocuments::KnowledgeBaseId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(KnowledgeDocuments::Title)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(KnowledgeDocuments::SourcePath)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(KnowledgeDocuments::MimeType)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(KnowledgeDocuments::SizeBytes)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(KnowledgeDocuments::IndexingStatus)
+                            .string()
+                            .not_null()
+                            .default("pending"),
+                    )
                     .foreign_key(
                         ForeignKey::create()
                             .from(
@@ -1039,11 +1384,28 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(RetrievalHits::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(RetrievalHits::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(RetrievalHits::ConversationId).string().not_null())
+                    .col(
+                        ColumnDef::new(RetrievalHits::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(RetrievalHits::ConversationId)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(RetrievalHits::MessageId).string().not_null())
-                    .col(ColumnDef::new(RetrievalHits::KnowledgeBaseId).string().not_null())
-                    .col(ColumnDef::new(RetrievalHits::DocumentId).string().not_null())
+                    .col(
+                        ColumnDef::new(RetrievalHits::KnowledgeBaseId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RetrievalHits::DocumentId)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(RetrievalHits::ChunkRef).string().not_null())
                     .col(
                         ColumnDef::new(RetrievalHits::Score)
@@ -1109,11 +1471,25 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(MemoryNamespaces::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(MemoryNamespaces::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(MemoryNamespaces::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(MemoryNamespaces::Name).string().not_null())
-                    .col(ColumnDef::new(MemoryNamespaces::Scope).string().not_null().default("global"))
+                    .col(
+                        ColumnDef::new(MemoryNamespaces::Scope)
+                            .string()
+                            .not_null()
+                            .default("global"),
+                    )
                     .col(ColumnDef::new(MemoryNamespaces::AppId).string().null())
-                    .col(ColumnDef::new(MemoryNamespaces::EmbeddingProvider).string().null())
+                    .col(
+                        ColumnDef::new(MemoryNamespaces::EmbeddingProvider)
+                            .string()
+                            .null(),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -1137,11 +1513,21 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(MemoryItems::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(MemoryItems::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(MemoryItems::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(MemoryItems::NamespaceId).string().not_null())
                     .col(ColumnDef::new(MemoryItems::Title).string().not_null())
                     .col(ColumnDef::new(MemoryItems::Content).string().not_null())
-                    .col(ColumnDef::new(MemoryItems::Source).string().not_null().default("manual"))
+                    .col(
+                        ColumnDef::new(MemoryItems::Source)
+                            .string()
+                            .not_null()
+                            .default("manual"),
+                    )
                     .col(
                         ColumnDef::new(MemoryItems::UpdatedAt)
                             .string()
@@ -1177,13 +1563,42 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Artifacts::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Artifacts::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(Artifacts::ConversationId).string().not_null())
-                    .col(ColumnDef::new(Artifacts::Kind).string().not_null().default("draft"))
+                    .col(
+                        ColumnDef::new(Artifacts::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Artifacts::ConversationId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Artifacts::Kind)
+                            .string()
+                            .not_null()
+                            .default("draft"),
+                    )
                     .col(ColumnDef::new(Artifacts::Title).string().not_null())
-                    .col(ColumnDef::new(Artifacts::Content).string().not_null().default(""))
-                    .col(ColumnDef::new(Artifacts::Format).string().not_null().default("markdown"))
-                    .col(ColumnDef::new(Artifacts::Pinned).integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(Artifacts::Content)
+                            .string()
+                            .not_null()
+                            .default(""),
+                    )
+                    .col(
+                        ColumnDef::new(Artifacts::Format)
+                            .string()
+                            .not_null()
+                            .default("markdown"),
+                    )
+                    .col(
+                        ColumnDef::new(Artifacts::Pinned)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .col(
                         ColumnDef::new(Artifacts::UpdatedAt)
                             .string()
@@ -1230,11 +1645,26 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ContextPacks::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ContextPacks::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(ContextPacks::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(ContextPacks::AppId).string().not_null())
                     .col(ColumnDef::new(ContextPacks::Name).string().not_null())
-                    .col(ColumnDef::new(ContextPacks::Content).string().not_null().default(""))
-                    .col(ColumnDef::new(ContextPacks::EnabledByDefault).integer().not_null().default(1))
+                    .col(
+                        ColumnDef::new(ContextPacks::Content)
+                            .string()
+                            .not_null()
+                            .default(""),
+                    )
+                    .col(
+                        ColumnDef::new(ContextPacks::EnabledByDefault)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
                     .foreign_key(
                         ForeignKey::create()
                             .from(ContextPacks::Table, ContextPacks::AppId)
@@ -1264,13 +1694,31 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ContextSources::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ContextSources::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(ContextSources::ConversationId).string().not_null())
+                    .col(
+                        ColumnDef::new(ContextSources::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(ContextSources::ConversationId)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ContextSources::MessageId).string().null())
-                    .col(ColumnDef::new(ContextSources::SourceType).string().not_null())
+                    .col(
+                        ColumnDef::new(ContextSources::SourceType)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ContextSources::RefId).string().not_null())
                     .col(ColumnDef::new(ContextSources::Title).string().not_null())
-                    .col(ColumnDef::new(ContextSources::Enabled).integer().not_null().default(1))
+                    .col(
+                        ColumnDef::new(ContextSources::Enabled)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
                     .col(ColumnDef::new(ContextSources::Summary).string().null())
                     .foreign_key(
                         ForeignKey::create()
@@ -1312,12 +1760,38 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ConversationBranches::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ConversationBranches::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(ConversationBranches::ConversationId).string().not_null())
-                    .col(ColumnDef::new(ConversationBranches::ParentMessageId).string().not_null())
-                    .col(ColumnDef::new(ConversationBranches::BranchLabel).string().not_null())
-                    .col(ColumnDef::new(ConversationBranches::BranchIndex).integer().not_null().default(0))
-                    .col(ColumnDef::new(ConversationBranches::ComparedMessageIdsJson).string().null())
+                    .col(
+                        ColumnDef::new(ConversationBranches::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(ConversationBranches::ConversationId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ConversationBranches::ParentMessageId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ConversationBranches::BranchLabel)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ConversationBranches::BranchIndex)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(ConversationBranches::ComparedMessageIdsJson)
+                            .string()
+                            .null(),
+                    )
                     .col(
                         ColumnDef::new(ConversationBranches::CreatedAt)
                             .string()
@@ -1356,7 +1830,12 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(BackupManifests::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(BackupManifests::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(BackupManifests::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(BackupManifests::Version).string().not_null())
                     .col(
                         ColumnDef::new(BackupManifests::CreatedAt)
@@ -1364,12 +1843,35 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )
-                    .col(ColumnDef::new(BackupManifests::Encrypted).integer().not_null().default(0))
-                    .col(ColumnDef::new(BackupManifests::Checksum).string().not_null())
-                    .col(ColumnDef::new(BackupManifests::ObjectCountsJson).string().not_null().default("{}"))
-                    .col(ColumnDef::new(BackupManifests::SourceAppVersion).string().not_null())
+                    .col(
+                        ColumnDef::new(BackupManifests::Encrypted)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(BackupManifests::Checksum)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(BackupManifests::ObjectCountsJson)
+                            .string()
+                            .not_null()
+                            .default("{}"),
+                    )
+                    .col(
+                        ColumnDef::new(BackupManifests::SourceAppVersion)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(BackupManifests::FilePath).string().null())
-                    .col(ColumnDef::new(BackupManifests::FileSize).big_integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(BackupManifests::FileSize)
+                            .big_integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -1382,9 +1884,24 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(BackupTargets::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(BackupTargets::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(BackupTargets::Kind).string().not_null().default("local"))
-                    .col(ColumnDef::new(BackupTargets::ConfigJson).string().not_null().default("{}"))
+                    .col(
+                        ColumnDef::new(BackupTargets::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(BackupTargets::Kind)
+                            .string()
+                            .not_null()
+                            .default("local"),
+                    )
+                    .col(
+                        ColumnDef::new(BackupTargets::ConfigJson)
+                            .string()
+                            .not_null()
+                            .default("{}"),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -1408,11 +1925,26 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ImportJobs::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ImportJobs::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(ImportJobs::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(ImportJobs::SourceType).string().not_null())
-                    .col(ColumnDef::new(ImportJobs::Status).string().not_null().default("scanning"))
+                    .col(
+                        ColumnDef::new(ImportJobs::Status)
+                            .string()
+                            .not_null()
+                            .default("scanning"),
+                    )
                     .col(ColumnDef::new(ImportJobs::SummaryJson).string().null())
-                    .col(ColumnDef::new(ImportJobs::ConflictCount).integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(ImportJobs::ConflictCount)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .col(
                         ColumnDef::new(ImportJobs::CreatedAt)
                             .string()
@@ -1453,18 +1985,45 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ProgramPolicies::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ProgramPolicies::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(ProgramPolicies::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(
                         ColumnDef::new(ProgramPolicies::ProgramName)
                             .string()
                             .not_null()
                             .unique_key(),
                     )
-                    .col(ColumnDef::new(ProgramPolicies::AllowedProviderIdsJson).string().not_null().default("[]"))
-                    .col(ColumnDef::new(ProgramPolicies::AllowedModelIdsJson).string().not_null().default("[]"))
-                    .col(ColumnDef::new(ProgramPolicies::DefaultProviderId).string().null())
-                    .col(ColumnDef::new(ProgramPolicies::DefaultModelId).string().null())
-                    .col(ColumnDef::new(ProgramPolicies::RateLimitPerMinute).integer().null())
+                    .col(
+                        ColumnDef::new(ProgramPolicies::AllowedProviderIdsJson)
+                            .string()
+                            .not_null()
+                            .default("[]"),
+                    )
+                    .col(
+                        ColumnDef::new(ProgramPolicies::AllowedModelIdsJson)
+                            .string()
+                            .not_null()
+                            .default("[]"),
+                    )
+                    .col(
+                        ColumnDef::new(ProgramPolicies::DefaultProviderId)
+                            .string()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProgramPolicies::DefaultModelId)
+                            .string()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProgramPolicies::RateLimitPerMinute)
+                            .integer()
+                            .null(),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -1489,10 +2048,28 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(GatewayDiagnostics::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(GatewayDiagnostics::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(GatewayDiagnostics::Category).string().not_null())
-                    .col(ColumnDef::new(GatewayDiagnostics::Status).string().not_null().default("ok"))
-                    .col(ColumnDef::new(GatewayDiagnostics::Message).string().not_null())
+                    .col(
+                        ColumnDef::new(GatewayDiagnostics::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(GatewayDiagnostics::Category)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(GatewayDiagnostics::Status)
+                            .string()
+                            .not_null()
+                            .default("ok"),
+                    )
+                    .col(
+                        ColumnDef::new(GatewayDiagnostics::Message)
+                            .string()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(GatewayDiagnostics::CreatedAt)
                             .string()
@@ -1533,13 +2110,38 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(DesktopState::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(DesktopState::WindowKey).string().not_null().primary_key())
-                    .col(ColumnDef::new(DesktopState::Width).integer().not_null().default(1200))
-                    .col(ColumnDef::new(DesktopState::Height).integer().not_null().default(800))
+                    .col(
+                        ColumnDef::new(DesktopState::WindowKey)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(DesktopState::Width)
+                            .integer()
+                            .not_null()
+                            .default(1200),
+                    )
+                    .col(
+                        ColumnDef::new(DesktopState::Height)
+                            .integer()
+                            .not_null()
+                            .default(800),
+                    )
                     .col(ColumnDef::new(DesktopState::X).integer().null())
                     .col(ColumnDef::new(DesktopState::Y).integer().null())
-                    .col(ColumnDef::new(DesktopState::Maximized).integer().not_null().default(0))
-                    .col(ColumnDef::new(DesktopState::Visible).integer().not_null().default(1))
+                    .col(
+                        ColumnDef::new(DesktopState::Maximized)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(DesktopState::Visible)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -1552,9 +2154,18 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(StoredFiles::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(StoredFiles::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(StoredFiles::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(StoredFiles::Hash).string().not_null())
-                    .col(ColumnDef::new(StoredFiles::OriginalName).string().not_null())
+                    .col(
+                        ColumnDef::new(StoredFiles::OriginalName)
+                            .string()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(StoredFiles::MimeType)
                             .string()
@@ -1616,14 +2227,38 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(GatewayRequestLogs::KeyId).string().not_null())
-                    .col(ColumnDef::new(GatewayRequestLogs::KeyName).string().not_null())
-                    .col(ColumnDef::new(GatewayRequestLogs::Method).string().not_null())
+                    .col(
+                        ColumnDef::new(GatewayRequestLogs::KeyId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(GatewayRequestLogs::KeyName)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(GatewayRequestLogs::Method)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(GatewayRequestLogs::Path).string().not_null())
                     .col(ColumnDef::new(GatewayRequestLogs::Model).string().null())
-                    .col(ColumnDef::new(GatewayRequestLogs::ProviderId).string().null())
-                    .col(ColumnDef::new(GatewayRequestLogs::StatusCode).integer().not_null())
-                    .col(ColumnDef::new(GatewayRequestLogs::DurationMs).integer().not_null())
+                    .col(
+                        ColumnDef::new(GatewayRequestLogs::ProviderId)
+                            .string()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(GatewayRequestLogs::StatusCode)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(GatewayRequestLogs::DurationMs)
+                            .integer()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(GatewayRequestLogs::RequestTokens)
                             .integer()
@@ -1636,8 +2271,16 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(0),
                     )
-                    .col(ColumnDef::new(GatewayRequestLogs::ErrorMessage).string().null())
-                    .col(ColumnDef::new(GatewayRequestLogs::CreatedAt).integer().not_null())
+                    .col(
+                        ColumnDef::new(GatewayRequestLogs::ErrorMessage)
+                            .string()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(GatewayRequestLogs::CreatedAt)
+                            .integer()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await?;

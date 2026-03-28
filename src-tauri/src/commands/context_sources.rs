@@ -23,10 +23,7 @@ pub async fn add_context_source(
 }
 
 #[tauri::command]
-pub async fn remove_context_source(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn remove_context_source(state: State<'_, AppState>, id: String) -> Result<(), String> {
     aqbot_core::repo::context_source::remove_context_source(&state.sea_db, &id)
         .await
         .map_err(|e| e.to_string())

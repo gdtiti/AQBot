@@ -201,12 +201,7 @@ async fn handle_realtime_session(mut socket: WebSocket, _db: DatabaseConnection)
     tracing::debug!("Realtime session {} closed", session_id);
 }
 
-async fn send_msg(
-    socket: &mut WebSocket,
-    msg: &RealtimeServerMessage,
-) -> Result<(), axum::Error> {
+async fn send_msg(socket: &mut WebSocket, msg: &RealtimeServerMessage) -> Result<(), axum::Error> {
     let json = serde_json::to_string(msg).unwrap();
-    socket
-        .send(Message::Text(json.into()))
-        .await
+    socket.send(Message::Text(json.into())).await
 }

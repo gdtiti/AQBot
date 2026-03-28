@@ -214,9 +214,7 @@ fn mime_from_extension(path: &str) -> &'static str {
 // ── Tauri command wrappers ────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn check_attachment_exists(
-    file_path: String,
-) -> Result<bool, String> {
+pub async fn check_attachment_exists(file_path: String) -> Result<bool, String> {
     if file_path.is_empty() {
         return Ok(false);
     }
@@ -225,9 +223,7 @@ pub async fn check_attachment_exists(
 }
 
 #[tauri::command]
-pub async fn read_attachment_preview(
-    file_path: String,
-) -> Result<String, String> {
+pub async fn read_attachment_preview(file_path: String) -> Result<String, String> {
     if file_path.is_empty() {
         return Err("file_path is empty".to_string());
     }
@@ -239,10 +235,7 @@ pub async fn read_attachment_preview(
 }
 
 #[tauri::command]
-pub async fn save_avatar_file(
-    data: String,
-    mime_type: String,
-) -> Result<String, String> {
+pub async fn save_avatar_file(data: String, mime_type: String) -> Result<String, String> {
     use aqbot_core::file_store::FileStore;
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(&data)
@@ -255,9 +248,7 @@ pub async fn save_avatar_file(
 }
 
 #[tauri::command]
-pub async fn resolve_attachment_path(
-    file_path: String,
-) -> Result<String, String> {
+pub async fn resolve_attachment_path(file_path: String) -> Result<String, String> {
     if file_path.is_empty() {
         return Err("file_path is empty".to_string());
     }
@@ -276,9 +267,13 @@ pub async fn reveal_attachment_file(
     use tauri_plugin_opener::OpenerExt;
     let path = Path::new(&abs);
     if path.exists() {
-        app.opener().reveal_item_in_dir(&abs).map_err(|e| e.to_string())
+        app.opener()
+            .reveal_item_in_dir(&abs)
+            .map_err(|e| e.to_string())
     } else if let Some(parent) = path.parent().filter(|p| p.exists()) {
-        app.opener().reveal_item_in_dir(parent.to_string_lossy().as_ref()).map_err(|e| e.to_string())
+        app.opener()
+            .reveal_item_in_dir(parent.to_string_lossy().as_ref())
+            .map_err(|e| e.to_string())
     } else {
         Err("File and parent directory do not exist".to_string())
     }
@@ -295,10 +290,7 @@ fn open_attachment_file_validate(file_path: &str) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn open_attachment_file(
-    app: tauri::AppHandle,
-    file_path: String,
-) -> Result<(), String> {
+pub async fn open_attachment_file(app: tauri::AppHandle, file_path: String) -> Result<(), String> {
     let abs = open_attachment_file_validate(&file_path)?;
     use tauri_plugin_opener::OpenerExt;
     app.opener()
@@ -339,10 +331,7 @@ pub async fn list_files_page_entries(
 }
 
 #[tauri::command]
-pub async fn open_files_page_entry(
-    app: tauri::AppHandle,
-    path: String,
-) -> Result<(), String> {
+pub async fn open_files_page_entry(app: tauri::AppHandle, path: String) -> Result<(), String> {
     validate_path_for_open(&path)?;
     use tauri_plugin_opener::OpenerExt;
     app.opener()
@@ -351,10 +340,7 @@ pub async fn open_files_page_entry(
 }
 
 #[tauri::command]
-pub async fn reveal_files_page_entry(
-    app: tauri::AppHandle,
-    path: String,
-) -> Result<(), String> {
+pub async fn reveal_files_page_entry(app: tauri::AppHandle, path: String) -> Result<(), String> {
     validate_path_for_open(&path)?;
     use tauri_plugin_opener::OpenerExt;
     app.opener()
@@ -371,12 +357,8 @@ pub async fn cleanup_missing_files_page_entry(
     match source_kind {
         "attachment" => {
             let file_store = aqbot_core::file_store::FileStore::new();
-            super::file_cleanup::delete_attachment_reference(
-                &state.sea_db,
-                &file_store,
-                record_id,
-            )
-            .await
+            super::file_cleanup::delete_attachment_reference(&state.sea_db, &file_store, record_id)
+                .await
         }
         "backup_manifest" => aqbot_core::repo::backup::delete_backup(&state.sea_db, record_id)
             .await
@@ -473,7 +455,9 @@ mod tests {
         assert_eq!(entries.len(), 2);
         assert!(entries.iter().all(|e| e.category == "backups"));
         assert!(entries.iter().all(|e| e.source_kind == "backup_manifest"));
-        assert!(entries.iter().all(|e| e.id.starts_with("backup_manifest::")));
+        assert!(entries
+            .iter()
+            .all(|e| e.id.starts_with("backup_manifest::")));
         assert!(entries.iter().any(|e| e.id == "backup_manifest::bk1"));
         assert!(entries.iter().any(|e| e.id == "backup_manifest::bk2"));
     }
@@ -489,7 +473,10 @@ mod tests {
         let entries = build_image_entries(&files);
         // Both rows must be present even though the backing files are gone
         assert_eq!(entries.len(), 2);
-        assert!(entries.iter().all(|e| e.missing), "all missing-path rows must be flagged");
+        assert!(
+            entries.iter().all(|e| e.missing),
+            "all missing-path rows must be flagged"
+        );
     }
 
     #[test]
@@ -507,7 +494,10 @@ mod tests {
         )];
         let entries = build_file_entries(&files);
         assert_eq!(entries.len(), 1);
-        assert!(!entries[0].missing, "existing file must not be flagged missing");
+        assert!(
+            !entries[0].missing,
+            "existing file must not be flagged missing"
+        );
     }
 
     #[test]
@@ -523,7 +513,12 @@ mod tests {
 
     #[test]
     fn test_stored_file_paths_resolve_under_documents_root() {
-        let files = vec![make_stored_file("1", "photo.jpg", "image/jpeg", "images/abc123_photo.jpg")];
+        let files = vec![make_stored_file(
+            "1",
+            "photo.jpg",
+            "image/jpeg",
+            "images/abc123_photo.jpg",
+        )];
         let entries = build_image_entries(&files);
 
         let expected = aqbot_core::storage_paths::documents_root()
@@ -627,17 +622,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_attachment_cleanup_removes_disk_file_and_db_record() {
-        let db = aqbot_core::db::create_test_pool()
-            .await
-            .unwrap()
-            .conn;
+        let db = aqbot_core::db::create_test_pool().await.unwrap().conn;
         let app_data_dir = make_temp_app_data_dir();
         std::fs::create_dir_all(&app_data_dir).unwrap();
 
         let file_store = aqbot_core::file_store::FileStore::with_root(app_data_dir.clone());
-        let saved = file_store.save_file(b"hello world", "photo.png", "image/png").unwrap();
+        let saved = file_store
+            .save_file(b"hello world", "photo.png", "image/png")
+            .unwrap();
         let physical_path = app_data_dir.join(&saved.storage_path);
-        assert!(physical_path.exists(), "test fixture file must exist before cleanup");
+        assert!(
+            physical_path.exists(),
+            "test fixture file must exist before cleanup"
+        );
 
         aqbot_core::repo::stored_file::create_stored_file(
             &db,
@@ -652,8 +649,8 @@ mod tests {
         .await
         .unwrap();
 
-        let cleanup_result = file_cleanup::delete_attachment_reference(&db, &file_store, "file-1")
-            .await;
+        let cleanup_result =
+            file_cleanup::delete_attachment_reference(&db, &file_store, "file-1").await;
         assert!(
             cleanup_result.is_ok(),
             "attachment cleanup should succeed, got: {cleanup_result:?}"
@@ -674,17 +671,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_attachment_cleanup_preserves_shared_file_until_last_reference() {
-        let db = aqbot_core::db::create_test_pool()
-            .await
-            .unwrap()
-            .conn;
+        let db = aqbot_core::db::create_test_pool().await.unwrap().conn;
         let app_data_dir = make_temp_app_data_dir();
         std::fs::create_dir_all(&app_data_dir).unwrap();
 
         let file_store = aqbot_core::file_store::FileStore::with_root(app_data_dir.clone());
-        let saved = file_store.save_file(b"same-bytes", "shared.png", "image/png").unwrap();
+        let saved = file_store
+            .save_file(b"same-bytes", "shared.png", "image/png")
+            .unwrap();
         let physical_path = app_data_dir.join(&saved.storage_path);
-        assert!(physical_path.exists(), "shared fixture file must exist before cleanup");
+        assert!(
+            physical_path.exists(),
+            "shared fixture file must exist before cleanup"
+        );
 
         for file_id in ["file-1", "file-2"] {
             aqbot_core::repo::stored_file::create_stored_file(
@@ -701,8 +700,8 @@ mod tests {
             .unwrap();
         }
 
-        let cleanup_result = file_cleanup::delete_attachment_reference(&db, &file_store, "file-1")
-            .await;
+        let cleanup_result =
+            file_cleanup::delete_attachment_reference(&db, &file_store, "file-1").await;
         assert!(
             cleanup_result.is_ok(),
             "attachment cleanup should succeed when duplicate records share a storage path, got: {cleanup_result:?}"
@@ -793,7 +792,10 @@ mod tests {
     fn test_sort_by_name() {
         let sorted = apply_sort(sample_entries(), Some("name"));
         let names: Vec<&str> = sorted.iter().map(|e| e.display_name.as_str()).collect();
-        assert_eq!(names, ["Important Document.pdf", "archive.zip", "photo.jpg"]);
+        assert_eq!(
+            names,
+            ["Important Document.pdf", "archive.zip", "photo.jpg"]
+        );
     }
 
     #[test]
@@ -821,25 +823,50 @@ mod tests {
         let files = vec![make_stored_file("1", "photo.jpg", "image/jpeg", &existing)];
         let entries = build_image_entries(&files);
         assert_eq!(entries.len(), 1);
-        let preview = entries[0].preview_url.as_deref().expect("preview_url must be Some for an existing image");
-        assert!(preview.starts_with("file://"), "preview_url must be a file:// URI, got: {preview}");
-        assert!(preview.contains(&existing), "preview_url must embed the storage path");
+        let preview = entries[0]
+            .preview_url
+            .as_deref()
+            .expect("preview_url must be Some for an existing image");
+        assert!(
+            preview.starts_with("file://"),
+            "preview_url must be a file:// URI, got: {preview}"
+        );
+        assert!(
+            preview.contains(&existing),
+            "preview_url must embed the storage path"
+        );
     }
 
     #[test]
     fn test_image_entry_has_no_preview_url_when_file_missing() {
-        let files = vec![make_stored_file("1", "photo.jpg", "image/jpeg", "/nonexistent/photo.jpg")];
+        let files = vec![make_stored_file(
+            "1",
+            "photo.jpg",
+            "image/jpeg",
+            "/nonexistent/photo.jpg",
+        )];
         let entries = build_image_entries(&files);
         assert_eq!(entries.len(), 1);
-        assert!(entries[0].preview_url.is_none(), "missing image must not have a preview_url");
+        assert!(
+            entries[0].preview_url.is_none(),
+            "missing image must not have a preview_url"
+        );
     }
 
     #[test]
     fn test_non_image_entry_has_no_preview_url() {
-        let files = vec![make_stored_file("1", "doc.pdf", "application/pdf", "/tmp/doc.pdf")];
+        let files = vec![make_stored_file(
+            "1",
+            "doc.pdf",
+            "application/pdf",
+            "/tmp/doc.pdf",
+        )];
         let entries = build_file_entries(&files);
         assert_eq!(entries.len(), 1);
-        assert!(entries[0].preview_url.is_none(), "non-image entries must not have a preview_url");
+        assert!(
+            entries[0].preview_url.is_none(),
+            "non-image entries must not have a preview_url"
+        );
     }
 
     #[test]
@@ -847,7 +874,10 @@ mod tests {
         let manifests = vec![make_backup_manifest("bk1", Some("/tmp/backup.db"))];
         let entries = build_backup_entries(&manifests);
         assert_eq!(entries.len(), 1);
-        assert!(entries[0].preview_url.is_none(), "backup entries must not have a preview_url");
+        assert!(
+            entries[0].preview_url.is_none(),
+            "backup entries must not have a preview_url"
+        );
     }
 
     // ── save_avatar_file tests ──────────────────────────────────────────
@@ -856,13 +886,11 @@ mod tests {
     async fn test_save_avatar_file_returns_relative_path() {
         // 1x1 red PNG pixel
         let png_bytes: &[u8] = &[
-            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00,
-            0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
-            0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE,
-            0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0xD7, 0x63,
-            0xF8, 0xCF, 0xC0, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE2, 0x21,
-            0xBC, 0x33, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-            0x42, 0x60, 0x82,
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
+            0x00, 0x90, 0x77, 0x53, 0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, 0x08,
+            0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE2, 0x21, 0xBC,
+            0x33, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
         ];
         let b64 = base64::engine::general_purpose::STANDARD.encode(png_bytes);
 

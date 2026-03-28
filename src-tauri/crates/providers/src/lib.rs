@@ -1,19 +1,23 @@
 pub mod adapter;
-pub mod registry;
-pub mod openai;
-pub mod openai_responses;
 pub mod anthropic;
 pub mod gemini;
+pub mod openai;
+pub mod openai_responses;
+pub mod registry;
 
-use async_trait::async_trait;
-use aqbot_core::types::*;
 use aqbot_core::error::{AQBotError, Result};
+use aqbot_core::types::*;
+use async_trait::async_trait;
 use futures::Stream;
 use std::pin::Pin;
 
 #[async_trait]
 pub trait ProviderAdapter: Send + Sync {
-    async fn chat(&self, ctx: &ProviderRequestContext, request: ChatRequest) -> Result<ChatResponse>;
+    async fn chat(
+        &self,
+        ctx: &ProviderRequestContext,
+        request: ChatRequest,
+    ) -> Result<ChatResponse>;
 
     fn chat_stream(
         &self,
@@ -23,7 +27,11 @@ pub trait ProviderAdapter: Send + Sync {
 
     async fn list_models(&self, ctx: &ProviderRequestContext) -> Result<Vec<Model>>;
 
-    async fn embed(&self, ctx: &ProviderRequestContext, request: EmbedRequest) -> Result<EmbedResponse>;
+    async fn embed(
+        &self,
+        ctx: &ProviderRequestContext,
+        request: EmbedRequest,
+    ) -> Result<EmbedResponse>;
 
     /// Validate the API key. Default: try list_models.
     /// Providers may override for endpoints that don't support model listing.
@@ -68,16 +76,28 @@ pub fn resolve_base_url(api_host: &str) -> String {
 ///
 /// When `api_path` is absent, returns `resolved_base_url + default_suffix`
 /// (e.g. `/chat/completions`).
-pub fn resolve_chat_url(resolved_base: &str, api_path: Option<&str>, default_suffix: &str) -> String {
+pub fn resolve_chat_url(
+    resolved_base: &str,
+    api_path: Option<&str>,
+    default_suffix: &str,
+) -> String {
     let base = resolved_base.trim_end_matches('/');
     match api_path {
         Some(path) if !path.is_empty() => {
             if let Some(forced) = path.strip_suffix('!') {
                 // Force mode: concat as-is
-                let p = if forced.starts_with('/') { forced.to_string() } else { format!("/{}", forced) };
+                let p = if forced.starts_with('/') {
+                    forced.to_string()
+                } else {
+                    format!("/{}", forced)
+                };
                 format!("{}{}", base, p)
             } else {
-                let p = if path.starts_with('/') { path.to_string() } else { format!("/{}", path) };
+                let p = if path.starts_with('/') {
+                    path.to_string()
+                } else {
+                    format!("/{}", path)
+                };
                 // Auto dedup: if both have /v1, strip from api_path
                 if base.ends_with("/v1") && p.starts_with("/v1") {
                     format!("{}{}", base, &p[3..])
@@ -104,11 +124,17 @@ pub fn build_http_client(proxy_config: Option<&ProviderProxyConfig>) -> Result<r
     let mut builder = reqwest::Client::builder();
 
     if let Some(config) = proxy_config {
-        if let (Some(proxy_type), Some(addr), Some(port)) =
-            (&config.proxy_type, &config.proxy_address, &config.proxy_port)
-        {
+        if let (Some(proxy_type), Some(addr), Some(port)) = (
+            &config.proxy_type,
+            &config.proxy_address,
+            &config.proxy_port,
+        ) {
             if proxy_type != "none" && !addr.is_empty() {
-                let scheme = if proxy_type == "socks5" { "socks5" } else { "http" };
+                let scheme = if proxy_type == "socks5" {
+                    "socks5"
+                } else {
+                    "http"
+                };
                 let proxy_url = format!("{}://{}:{}", scheme, addr, port);
                 let proxy = reqwest::Proxy::all(&proxy_url)
                     .map_err(|e| AQBotError::Provider(format!("Invalid proxy URL: {}", e)))?;

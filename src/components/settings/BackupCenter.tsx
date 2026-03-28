@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Table, Button, Modal, Tag, Space, Typography, Form, Select,
-  Popconfirm, App, InputNumber, Switch, Divider, Tooltip, Input,
+  Popconfirm, App, InputNumber, Switch, Divider, Tooltip, Input, Segmented,
 } from 'antd';
 import {
   CloudUpload, Trash2, Undo2, FolderOpen,
@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useBackupStore } from '@/stores';
 import type { BackupManifest } from '@/types';
+import WebDavSync from './WebDavSync';
 
 const { Text } = Typography;
 
@@ -34,6 +35,7 @@ export default function BackupCenter() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [form] = Form.useForm();
   const [settingsForm] = Form.useForm();
+  const [activeView, setActiveView] = useState<'local' | 'webdav'>('local');
   const effectiveBackupDir = backupSettings?.backupDir || t('backup.defaultDir');
 
   useEffect(() => {
@@ -209,6 +211,20 @@ export default function BackupCenter() {
 
   return (
     <div className="p-6 pb-12">
+      <Segmented
+        value={activeView}
+        onChange={(v) => setActiveView(v as 'local' | 'webdav')}
+        options={[
+          { label: t('backup.localBackup'), value: 'local' },
+          { label: 'WebDAV', value: 'webdav' },
+        ]}
+        style={{ marginBottom: 16 }}
+      />
+
+      {activeView === 'webdav' ? (
+        <WebDavSync />
+      ) : (
+      <>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <Space>
@@ -259,6 +275,8 @@ export default function BackupCenter() {
         rowSelection={rowSelection}
         locale={{ emptyText: t('backup.noBackups') }}
       />
+      </>
+      )}
 
       {/* Create backup modal */}
       <Modal

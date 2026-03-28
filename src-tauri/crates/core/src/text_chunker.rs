@@ -17,7 +17,10 @@ pub fn chunk_text(text: &str, chunk_size: usize, overlap: usize) -> Vec<TextChun
         return vec![];
     }
     if text.len() <= chunk_size {
-        return vec![TextChunk { index: 0, content: text.to_string() }];
+        return vec![TextChunk {
+            index: 0,
+            content: text.to_string(),
+        }];
     }
 
     let mut chunks = Vec::new();

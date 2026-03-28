@@ -82,7 +82,11 @@ pub async fn update_artifact(
     am.title = Set(input.title.clone().unwrap_or(existing.title));
     am.content = Set(input.content.clone().unwrap_or(existing.content));
     am.format = Set(input.format.clone().unwrap_or(existing.format));
-    am.pinned = Set(if input.pinned.unwrap_or(existing.pinned) { 1 } else { 0 });
+    am.pinned = Set(if input.pinned.unwrap_or(existing.pinned) {
+        1
+    } else {
+        0
+    });
     am.updated_at = Set(now_datetime());
     am.update(db).await?;
 

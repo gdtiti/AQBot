@@ -1,12 +1,12 @@
-use async_trait::async_trait;
 use aqbot_core::error::{AQBotError, Result};
 use aqbot_core::types::*;
+use async_trait::async_trait;
+use futures::Stream;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
-use futures::Stream;
 
-use crate::{ProviderAdapter, ProviderRequestContext, build_http_client, resolve_chat_url};
+use crate::{build_http_client, resolve_chat_url, ProviderAdapter, ProviderRequestContext};
 
 const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
 
@@ -194,40 +194,40 @@ struct EmbedDataItem {
 fn extract_text_content(content: &ChatContent) -> String {
     match content {
         ChatContent::Text(text) => text.clone(),
-        ChatContent::Multipart(parts) => {
-            parts.iter()
-                .filter_map(|part| part.text.as_ref())
-                .cloned()
-                .collect::<Vec<String>>()
-                .join(" ")
-        }
+        ChatContent::Multipart(parts) => parts
+            .iter()
+            .filter_map(|part| part.text.as_ref())
+            .cloned()
+            .collect::<Vec<String>>()
+            .join(" "),
     }
 }
 
 fn convert_content_to_value(content: &ChatContent) -> serde_json::Value {
     match content {
         ChatContent::Text(text) => serde_json::Value::String(text.clone()),
-        ChatContent::Multipart(parts) => {
-            serde_json::Value::Array(
-                parts
-                    .iter()
-                    .map(|part| {
-                        let mut value = serde_json::Map::new();
-                        value.insert("type".to_string(), serde_json::Value::String(part.r#type.clone()));
-                        if let Some(text) = &part.text {
-                            value.insert("text".to_string(), serde_json::Value::String(text.clone()));
-                        }
-                        if let Some(image_url) = &part.image_url {
-                            value.insert(
-                                "image_url".to_string(),
-                                serde_json::to_value(image_url).unwrap_or(serde_json::Value::Null),
-                            );
-                        }
-                        serde_json::Value::Object(value)
-                    })
-                    .collect(),
-            )
-        }
+        ChatContent::Multipart(parts) => serde_json::Value::Array(
+            parts
+                .iter()
+                .map(|part| {
+                    let mut value = serde_json::Map::new();
+                    value.insert(
+                        "type".to_string(),
+                        serde_json::Value::String(part.r#type.clone()),
+                    );
+                    if let Some(text) = &part.text {
+                        value.insert("text".to_string(), serde_json::Value::String(text.clone()));
+                    }
+                    if let Some(image_url) = &part.image_url {
+                        value.insert(
+                            "image_url".to_string(),
+                            serde_json::to_value(image_url).unwrap_or(serde_json::Value::Null),
+                        );
+                    }
+                    serde_json::Value::Object(value)
+                })
+                .collect(),
+        ),
     }
 }
 
@@ -252,8 +252,14 @@ fn build_responses_input(messages: &[ChatMessage]) -> (serde_json::Value, Option
             }
             "user" => {
                 let mut item = serde_json::Map::new();
-                item.insert("role".to_string(), serde_json::Value::String("user".to_string()));
-                item.insert("content".to_string(), convert_content_to_value(&msg.content));
+                item.insert(
+                    "role".to_string(),
+                    serde_json::Value::String("user".to_string()),
+                );
+                item.insert(
+                    "content".to_string(),
+                    convert_content_to_value(&msg.content),
+                );
                 input_items.push(serde_json::Value::Object(item));
             }
             "assistant" => {
@@ -262,42 +268,74 @@ fn build_responses_input(messages: &[ChatMessage]) -> (serde_json::Value, Option
                     let text = extract_text_content(&msg.content);
                     if !text.is_empty() {
                         let mut item = serde_json::Map::new();
-                        item.insert("role".to_string(), serde_json::Value::String("assistant".to_string()));
+                        item.insert(
+                            "role".to_string(),
+                            serde_json::Value::String("assistant".to_string()),
+                        );
                         item.insert("content".to_string(), serde_json::Value::String(text));
                         input_items.push(serde_json::Value::Object(item));
                     }
                     // Emit function_call items for each tool call
                     for tc in tool_calls {
                         let mut item = serde_json::Map::new();
-                        item.insert("type".to_string(), serde_json::Value::String("function_call".to_string()));
+                        item.insert(
+                            "type".to_string(),
+                            serde_json::Value::String("function_call".to_string()),
+                        );
                         item.insert("id".to_string(), serde_json::Value::String(tc.id.clone()));
-                        item.insert("call_id".to_string(), serde_json::Value::String(tc.id.clone()));
-                        item.insert("name".to_string(), serde_json::Value::String(tc.function.name.clone()));
-                        item.insert("arguments".to_string(), serde_json::Value::String(tc.function.arguments.clone()));
+                        item.insert(
+                            "call_id".to_string(),
+                            serde_json::Value::String(tc.id.clone()),
+                        );
+                        item.insert(
+                            "name".to_string(),
+                            serde_json::Value::String(tc.function.name.clone()),
+                        );
+                        item.insert(
+                            "arguments".to_string(),
+                            serde_json::Value::String(tc.function.arguments.clone()),
+                        );
                         input_items.push(serde_json::Value::Object(item));
                     }
                 } else {
                     let mut item = serde_json::Map::new();
-                    item.insert("role".to_string(), serde_json::Value::String("assistant".to_string()));
-                    item.insert("content".to_string(), convert_content_to_value(&msg.content));
+                    item.insert(
+                        "role".to_string(),
+                        serde_json::Value::String("assistant".to_string()),
+                    );
+                    item.insert(
+                        "content".to_string(),
+                        convert_content_to_value(&msg.content),
+                    );
                     input_items.push(serde_json::Value::Object(item));
                 }
             }
             "tool" => {
                 let mut item = serde_json::Map::new();
-                item.insert("type".to_string(), serde_json::Value::String("function_call_output".to_string()));
-                item.insert("call_id".to_string(), serde_json::Value::String(
-                    msg.tool_call_id.clone().unwrap_or_default()
-                ));
-                item.insert("output".to_string(), serde_json::Value::String(
-                    extract_text_content(&msg.content)
-                ));
+                item.insert(
+                    "type".to_string(),
+                    serde_json::Value::String("function_call_output".to_string()),
+                );
+                item.insert(
+                    "call_id".to_string(),
+                    serde_json::Value::String(msg.tool_call_id.clone().unwrap_or_default()),
+                );
+                item.insert(
+                    "output".to_string(),
+                    serde_json::Value::String(extract_text_content(&msg.content)),
+                );
                 input_items.push(serde_json::Value::Object(item));
             }
             _ => {
                 let mut item = serde_json::Map::new();
-                item.insert("role".to_string(), serde_json::Value::String(msg.role.clone()));
-                item.insert("content".to_string(), convert_content_to_value(&msg.content));
+                item.insert(
+                    "role".to_string(),
+                    serde_json::Value::String(msg.role.clone()),
+                );
+                item.insert(
+                    "content".to_string(),
+                    convert_content_to_value(&msg.content),
+                );
                 input_items.push(serde_json::Value::Object(item));
             }
         }
@@ -317,16 +355,21 @@ fn build_request(request: &ChatRequest, stream: bool) -> ResponsesRequest {
             6145..=12288 => "high",
             _ => "xhigh",
         };
-        ResponsesReasoning { effort: effort.to_string() }
+        ResponsesReasoning {
+            effort: effort.to_string(),
+        }
     });
 
     let tools = request.tools.as_ref().map(|tools| {
-        tools.iter().map(|t| ResponsesTool {
-            r#type: "function".to_string(),
-            name: Some(t.function.name.clone()),
-            description: t.function.description.clone(),
-            parameters: t.function.parameters.clone(),
-        }).collect()
+        tools
+            .iter()
+            .map(|t| ResponsesTool {
+                r#type: "function".to_string(),
+                name: Some(t.function.name.clone()),
+                description: t.function.description.clone(),
+                parameters: t.function.parameters.clone(),
+            })
+            .collect()
     });
 
     ResponsesRequest {
@@ -334,8 +377,16 @@ fn build_request(request: &ChatRequest, stream: bool) -> ResponsesRequest {
         input,
         instructions,
         max_output_tokens: request.max_tokens.map(|v| v.max(16)),
-        temperature: if reasoning.is_some() { None } else { request.temperature },
-        top_p: if reasoning.is_some() { None } else { request.top_p },
+        temperature: if reasoning.is_some() {
+            None
+        } else {
+            request.temperature
+        },
+        top_p: if reasoning.is_some() {
+            None
+        } else {
+            request.top_p
+        },
         stream,
         tools,
         reasoning,
@@ -360,7 +411,11 @@ fn parse_response_output(output: &[ResponsesOutputItem]) -> (String, Option<Vec<
             }
             "function_call" => {
                 tool_calls.push(ToolCall {
-                    id: item.call_id.clone().or_else(|| item.id.clone()).unwrap_or_default(),
+                    id: item
+                        .call_id
+                        .clone()
+                        .or_else(|| item.id.clone())
+                        .unwrap_or_default(),
                     call_type: "function".to_string(),
                     function: ToolCallFunction {
                         name: item.name.clone().unwrap_or_default(),
@@ -372,7 +427,11 @@ fn parse_response_output(output: &[ResponsesOutputItem]) -> (String, Option<Vec<
         }
     }
 
-    let tool_calls = if tool_calls.is_empty() { None } else { Some(tool_calls) };
+    let tool_calls = if tool_calls.is_empty() {
+        None
+    } else {
+        Some(tool_calls)
+    };
     (text_parts.join(""), tool_calls)
 }
 
@@ -387,16 +446,15 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
         let body = build_request(&request, false);
 
         let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
+            self.get_client(ctx)?
                 .post(&url)
                 .header("Authorization", format!("Bearer {}", ctx.api_key))
                 .json(&body),
             ctx,
         )
-            .send()
-            .await
-            .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
+        .send()
+        .await
+        .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
 
         if !resp.status().is_success() {
             let status = resp.status();
@@ -413,11 +471,18 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
 
         let (content, tool_calls) = parse_response_output(&oai.output);
 
-        let usage = oai.usage.map(|u| TokenUsage {
-            prompt_tokens: u.input_tokens,
-            completion_tokens: u.output_tokens,
-            total_tokens: u.total_tokens,
-        }).unwrap_or(TokenUsage { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 });
+        let usage = oai
+            .usage
+            .map(|u| TokenUsage {
+                prompt_tokens: u.input_tokens,
+                completion_tokens: u.output_tokens,
+                total_tokens: u.total_tokens,
+            })
+            .unwrap_or(TokenUsage {
+                prompt_tokens: 0,
+                completion_tokens: 0,
+                total_tokens: 0,
+            });
 
         Ok(ChatResponse {
             id: oai.id.unwrap_or_default(),
@@ -450,8 +515,8 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
                     .json(&body),
                 &custom_headers,
             )
-                .send()
-                .await
+            .send()
+            .await
             {
                 Ok(r) if r.status().is_success() => r,
                 Ok(r) => {
@@ -463,9 +528,8 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
                     return;
                 }
                 Err(e) => {
-                    let _ = tx.unbounded_send(Err(AQBotError::Provider(format!(
-                        "Request failed: {e}"
-                    ))));
+                    let _ = tx
+                        .unbounded_send(Err(AQBotError::Provider(format!("Request failed: {e}"))));
                     return;
                 }
             };
@@ -474,7 +538,10 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
             let mut buf = String::new();
             let mut current_event_type = String::new();
             // Track function calls: item_id → (call_id, name, arguments)
-            let mut pending_tool_calls: std::collections::HashMap<String, (String, String, String)> = std::collections::HashMap::new();
+            let mut pending_tool_calls: std::collections::HashMap<
+                String,
+                (String, String, String),
+            > = std::collections::HashMap::new();
 
             while let Some(chunk) = byte_stream.next().await {
                 match chunk {
@@ -506,16 +573,19 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
                                 let tool_calls = if pending_tool_calls.is_empty() {
                                     None
                                 } else {
-                                    Some(pending_tool_calls.values().map(|(call_id, name, args)| {
-                                        ToolCall {
-                                            id: call_id.clone(),
-                                            call_type: "function".to_string(),
-                                            function: ToolCallFunction {
-                                                name: name.clone(),
-                                                arguments: args.clone(),
-                                            },
-                                        }
-                                    }).collect())
+                                    Some(
+                                        pending_tool_calls
+                                            .values()
+                                            .map(|(call_id, name, args)| ToolCall {
+                                                id: call_id.clone(),
+                                                call_type: "function".to_string(),
+                                                function: ToolCallFunction {
+                                                    name: name.clone(),
+                                                    arguments: args.clone(),
+                                                },
+                                            })
+                                            .collect(),
+                                    )
                                 };
                                 let _ = tx.unbounded_send(Ok(ChatStreamChunk {
                                     content: None,
@@ -530,10 +600,11 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
 
                             match current_event_type.as_str() {
                                 "response.output_text.delta" => {
-                                    if let Ok(evt) = serde_json::from_str::<StreamTextDeltaEvent>(data) {
-                                        let delta_text = evt.part
-                                            .and_then(|p| p.delta)
-                                            .or(evt.delta);
+                                    if let Ok(evt) =
+                                        serde_json::from_str::<StreamTextDeltaEvent>(data)
+                                    {
+                                        let delta_text =
+                                            evt.part.and_then(|p| p.delta).or(evt.delta);
                                         if delta_text.is_some() {
                                             let _ = tx.unbounded_send(Ok(ChatStreamChunk {
                                                 content: delta_text,
@@ -547,21 +618,30 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
                                     }
                                 }
                                 "response.output_item.added" => {
-                                    if let Ok(evt) = serde_json::from_str::<StreamOutputItemAdded>(data) {
+                                    if let Ok(evt) =
+                                        serde_json::from_str::<StreamOutputItemAdded>(data)
+                                    {
                                         if let Some(item) = evt.item {
                                             if item.r#type.as_deref() == Some("function_call") {
                                                 let item_id = item.id.unwrap_or_default();
-                                                let call_id = item.call_id.unwrap_or_else(|| item_id.clone());
+                                                let call_id =
+                                                    item.call_id.unwrap_or_else(|| item_id.clone());
                                                 let name = item.name.unwrap_or_default();
-                                                pending_tool_calls.insert(item_id, (call_id, name, String::new()));
+                                                pending_tool_calls.insert(
+                                                    item_id,
+                                                    (call_id, name, String::new()),
+                                                );
                                             }
                                         }
                                     }
                                 }
                                 "response.function_call_arguments.delta" => {
-                                    if let Ok(evt) = serde_json::from_str::<StreamFunctionCallArgsDelta>(data) {
+                                    if let Ok(evt) =
+                                        serde_json::from_str::<StreamFunctionCallArgsDelta>(data)
+                                    {
                                         if let Some(item_id) = &evt.item_id {
-                                            if let Some(entry) = pending_tool_calls.get_mut(item_id) {
+                                            if let Some(entry) = pending_tool_calls.get_mut(item_id)
+                                            {
                                                 if let Some(ref d) = evt.delta {
                                                     entry.2.push_str(d);
                                                 }
@@ -570,34 +650,46 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
                                     }
                                 }
                                 "response.function_call_arguments.done" => {
-                                    if let Ok(evt) = serde_json::from_str::<StreamFunctionCallArgsDone>(data) {
-                                        if let (Some(item_id), Some(args)) = (&evt.item_id, &evt.arguments) {
-                                            if let Some(entry) = pending_tool_calls.get_mut(item_id) {
+                                    if let Ok(evt) =
+                                        serde_json::from_str::<StreamFunctionCallArgsDone>(data)
+                                    {
+                                        if let (Some(item_id), Some(args)) =
+                                            (&evt.item_id, &evt.arguments)
+                                        {
+                                            if let Some(entry) = pending_tool_calls.get_mut(item_id)
+                                            {
                                                 entry.2 = args.clone();
                                             }
                                         }
                                     }
                                 }
                                 "response.completed" => {
-                                    if let Ok(evt) = serde_json::from_str::<StreamCompletedEvent>(data) {
-                                        let usage = evt.response.and_then(|r| r.usage).map(|u| TokenUsage {
-                                            prompt_tokens: u.input_tokens,
-                                            completion_tokens: u.output_tokens,
-                                            total_tokens: u.total_tokens,
+                                    if let Ok(evt) =
+                                        serde_json::from_str::<StreamCompletedEvent>(data)
+                                    {
+                                        let usage = evt.response.and_then(|r| r.usage).map(|u| {
+                                            TokenUsage {
+                                                prompt_tokens: u.input_tokens,
+                                                completion_tokens: u.output_tokens,
+                                                total_tokens: u.total_tokens,
+                                            }
                                         });
                                         let tool_calls = if pending_tool_calls.is_empty() {
                                             None
                                         } else {
-                                            Some(pending_tool_calls.drain().map(|(_, (call_id, name, args))| {
-                                                ToolCall {
-                                                    id: call_id,
-                                                    call_type: "function".to_string(),
-                                                    function: ToolCallFunction {
-                                                        name,
-                                                        arguments: args,
-                                                    },
-                                                }
-                                            }).collect())
+                                            Some(
+                                                pending_tool_calls
+                                                    .drain()
+                                                    .map(|(_, (call_id, name, args))| ToolCall {
+                                                        id: call_id,
+                                                        call_type: "function".to_string(),
+                                                        function: ToolCallFunction {
+                                                            name,
+                                                            arguments: args,
+                                                        },
+                                                    })
+                                                    .collect(),
+                                            )
                                         };
                                         let _ = tx.unbounded_send(Ok(ChatStreamChunk {
                                             content: None,
@@ -628,16 +720,19 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
             let tool_calls = if pending_tool_calls.is_empty() {
                 None
             } else {
-                Some(pending_tool_calls.drain().map(|(_, (call_id, name, args))| {
-                    ToolCall {
-                        id: call_id,
-                        call_type: "function".to_string(),
-                        function: ToolCallFunction {
-                            name,
-                            arguments: args,
-                        },
-                    }
-                }).collect())
+                Some(
+                    pending_tool_calls
+                        .drain()
+                        .map(|(_, (call_id, name, args))| ToolCall {
+                            id: call_id,
+                            call_type: "function".to_string(),
+                            function: ToolCallFunction {
+                                name,
+                                arguments: args,
+                            },
+                        })
+                        .collect(),
+                )
             };
             let _ = tx.unbounded_send(Ok(ChatStreamChunk {
                 content: None,
@@ -656,15 +751,14 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
         let url = format!("{}/models", Self::base_url(ctx));
 
         let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
+            self.get_client(ctx)?
                 .get(&url)
                 .header("Authorization", format!("Bearer {}", ctx.api_key)),
             ctx,
         )
-            .send()
-            .await
-            .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
+        .send()
+        .await
+        .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
 
         if !resp.status().is_success() {
             let s = resp.status();
@@ -688,12 +782,17 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
                     ModelType::Voice => vec![ModelCapability::RealtimeVoice],
                 };
                 let id_lower = m.id.to_lowercase();
-                if id_lower.contains("gpt-4o") || id_lower.contains("gpt-4-turbo")
-                    || id_lower.contains("claude") || id_lower.contains("vision")
+                if id_lower.contains("gpt-4o")
+                    || id_lower.contains("gpt-4-turbo")
+                    || id_lower.contains("claude")
+                    || id_lower.contains("vision")
                 {
                     caps.push(ModelCapability::Vision);
                 }
-                if id_lower.starts_with("o1") || id_lower.starts_with("o3") || id_lower.starts_with("o4") {
+                if id_lower.starts_with("o1")
+                    || id_lower.starts_with("o3")
+                    || id_lower.starts_with("o4")
+                {
                     caps.push(ModelCapability::Reasoning);
                 }
                 Model {
@@ -711,7 +810,11 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
             .collect())
     }
 
-    async fn embed(&self, ctx: &ProviderRequestContext, request: EmbedRequest) -> Result<EmbedResponse> {
+    async fn embed(
+        &self,
+        ctx: &ProviderRequestContext,
+        request: EmbedRequest,
+    ) -> Result<EmbedResponse> {
         let url = format!("{}/embeddings", Self::base_url(ctx));
         let body = EmbedReq {
             model: request.model,
@@ -719,16 +822,15 @@ impl ProviderAdapter for OpenAIResponsesAdapter {
         };
 
         let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
+            self.get_client(ctx)?
                 .post(&url)
                 .header("Authorization", format!("Bearer {}", ctx.api_key))
                 .json(&body),
             ctx,
         )
-            .send()
-            .await
-            .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
+        .send()
+        .await
+        .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
 
         if !resp.status().is_success() {
             let s = resp.status();

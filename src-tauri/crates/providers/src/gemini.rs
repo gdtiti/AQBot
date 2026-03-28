@@ -1,12 +1,12 @@
-use async_trait::async_trait;
 use aqbot_core::error::{AQBotError, Result};
 use aqbot_core::types::*;
+use async_trait::async_trait;
+use futures::Stream;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
-use futures::Stream;
 
-use crate::{ProviderAdapter, ProviderRequestContext, build_http_client, parse_base64_data_url};
+use crate::{build_http_client, parse_base64_data_url, ProviderAdapter, ProviderRequestContext};
 
 const DEFAULT_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -175,13 +175,12 @@ fn convert_tools_to_gemini(tools: &Option<Vec<ChatTool>>) -> Option<Vec<GeminiTo
 fn extract_text_content(content: &ChatContent) -> String {
     match content {
         ChatContent::Text(text) => text.clone(),
-        ChatContent::Multipart(parts) => {
-            parts.iter()
-                .filter_map(|part| part.text.as_ref())
-                .cloned()
-                .collect::<Vec<String>>()
-                .join(" ")
-        }
+        ChatContent::Multipart(parts) => parts
+            .iter()
+            .filter_map(|part| part.text.as_ref())
+            .cloned()
+            .collect::<Vec<String>>()
+            .join(" "),
     }
 }
 
@@ -190,7 +189,8 @@ fn convert_messages(messages: &[ChatMessage]) -> (Option<GeminiContent>, Vec<Gem
     let mut contents = Vec::new();
 
     // Pre-build a map from tool_call_id to function name for Gemini's functionResponse
-    let mut tool_id_to_name: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut tool_id_to_name: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
     for msg in messages {
         if let Some(ref tcs) = msg.tool_calls {
             for tc in tcs {
@@ -231,10 +231,7 @@ fn convert_messages(messages: &[ChatMessage]) -> (Option<GeminiContent>, Vec<Gem
                     })
                     .collect(),
             };
-            system_instruction = Some(GeminiContent {
-                role: None,
-                parts,
-            });
+            system_instruction = Some(GeminiContent { role: None, parts });
             continue;
         }
 
@@ -242,11 +239,15 @@ fn convert_messages(messages: &[ChatMessage]) -> (Option<GeminiContent>, Vec<Gem
             "tool" => {
                 // Gemini needs the function NAME, not the call ID
                 // Look up the actual name from the tool_call_id → name map
-                let tool_name = msg.tool_call_id.as_deref()
+                let tool_name = msg
+                    .tool_call_id
+                    .as_deref()
                     .and_then(|id| tool_id_to_name.get(id).map(|s| s.as_str()))
                     .unwrap_or("unknown");
-                let result_value: serde_json::Value = serde_json::from_str(&extract_text_content(&msg.content))
-                    .unwrap_or(serde_json::json!({ "result": extract_text_content(&msg.content) }));
+                let result_value: serde_json::Value = serde_json::from_str(&extract_text_content(
+                    &msg.content,
+                ))
+                .unwrap_or(serde_json::json!({ "result": extract_text_content(&msg.content) }));
                 contents.push(GeminiContent {
                     role: Some("user".to_string()),
                     parts: vec![GeminiPart {
@@ -259,7 +260,7 @@ fn convert_messages(messages: &[ChatMessage]) -> (Option<GeminiContent>, Vec<Gem
                         }),
                     }],
                 });
-            },
+            }
             "assistant" if msg.tool_calls.is_some() => {
                 let mut parts = Vec::new();
                 let text = extract_text_content(&msg.content);
@@ -278,16 +279,19 @@ fn convert_messages(messages: &[ChatMessage]) -> (Option<GeminiContent>, Vec<Gem
                         parts.push(GeminiPart {
                             text: None,
                             inline_data: None,
-                            function_call: Some(GeminiFunctionCall { name: tc.function.name.clone(), args }),
+                            function_call: Some(GeminiFunctionCall {
+                                name: tc.function.name.clone(),
+                                args,
+                            }),
                             function_response: None,
                         });
                     }
                 }
-                contents.push(GeminiContent { 
-                    role: Some("model".to_string()), 
-                    parts 
+                contents.push(GeminiContent {
+                    role: Some("model".to_string()),
+                    parts,
                 });
-            },
+            }
             _ => {
                 let parts = match &msg.content {
                     ChatContent::Text(text) => vec![GeminiPart {
@@ -307,11 +311,13 @@ fn convert_messages(messages: &[ChatMessage]) -> (Option<GeminiContent>, Vec<Gem
                                     function_response: None,
                                 })
                             } else if let Some(img) = &p.image_url {
-                                parse_base64_data_url(&img.url).map(|(mime_type, data)| GeminiPart {
-                                    text: None,
-                                    inline_data: Some(GeminiInlineData { mime_type, data }),
-                                    function_call: None,
-                                    function_response: None,
+                                parse_base64_data_url(&img.url).map(|(mime_type, data)| {
+                                    GeminiPart {
+                                        text: None,
+                                        inline_data: Some(GeminiInlineData { mime_type, data }),
+                                        function_call: None,
+                                        function_response: None,
+                                    }
                                 })
                             } else {
                                 None
@@ -344,7 +350,11 @@ fn make_gen_config(request: &ChatRequest) -> Option<GeminiGenerationConfig> {
             Some(GeminiThinkingConfig { thinking_budget: b })
         }
     });
-    if request.temperature.is_some() || request.top_p.is_some() || request.max_tokens.is_some() || thinking_config.is_some() {
+    if request.temperature.is_some()
+        || request.top_p.is_some()
+        || request.max_tokens.is_some()
+        || thinking_config.is_some()
+    {
         Some(GeminiGenerationConfig {
             temperature: request.temperature,
             top_p: request.top_p,
@@ -442,13 +452,7 @@ impl ProviderAdapter for GeminiAdapter {
             tools: convert_tools_to_gemini(&request.tools),
         };
 
-        let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
-                .post(&url)
-                .json(&body),
-            ctx,
-        )
+        let resp = crate::apply_request_headers(self.get_client(ctx)?.post(&url).json(&body), ctx)
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
@@ -481,7 +485,13 @@ impl ProviderAdapter for GeminiAdapter {
                 }
                 if let Some(ref fc) = part.function_call {
                     tool_calls.push(aqbot_core::types::ToolCall {
-                        id: format!("gemini_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)),
+                        id: format!(
+                            "gemini_{}",
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_nanos())
+                                .unwrap_or(0)
+                        ),
                         call_type: "function".to_string(),
                         function: aqbot_core::types::ToolCallFunction {
                             name: fc.name.clone(),
@@ -498,7 +508,11 @@ impl ProviderAdapter for GeminiAdapter {
             content,
             thinking: None,
             usage: usage_from_meta(gr.usage_metadata),
-            tool_calls: if tool_calls.is_empty() { None } else { Some(tool_calls) },
+            tool_calls: if tool_calls.is_empty() {
+                None
+            } else {
+                Some(tool_calls)
+            },
         })
     }
 
@@ -531,8 +545,8 @@ impl ProviderAdapter for GeminiAdapter {
                 client.post(&url).json(&body),
                 &custom_headers,
             )
-                .send()
-                .await
+            .send()
+            .await
             {
                 Ok(r) if r.status().is_success() => r,
                 Ok(r) => {
@@ -544,9 +558,8 @@ impl ProviderAdapter for GeminiAdapter {
                     return;
                 }
                 Err(e) => {
-                    let _ = tx.unbounded_send(Err(AQBotError::Provider(format!(
-                        "Request failed: {e}"
-                    ))));
+                    let _ = tx
+                        .unbounded_send(Err(AQBotError::Provider(format!("Request failed: {e}"))));
                     return;
                 }
             };
@@ -575,14 +588,16 @@ impl ProviderAdapter for GeminiAdapter {
                             };
 
                             if let Ok(gr) = serde_json::from_str::<GeminiResponse>(data) {
-                                let parts = gr.candidates
+                                let parts = gr
+                                    .candidates
                                     .as_ref()
                                     .and_then(|c| c.first())
                                     .and_then(|c| c.content.as_ref())
                                     .map(|c| &c.parts);
 
                                 let mut content: Option<String> = None;
-                                let mut tool_calls_vec: Vec<aqbot_core::types::ToolCall> = Vec::new();
+                                let mut tool_calls_vec: Vec<aqbot_core::types::ToolCall> =
+                                    Vec::new();
 
                                 if let Some(parts) = parts {
                                     for part in parts {
@@ -591,18 +606,29 @@ impl ProviderAdapter for GeminiAdapter {
                                         }
                                         if let Some(ref fc) = part.function_call {
                                             tool_calls_vec.push(aqbot_core::types::ToolCall {
-                                                id: format!("gemini_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)),
+                                                id: format!(
+                                                    "gemini_{}",
+                                                    std::time::SystemTime::now()
+                                                        .duration_since(std::time::UNIX_EPOCH)
+                                                        .map(|d| d.as_nanos())
+                                                        .unwrap_or(0)
+                                                ),
                                                 call_type: "function".to_string(),
                                                 function: aqbot_core::types::ToolCallFunction {
                                                     name: fc.name.clone(),
-                                                    arguments: serde_json::to_string(&fc.args).unwrap_or_default(),
+                                                    arguments: serde_json::to_string(&fc.args)
+                                                        .unwrap_or_default(),
                                                 },
                                             });
                                         }
                                     }
                                 }
 
-                                let tool_calls = if tool_calls_vec.is_empty() { None } else { Some(tool_calls_vec) };
+                                let tool_calls = if tool_calls_vec.is_empty() {
+                                    None
+                                } else {
+                                    Some(tool_calls_vec)
+                                };
 
                                 let usage = gr.usage_metadata.map(|u| TokenUsage {
                                     prompt_tokens: u.prompt_token_count.unwrap_or(0),
@@ -646,12 +672,7 @@ impl ProviderAdapter for GeminiAdapter {
     async fn list_models(&self, ctx: &ProviderRequestContext) -> Result<Vec<Model>> {
         let url = format!("{}/models?key={}", Self::base_url(ctx), ctx.api_key);
 
-        let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
-                .get(&url),
-            ctx,
-        )
+        let resp = crate::apply_request_headers(self.get_client(ctx)?.get(&url), ctx)
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Request failed: {e}")))?;
@@ -702,7 +723,11 @@ impl ProviderAdapter for GeminiAdapter {
             .collect())
     }
 
-    async fn embed(&self, ctx: &ProviderRequestContext, request: EmbedRequest) -> Result<EmbedResponse> {
+    async fn embed(
+        &self,
+        ctx: &ProviderRequestContext,
+        request: EmbedRequest,
+    ) -> Result<EmbedResponse> {
         let base_url = Self::base_url(ctx);
         let url = format!(
             "{}/models/{}:batchEmbedContents?key={}",
@@ -722,13 +747,7 @@ impl ProviderAdapter for GeminiAdapter {
 
         let body = serde_json::json!({ "requests": requests });
 
-        let resp = crate::apply_request_headers(
-            self
-                .get_client(ctx)?
-                .post(&url)
-                .json(&body),
-            ctx,
-        )
+        let resp = crate::apply_request_headers(self.get_client(ctx)?.post(&url).json(&body), ctx)
             .send()
             .await
             .map_err(|e| AQBotError::Provider(format!("Gemini embed request failed: {e}")))?;
@@ -736,7 +755,9 @@ impl ProviderAdapter for GeminiAdapter {
         if !resp.status().is_success() {
             let s = resp.status();
             let t = resp.text().await.unwrap_or_default();
-            return Err(AQBotError::Provider(format!("Gemini embed API error {s}: {t}")));
+            return Err(AQBotError::Provider(format!(
+                "Gemini embed API error {s}: {t}"
+            )));
         }
 
         #[derive(Deserialize)]
@@ -753,9 +774,16 @@ impl ProviderAdapter for GeminiAdapter {
             .await
             .map_err(|e| AQBotError::Provider(format!("Gemini embed parse error: {e}")))?;
 
-        let dimensions = result.embeddings.first().map(|e| e.values.len()).unwrap_or(0);
+        let dimensions = result
+            .embeddings
+            .first()
+            .map(|e| e.values.len())
+            .unwrap_or(0);
         let embeddings: Vec<Vec<f32>> = result.embeddings.into_iter().map(|e| e.values).collect();
 
-        Ok(EmbedResponse { embeddings, dimensions })
+        Ok(EmbedResponse {
+            embeddings,
+            dimensions,
+        })
     }
 }

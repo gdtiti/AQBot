@@ -246,9 +246,13 @@ export function TitleBar() {
   ];
   const handleGithubClick: MenuProps['onClick'] = ({ key }) => {
     let url = GITHUB_REPO;
-    if (key === 'feature') url = `${GITHUB_REPO}/issues/new?labels=enhancement&template=feature_request.md`;
-    else if (key === 'bug') url = `${GITHUB_REPO}/issues/new?labels=bug&template=bug_report.md`;
-    window.open(url, '_blank');
+    if (key === 'feature') url = `${GITHUB_REPO}/issues/new?labels=enhancement&template=feature_request.yml`;
+    else if (key === 'bug') url = `${GITHUB_REPO}/issues/new?labels=bug&template=bug_report.yml`;
+    if (isTauri()) {
+      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(url)).catch(() => window.open(url, '_blank'));
+    } else {
+      window.open(url, '_blank');
+    }
   };
 
   // Pre-load Tauri window module for synchronous drag calls

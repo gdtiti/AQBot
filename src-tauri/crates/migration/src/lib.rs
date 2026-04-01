@@ -8,6 +8,7 @@ mod m20250105_000001_context_compression;
 mod m20250106_000001_add_message_status;
 mod m20250107_000001_add_provider_custom_headers;
 mod m20250108_000001_add_provider_icon;
+mod m20250109_000001_add_conversation_categories;
 
 pub struct Migrator;
 
@@ -23,6 +24,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250106_000001_add_message_status::Migration),
             Box::new(m20250107_000001_add_provider_custom_headers::Migration),
             Box::new(m20250108_000001_add_provider_icon::Migration),
+            Box::new(m20250109_000001_add_conversation_categories::Migration),
         ]
     }
 }

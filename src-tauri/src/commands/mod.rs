@@ -2,6 +2,7 @@ pub mod artifacts;
 pub mod backup;
 pub mod branches;
 pub mod context_sources;
+pub mod conversation_categories;
 pub mod conversations;
 pub mod desktop;
 pub(crate) mod file_cleanup;

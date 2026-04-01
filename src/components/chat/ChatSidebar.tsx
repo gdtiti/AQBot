@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, memo } from 'react'
 import { Button, Input, App, theme, Tooltip, Avatar, Checkbox, Dropdown, Empty } from 'antd'
-import { MessageSquarePlus, Search, Archive, ListTodo, Trash2, Pencil, Share, Pin, PinOff, Loader, X, Undo2, ArrowLeft, FileImage, FileCode, FileType, FileText } from 'lucide-react'
+import { MessageSquarePlus, Search, Archive, ListTodo, Trash2, Pencil, Share, Pin, PinOff, Loader, X, Undo2, ArrowLeft, FileImage, FileCode, FileType, FileText, FolderPlus, FolderOpen } from 'lucide-react'
 import { ModelIcon } from '@lobehub/icons'
 import { getConvIcon } from '@/lib/convIcon'
 import { exportAsMarkdown, exportAsText, exportAsPNG, exportAsJSON } from '@/lib/exportChat'
@@ -8,10 +8,13 @@ import { invoke } from '@/lib/invoke'
 import Conversations from '@ant-design/x/es/conversations'
 import type { ConversationItemType } from '@ant-design/x/es/conversations/interface'
 import { useTranslation } from 'react-i18next'
-import { useConversationStore, useProviderStore, useSettingsStore } from '@/stores'
+import { useConversationStore, useProviderStore, useSettingsStore, useCategoryStore } from '@/stores'
 import { getShortcutBinding, formatShortcutForDisplay } from '@/lib/shortcuts'
 import type { ShortcutAction } from '@/lib/shortcuts'
-import type { Conversation, Message } from '@/types'
+import type { Conversation, Message, ConversationCategory } from '@/types'
+import { useResolvedAvatarSrc } from '@/hooks/useResolvedAvatarSrc'
+import type { AvatarType } from '@/stores/userProfileStore'
+import { CategoryEditModal } from './CategoryEditModal'
 
 function getDateGroup(timestamp: number): string {
   const now = new Date()
@@ -29,6 +32,21 @@ function getDateGroup(timestamp: number): string {
   if (date >= startOfMonth) return 'thisMonth'
   return 'earlier'
 }
+
+const CategoryIcon = memo(function CategoryIcon({ cat, size = 14 }: { cat: ConversationCategory; size?: number }) {
+  const resolvedSrc = useResolvedAvatarSrc((cat.icon_type as AvatarType) ?? 'icon', cat.icon_value ?? '')
+  if (cat.icon_type === 'emoji' && cat.icon_value) {
+    return <span style={{ fontSize: size - 1 }}>{cat.icon_value}</span>
+  }
+  if (cat.icon_type === 'url' && cat.icon_value) {
+    return <img src={cat.icon_value} alt="" style={{ width: size, height: size, borderRadius: 2, objectFit: 'cover' }} />
+  }
+  if (cat.icon_type === 'file' && cat.icon_value) {
+    const src = resolvedSrc ?? (cat.icon_value.startsWith('data:') ? cat.icon_value : undefined)
+    if (src) return <img src={src} alt="" style={{ width: size, height: size, borderRadius: 2, objectFit: 'cover' }} />
+  }
+  return <FolderOpen size={size - 1} />
+})
 
 export function ChatSidebar() {
   const { t } = useTranslation()
@@ -52,6 +70,13 @@ export function ChatSidebar() {
   const providers = useProviderStore((s) => s.providers)
   const settings = useSettingsStore((s) => s.settings)
 
+  const categories = useCategoryStore((s) => s.categories)
+  const fetchCategories = useCategoryStore((s) => s.fetchCategories)
+  const createCategory = useCategoryStore((s) => s.createCategory)
+  const updateCategory = useCategoryStore((s) => s.updateCategory)
+  const deleteCategory = useCategoryStore((s) => s.deleteCategory)
+  const setCollapsed = useCategoryStore((s) => s.setCollapsed)
+
   const shortcutHint = useCallback((label: string, action: ShortcutAction) => {
     if (!settings) return label
     const binding = getShortcutBinding(settings, action)
@@ -66,6 +91,8 @@ export function ChatSidebar() {
   const [archivedSelectedIds, setArchivedSelectedIds] = useState<Set<string>>(new Set())
   const [archivedMultiSelect, setArchivedMultiSelect] = useState(false)
   const [rightClickedConvId, setRightClickedConvId] = useState<string | null>(null)
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<ConversationCategory | null>(null)
 
   // Auto-select first conversation if none selected
   useEffect(() => {
@@ -77,6 +104,8 @@ export function ChatSidebar() {
       setActiveConversation(sorted[0].id)
     }
   }, [activeConversationId, conversations, setActiveConversation])
+
+  useEffect(() => { void fetchCategories() }, [fetchCategories])
 
   const handleNewConversation = useCallback(async () => {
     let provider: typeof providers[0] | undefined
@@ -136,11 +165,22 @@ export function ChatSidebar() {
       const query = searchText.toLowerCase()
       filtered = filtered.filter((c: Conversation) => c.title.toLowerCase().includes(query))
     }
-    return [...filtered].sort((a, b) => {
+    // Categorized conversations first (by category sort_order), then uncategorized
+    const categorized = filtered.filter((c) => c.category_id)
+    const uncategorized = filtered.filter((c) => !c.category_id)
+    const catOrderMap = new Map(categories.map((cat) => [cat.id, cat.sort_order]))
+    categorized.sort((a, b) => {
+      const oa = catOrderMap.get(a.category_id!) ?? 0
+      const ob = catOrderMap.get(b.category_id!) ?? 0
+      if (oa !== ob) return oa - ob
+      return b.updated_at - a.updated_at
+    })
+    uncategorized.sort((a, b) => {
       if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
       return b.updated_at - a.updated_at
     })
-  }, [conversations, searchText])
+    return [...categorized, ...uncategorized]
+  }, [conversations, searchText, categories])
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -291,10 +331,33 @@ export function ChatSidebar() {
   }, [streamingConversationId, token.colorPrimary, token.colorPrimaryBg, token.colorBgContainer])
 
    const conversationItems: ConversationItemType[] = useMemo(
-    () =>
-      filteredConversations.map((conv: Conversation) => {
+    () => {
+      const items: ConversationItemType[] = []
+
+      // Add placeholder items for empty categories so their group headers render
+      const usedCatIds = new Set(filteredConversations.filter((c) => c.category_id).map((c) => c.category_id!))
+      categories.forEach((cat) => {
+        if (!usedCatIds.has(cat.id)) {
+          items.push({
+            key: `__empty_cat_${cat.id}`,
+            label: (
+              <span style={{ color: token.colorTextQuaternary, fontSize: 12, fontStyle: 'italic' }}>
+                {t('chat.noConversations')}
+              </span>
+            ),
+            icon: null,
+            group: `cat:${cat.id}`,
+            disabled: true,
+            style: { pointerEvents: 'none', minHeight: 28, opacity: 0.6 },
+          })
+        }
+      })
+
+      filteredConversations.forEach((conv: Conversation) => {
         const icon = buildIcon(conv)
-        const group = conv.is_pinned ? 'pinned' : getDateGroup(conv.updated_at)
+        const group = conv.category_id
+          ? `cat:${conv.category_id}`
+          : conv.is_pinned ? 'pinned' : getDateGroup(conv.updated_at)
         const label = conv.is_pinned ? (
           <span className="flex items-center gap-1">
             <span className="truncate">{conv.title}</span>
@@ -302,7 +365,7 @@ export function ChatSidebar() {
           </span>
         ) : conv.title
         if (multiSelectMode) {
-          return {
+          items.push({
             key: conv.id,
             label,
             icon: (
@@ -317,30 +380,190 @@ export function ChatSidebar() {
             ),
             group,
             'data-conv-id': conv.id,
-          }
+          })
+        } else {
+          items.push({
+            key: conv.id,
+            label,
+            icon,
+            group,
+            'data-conv-id': conv.id,
+          })
         }
-        return {
-          key: conv.id,
-          label,
-          icon,
-          group,
-          'data-conv-id': conv.id,
-        }
-      }),
-    [filteredConversations, multiSelectMode, selectedIds, buildIcon, toggleSelect, token.colorTextQuaternary],
+      })
+
+      return items
+    },
+    [filteredConversations, multiSelectMode, selectedIds, buildIcon, toggleSelect, token.colorTextQuaternary, categories, t],
   )
 
   const groupLabels: Record<string, string> = useMemo(
-    () => ({
-      pinned: t('chat.pinned'),
-      today: t('chat.today'),
-      yesterday: t('chat.yesterday'),
-      thisWeek: t('chat.thisWeek'),
-      thisMonth: t('chat.thisMonth'),
-      earlier: t('chat.earlier'),
-    }),
-    [t],
+    () => {
+      const labels: Record<string, string> = {
+        pinned: t('chat.pinned'),
+        today: t('chat.today'),
+        yesterday: t('chat.yesterday'),
+        thisWeek: t('chat.thisWeek'),
+        thisMonth: t('chat.thisMonth'),
+        earlier: t('chat.earlier'),
+      }
+      categories.forEach((cat) => {
+        labels[`cat:${cat.id}`] = cat.name
+      })
+      return labels
+    },
+    [t, categories],
   )
+
+  // Local state for expanded group keys (drives the UI immediately)
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([])
+
+  // Track known category IDs to detect new ones
+  const knownCatIdsRef = useRef(new Set<string>())
+  useEffect(() => {
+    const currentIds = new Set(categories.map((c) => c.id))
+    // Find newly appeared categories (initial load or newly created)
+    const newCats = categories.filter((c) => !knownCatIdsRef.current.has(c.id))
+    if (newCats.length > 0) {
+      const newExpandedKeys = newCats.filter((c) => !c.is_collapsed).map((c) => `cat:${c.id}`)
+      if (newExpandedKeys.length > 0) {
+        setExpandedKeys((prev) => [...prev, ...newExpandedKeys])
+      }
+    }
+    // Remove keys for deleted categories
+    const deletedIds = [...knownCatIdsRef.current].filter((id) => !currentIds.has(id))
+    if (deletedIds.length > 0) {
+      const deletedKeys = new Set(deletedIds.map((id) => `cat:${id}`))
+      setExpandedKeys((prev) => prev.filter((k) => !deletedKeys.has(k)))
+    }
+    knownCatIdsRef.current = currentIds
+  }, [categories])
+
+  // Auto-expand category of the active conversation on load
+  const initialExpandDoneRef = useRef(false)
+  useEffect(() => {
+    if (initialExpandDoneRef.current || !activeConversationId || categories.length === 0) return
+    const activeConv = conversations.find((c) => c.id === activeConversationId)
+    if (activeConv?.category_id) {
+      const key = `cat:${activeConv.category_id}`
+      setExpandedKeys((prev) => (prev.includes(key) ? prev : [...prev, key]))
+    }
+    initialExpandDoneRef.current = true
+  }, [activeConversationId, conversations, categories])
+
+  // Guard to prevent menu clicks from triggering expand/collapse
+  const menuActionRef = useRef(false)
+
+  const handleGroupExpand = useCallback(
+    (keys: string[]) => {
+      if (menuActionRef.current) return
+      setExpandedKeys(keys)
+      const expandedCatIds = new Set(
+        keys.filter((k) => k.startsWith('cat:')).map((k) => k.slice(4)),
+      )
+      categories.forEach((cat) => {
+        const shouldBeCollapsed = !expandedCatIds.has(cat.id)
+        if (cat.is_collapsed !== shouldBeCollapsed) {
+          void setCollapsed(cat.id, shouldBeCollapsed)
+        }
+      })
+    },
+    [categories, setCollapsed],
+  )
+
+  const handleDeleteCategory = useCallback(
+    async (catId: string) => {
+      modal.confirm({
+        title: t('chat.deleteCategoryConfirm'),
+        mask: { enabled: true, blur: true },
+        okButtonProps: { danger: true },
+        onOk: async () => {
+          await deleteCategory(catId)
+          await useConversationStore.getState().fetchConversations()
+        },
+      })
+    },
+    [deleteCategory, modal, t],
+  )
+
+  const renderGroupLabel = useCallback(
+    (group: string) => {
+      if (group.startsWith('cat:')) {
+        const catId = group.slice(4)
+        const cat = categories.find((c) => c.id === catId)
+        if (!cat) return group
+
+        return (
+          <Dropdown
+            trigger={['contextMenu']}
+            menu={{
+              items: [
+                { key: 'edit', label: t('chat.editCategory'), icon: <Pencil size={14} /> },
+                { key: 'delete', label: t('chat.deleteCategory'), icon: <Trash2 size={14} />, danger: true },
+              ],
+              onClick: ({ key, domEvent }) => {
+                domEvent.stopPropagation()
+                menuActionRef.current = true
+                setTimeout(() => { menuActionRef.current = false }, 100)
+                if (key === 'edit') {
+                  setEditingCategory(cat)
+                  setCategoryModalOpen(true)
+                } else if (key === 'delete') {
+                  void handleDeleteCategory(catId)
+                }
+              },
+            }}
+          >
+            <div
+              className="flex items-center gap-1.5"
+              style={{ cursor: 'pointer', userSelect: 'none', flex: 1 }}
+            >
+              <CategoryIcon cat={cat} size={14} />
+              <span className="truncate">{cat.name}</span>
+            </div>
+          </Dropdown>
+        )
+      }
+      return groupLabels[group] ?? group
+    },
+    [categories, groupLabels, t, handleDeleteCategory],
+  )
+
+  const handleCreateCategory = useCallback(
+    async (data: { name: string; icon_type: string | null; icon_value: string | null }) => {
+      await createCategory({
+        name: data.name,
+        icon_type: data.icon_type,
+        icon_value: data.icon_value,
+      })
+    },
+    [createCategory],
+  )
+
+  const handleUpdateCategory = useCallback(
+    async (data: { name: string; icon_type: string | null; icon_value: string | null }) => {
+      if (!editingCategory) return
+      await updateCategory(editingCategory.id, {
+        name: data.name,
+        icon_type: data.icon_type,
+        icon_value: data.icon_value,
+      })
+      setEditingCategory(null)
+    },
+    [editingCategory, updateCategory],
+  )
+
+  const moveToCategoryMenuItems = useMemo(() => {
+    return categories.map((cat) => ({
+      key: `move-to-cat:${cat.id}`,
+      label: (
+        <span className="flex items-center gap-1.5">
+          <CategoryIcon cat={cat} size={14} />
+          <span>{cat.name}</span>
+        </span>
+      ),
+    }))
+  }, [categories])
 
   const handleRename = useCallback(
     (item: ConversationItemType) => {
@@ -453,6 +676,25 @@ export function ChatSidebar() {
       if (multiSelectMode) return { items: [] }
       const conv = conversations.find((c) => c.id === String(item.key))
       const isPinned = conv?.is_pinned ?? false
+      const categoryItems: any[] = []
+      if (categories.length > 0) {
+        const moveChildren = moveToCategoryMenuItems.filter(
+          (mi) => mi.key !== `move-to-cat:${conv?.category_id}`,
+        )
+        if (conv?.category_id) {
+          moveChildren.unshift({
+            key: 'remove-from-category',
+            label: (<span className="flex items-center gap-1.5"><X size={13} /><span>{t('chat.removeFromCategory')}</span></span>),
+          })
+        }
+        if (moveChildren.length > 0) {
+          categoryItems.push({
+            key: 'move-to-category',
+            label: (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><FolderOpen size={14} />{t('chat.moveToCategory')}</span>),
+            children: moveChildren,
+          })
+        }
+      }
       return {
         items: [
           {
@@ -461,6 +703,7 @@ export function ChatSidebar() {
             icon: isPinned ? <PinOff size={14} /> : <Pin size={14} />,
           },
           { key: 'archive', label: t('chat.archive'), icon: <Archive size={14} /> },
+          ...categoryItems,
           { key: 'rename', label: t('chat.rename'), icon: <Pencil size={14} /> },
           {
             key: 'export',
@@ -470,6 +713,15 @@ export function ChatSidebar() {
           { key: 'delete', label: t('chat.delete'), icon: <Trash2 size={14} />, danger: true },
         ],
         onClick: (menuInfo: { key: string }) => {
+          if (menuInfo.key.startsWith('move-to-cat:')) {
+            const catId = menuInfo.key.slice('move-to-cat:'.length)
+            void updateConversation(String(item.key), { category_id: catId })
+            return
+          }
+          if (menuInfo.key === 'remove-from-category') {
+            void updateConversation(String(item.key), { category_id: null })
+            return
+          }
           switch (menuInfo.key) {
             case 'pin':
               togglePin(String(item.key))
@@ -487,7 +739,7 @@ export function ChatSidebar() {
         },
       }
     },
-    [t, conversations, multiSelectMode, handleRename, handleDelete, togglePin, toggleArchive, buildExportChildren],
+    [t, conversations, multiSelectMode, handleRename, handleDelete, togglePin, toggleArchive, buildExportChildren, categories, moveToCategoryMenuItems, updateConversation],
   )
 
   const handleConversationClick = useCallback((key: string) => {
@@ -503,10 +755,30 @@ export function ChatSidebar() {
     const conv = conversations.find((c) => c.id === rightClickedConvId)
     if (!conv) return { items: [] as any[] }
     const isPinned = conv.is_pinned ?? false
+    const categoryItems: any[] = []
+    if (categories.length > 0) {
+      const moveChildren = moveToCategoryMenuItems.filter(
+        (mi) => mi.key !== `move-to-cat:${conv.category_id}`,
+      )
+      if (conv.category_id) {
+        moveChildren.unshift({
+          key: 'remove-from-category',
+          label: (<span className="flex items-center gap-1.5"><X size={13} /><span>{t('chat.removeFromCategory')}</span></span>),
+        })
+      }
+      if (moveChildren.length > 0) {
+        categoryItems.push({
+          key: 'move-to-category',
+          label: (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><FolderOpen size={14} />{t('chat.moveToCategory')}</span>),
+          children: moveChildren,
+        })
+      }
+    }
     return {
       items: [
         { key: 'pin', label: isPinned ? t('chat.unpin') : t('chat.pin'), icon: isPinned ? <PinOff size={14} /> : <Pin size={14} /> },
         { key: 'archive', label: t('chat.archive'), icon: <Archive size={14} /> },
+        ...categoryItems,
         { key: 'rename', label: t('chat.rename'), icon: <Pencil size={14} /> },
         {
           key: 'export',
@@ -516,6 +788,15 @@ export function ChatSidebar() {
         { key: 'delete', label: t('chat.delete'), icon: <Trash2 size={14} />, danger: true },
       ],
       onClick: (menuInfo: { key: string }) => {
+        if (menuInfo.key.startsWith('move-to-cat:')) {
+          const catId = menuInfo.key.slice('move-to-cat:'.length)
+          void updateConversation(conv.id, { category_id: catId })
+          return
+        }
+        if (menuInfo.key === 'remove-from-category') {
+          void updateConversation(conv.id, { category_id: null })
+          return
+        }
         const item = { key: conv.id, label: conv.title } as ConversationItemType
         switch (menuInfo.key) {
           case 'pin': togglePin(conv.id); break
@@ -525,7 +806,7 @@ export function ChatSidebar() {
         }
       },
     }
-  }, [rightClickedConvId, conversations, t, togglePin, toggleArchive, handleRename, handleDelete, buildExportChildren])
+  }, [rightClickedConvId, conversations, t, togglePin, toggleArchive, handleRename, handleDelete, buildExportChildren, categories, moveToCategoryMenuItems, updateConversation])
 
   return (
     <div className="flex flex-col h-full">
@@ -592,6 +873,14 @@ export function ChatSidebar() {
                   icon={<Archive size={16} />}
                   size="small"
                   onClick={handleShowArchived}
+                />
+              </Tooltip>
+              <Tooltip title={t('chat.createCategory')}>
+                <Button
+                  type="text"
+                  icon={<FolderPlus size={16} />}
+                  size="small"
+                  onClick={() => { setEditingCategory(null); setCategoryModalOpen(true) }}
                 />
               </Tooltip>
               <Tooltip title={shortcutHint(t('chat.newConversation'), 'newConversation')}>
@@ -752,6 +1041,10 @@ export function ChatSidebar() {
                 .ant-conversations .ant-conversations-item-active .ant-conversations-label {
                   color: ${token.colorPrimary} !important;
                 }
+                .ant-conversations .ant-conversations-group-label {
+                  flex: 1;
+                  overflow: hidden;
+                }
                 @keyframes spin {
                   from { transform: rotate(0deg); }
                   to { transform: rotate(360deg); }
@@ -763,7 +1056,10 @@ export function ChatSidebar() {
                   activeKey={multiSelectMode ? undefined : (activeConversationId ?? undefined)}
                   onActiveChange={handleConversationClick}
                   groupable={{
-                    label: (group) => groupLabels[group] ?? group,
+                    label: (group: string) => renderGroupLabel(group),
+                    collapsible: (group: string) => group.startsWith('cat:'),
+                    expandedKeys: expandedKeys,
+                    onExpand: handleGroupExpand,
                   }}
                   menu={menuConfig}
                 />
@@ -777,7 +1073,15 @@ export function ChatSidebar() {
         </Dropdown>
       )}
 
-
+      <CategoryEditModal
+        open={categoryModalOpen}
+        onClose={() => { setCategoryModalOpen(false); setEditingCategory(null) }}
+        onOk={editingCategory ? handleUpdateCategory : handleCreateCategory}
+        initialName={editingCategory?.name ?? ''}
+        initialIconType={editingCategory?.icon_type}
+        initialIconValue={editingCategory?.icon_value}
+        title={editingCategory ? t('chat.editCategory') : t('chat.createCategory')}
+      />
 
     </div>
   )

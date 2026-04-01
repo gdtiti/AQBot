@@ -1,6 +1,7 @@
 export { useUIStore } from './uiStore';
 export { useProviderStore } from './providerStore';
 export { useConversationStore } from './conversationStore';
+export { useCategoryStore } from './categoryStore';
 export { useSettingsStore } from './settingsStore';
 export { useGatewayStore } from './gatewayStore';
 export { useChatWorkspaceStore } from './chatWorkspaceStore';

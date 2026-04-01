@@ -84,6 +84,17 @@ export interface ModelParamOverrides {
 // === Conversation & Message ===
 export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
+export interface ConversationCategory {
+  id: string;
+  name: string;
+  icon_type: string | null;
+  icon_value: string | null;
+  sort_order: number;
+  is_collapsed: boolean;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface Conversation {
   id: string;
   title: string;
@@ -103,6 +114,7 @@ export interface Conversation {
   is_pinned: boolean;
   is_archived: boolean;
   context_compression: boolean;
+  category_id: string | null;
   message_count: number;
   created_at: number;
   updated_at: number;
@@ -194,6 +206,7 @@ export interface UpdateConversationInput {
   enabled_knowledge_base_ids?: string[];
   enabled_memory_namespace_ids?: string[];
   context_compression?: boolean;
+  category_id?: string | null;
 }
 
 // === Gateway System ===

@@ -94,6 +94,13 @@ pub fn run() {
             commands::conversations::get_compression_summary,
             commands::conversations::delete_compression,
             commands::conversations::regenerate_conversation_title,
+            // conversation categories
+            commands::conversation_categories::list_conversation_categories,
+            commands::conversation_categories::create_conversation_category,
+            commands::conversation_categories::update_conversation_category,
+            commands::conversation_categories::delete_conversation_category,
+            commands::conversation_categories::reorder_conversation_categories,
+            commands::conversation_categories::set_conversation_category_collapsed,
             // settings
             commands::settings::get_settings,
             commands::settings::save_settings,

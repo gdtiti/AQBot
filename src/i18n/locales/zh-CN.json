@@ -106,6 +106,13 @@
     "archivedSuccess": "已归档 {{count}} 个对话",
     "noArchivedConversations": "暂无归档对话",
     "multiSelect": "多选",
+    "createCategory": "新建分类",
+    "editCategory": "编辑分类",
+    "deleteCategory": "删除分类",
+    "deleteCategoryConfirm": "确定删除此分类？分类中的对话将被移回默认列表。",
+    "moveToCategory": "移动到分类",
+    "removeFromCategory": "移出分类",
+    "categoryNamePlaceholder": "分类名称",
     "inspector": {
       "title": "检查器",
       "sources": "来源",

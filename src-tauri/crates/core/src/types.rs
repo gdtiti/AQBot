@@ -226,6 +226,7 @@ pub struct Conversation {
     pub is_pinned: bool,
     pub is_archived: bool,
     pub context_compression: bool,
+    pub category_id: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -328,6 +329,34 @@ pub struct UpdateConversationInput {
     pub enabled_knowledge_base_ids: Option<Vec<String>>,
     pub enabled_memory_namespace_ids: Option<Vec<String>>,
     pub context_compression: Option<bool>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub category_id: Option<Option<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConversationCategory {
+    pub id: String,
+    pub name: String,
+    pub icon_type: Option<String>,
+    pub icon_value: Option<String>,
+    pub sort_order: i32,
+    pub is_collapsed: bool,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateConversationCategoryInput {
+    pub name: String,
+    pub icon_type: Option<String>,
+    pub icon_value: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateConversationCategoryInput {
+    pub name: Option<String>,
+    pub icon_type: Option<String>,
+    pub icon_value: Option<String>,
 }
 
 // === Gateway System ===

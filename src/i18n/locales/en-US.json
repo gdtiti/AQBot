@@ -106,6 +106,13 @@
     "archivedSuccess": "{{count}} conversations archived",
     "noArchivedConversations": "No archived conversations",
     "multiSelect": "Multi-select",
+    "createCategory": "New Category",
+    "editCategory": "Edit Category",
+    "deleteCategory": "Delete Category",
+    "deleteCategoryConfirm": "Delete this category? Conversations in it will be moved back to the default list.",
+    "moveToCategory": "Move to Category",
+    "removeFromCategory": "Remove from Category",
+    "categoryNamePlaceholder": "Category name",
     "inspector": {
       "title": "Inspector",
       "sources": "Sources",

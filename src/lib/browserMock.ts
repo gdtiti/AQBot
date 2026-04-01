@@ -472,6 +472,71 @@ export async function handleCommand<T>(cmd: string, args?: Record<string, unknow
       }
       throw new Error('Conversation not found');
     }
+    case 'list_conversation_categories':
+      return getStore<any[]>('conversation_categories', []) as T;
+    case 'create_conversation_category': {
+      const { input } = args as any;
+      const cats = getStore<any[]>('conversation_categories', []);
+      const maxOrder = cats.reduce((m: number, c: any) => Math.max(m, c.sort_order ?? 0), -1);
+      const cat = {
+        id: genId(),
+        name: input.name,
+        icon_type: input.icon_type ?? null,
+        icon_value: input.icon_value ?? null,
+        sort_order: maxOrder + 1,
+        is_collapsed: true,
+        created_at: nowTs(),
+        updated_at: nowTs(),
+      };
+      cats.push(cat);
+      setStore('conversation_categories', cats);
+      return cat as T;
+    }
+    case 'update_conversation_category': {
+      const { id, input } = args as any;
+      const cats = getStore<any[]>('conversation_categories', []);
+      const idx = cats.findIndex((c: any) => c.id === id);
+      if (idx !== -1) {
+        if (input.name !== undefined) cats[idx].name = input.name;
+        if (input.icon_type !== undefined) cats[idx].icon_type = input.icon_type;
+        if (input.icon_value !== undefined) cats[idx].icon_value = input.icon_value;
+        cats[idx].updated_at = nowTs();
+        setStore('conversation_categories', cats);
+        return cats[idx] as T;
+      }
+      throw new Error('Category not found');
+    }
+    case 'delete_conversation_category': {
+      const { id } = args as any;
+      const cats = getStore<any[]>('conversation_categories', []).filter((c: any) => c.id !== id);
+      setStore('conversation_categories', cats);
+      const convs = getStore<any[]>('conversations', []);
+      convs.forEach((c: any) => { if (c.category_id === id) c.category_id = null; });
+      setStore('conversations', convs);
+      return undefined as T;
+    }
+    case 'reorder_conversation_categories': {
+      const { categoryIds } = args as any;
+      const cats = getStore<any[]>('conversation_categories', []);
+      for (let i = 0; i < categoryIds.length; i++) {
+        const c = cats.find((c: any) => c.id === categoryIds[i]);
+        if (c) c.sort_order = i;
+      }
+      cats.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      setStore('conversation_categories', cats);
+      return undefined as T;
+    }
+    case 'set_conversation_category_collapsed': {
+      const { id, collapsed } = args as any;
+      const cats = getStore<any[]>('conversation_categories', []);
+      const idx = cats.findIndex((c: any) => c.id === id);
+      if (idx !== -1) {
+        cats[idx].is_collapsed = collapsed;
+        cats[idx].updated_at = nowTs();
+        setStore('conversation_categories', cats);
+      }
+      return undefined as T;
+    }
     case 'send_message': {
       const { conversationId, content, attachments } = args as any;
       const userMsgId = genId();

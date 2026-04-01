@@ -29,6 +29,7 @@ fn conversation_from_entity(m: conversations::Model) -> Conversation {
         is_pinned: m.is_pinned != 0,
         is_archived: m.is_archived != 0,
         context_compression: m.context_compression != 0,
+        category_id: m.category_id,
         created_at: m.created_at,
         updated_at: m.updated_at,
     }
@@ -165,6 +166,9 @@ pub async fn update_conversation(
     }
     if let Some(context_compression) = input.context_compression {
         am.context_compression = Set(if context_compression { 1 } else { 0 });
+    }
+    if let Some(category_id) = input.category_id {
+        am.category_id = Set(category_id);
     }
     am.updated_at = Set(now);
     am.update(db).await?;

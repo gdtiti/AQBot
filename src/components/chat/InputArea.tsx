@@ -49,7 +49,6 @@ export function InputArea() {
   const [companionModels, setCompanionModels] = useState<Array<{ providerId: string; modelId: string }>>([]);
   const [multiModelOpen, setMultiModelOpen] = useState(false);
   const sendMultiModelMessage = useConversationStore((s) => s.sendMultiModelMessage);
-  const pendingCompanionModels = useConversationStore((s) => s.pendingCompanionModels);
 
   const { message: messageApi, modal } = App.useApp();
   const streaming = useConversationStore((s) => s.streaming);
@@ -795,7 +794,7 @@ export function InputArea() {
                   color: token.colorText,
                 }}
               >
-                <ModelIcon provider={cm.providerId} model={cm.modelId} size={14} type="avatar" />
+                <ModelIcon model={cm.modelId} size={14} type="avatar" />
                 <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {cm.modelName}
                 </span>

@@ -75,6 +75,7 @@ pub async fn add_memory_item(
         let content = item.content.clone();
         let ep = embedding_provider.clone();
         let ns_id = item.namespace_id.clone();
+        let dims = ns.embedding_dimensions.map(|v| v as usize);
 
         tokio::spawn(async move {
             let result = crate::indexing::index_memory_item(
@@ -85,6 +86,7 @@ pub async fn add_memory_item(
                 &item_id,
                 &content,
                 &ep,
+                dims,
             )
             .await;
 
@@ -165,6 +167,7 @@ pub async fn update_memory_item(
             let content = item.content.clone();
             let ep = embedding_provider.clone();
             let ns_id = namespace_id.clone();
+            let dims = ns.embedding_dimensions.map(|v| v as usize);
 
             tokio::spawn(async move {
                 // Delete old embedding first
@@ -181,6 +184,7 @@ pub async fn update_memory_item(
                     &item_id,
                     &content,
                     &ep,
+                    dims,
                 )
                 .await;
 
@@ -262,6 +266,7 @@ pub async fn rebuild_memory_index(
     let master_key = state.master_key;
     let vector_store = state.vector_store.clone();
     let ep = embedding_provider.clone();
+    let dims = ns.embedding_dimensions.map(|v| v as usize);
 
     tokio::spawn(async move {
         for item in items {
@@ -273,6 +278,7 @@ pub async fn rebuild_memory_index(
                 &item.id,
                 &item.content,
                 &ep,
+                dims,
             )
             .await;
 
@@ -353,6 +359,7 @@ pub async fn reindex_memory_item(
     let ns_id = namespace_id.clone();
     let iid = item_id.clone();
     let content = item.content.clone();
+    let dims = ns.embedding_dimensions.map(|v| v as usize);
 
     tokio::spawn(async move {
         let collection_id = format!("mem_{}", ns_id);
@@ -368,6 +375,7 @@ pub async fn reindex_memory_item(
             &iid,
             &content,
             &ep,
+            dims,
         )
         .await;
 
@@ -392,4 +400,14 @@ pub async fn reindex_memory_item(
     });
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn reorder_memory_namespaces(
+    state: State<'_, AppState>,
+    namespace_ids: Vec<String>,
+) -> Result<(), String> {
+    aqbot_core::repo::memory::reorder_namespaces(&state.sea_db, &namespace_ids)
+        .await
+        .map_err(|e| e.to_string())
 }

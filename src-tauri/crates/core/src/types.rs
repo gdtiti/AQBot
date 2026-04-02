@@ -840,6 +840,7 @@ pub struct RagContextRetrievedEvent {
 pub struct EmbedRequest {
     pub model: String,
     pub input: Vec<String>,
+    pub dimensions: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1003,6 +1004,12 @@ pub struct MemoryNamespace {
     pub name: String,
     pub scope: String, // global | project
     pub embedding_provider: Option<String>,
+    pub embedding_dimensions: Option<i32>,
+    pub retrieval_threshold: Option<f32>,
+    pub retrieval_top_k: Option<i32>,
+    pub icon_type: Option<String>,
+    pub icon_value: Option<String>,
+    pub sort_order: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1299,6 +1306,11 @@ pub struct CreateMemoryNamespaceInput {
     pub name: String,
     pub scope: String,
     pub embedding_provider: Option<String>,
+    pub embedding_dimensions: Option<i32>,
+    pub retrieval_threshold: Option<f32>,
+    pub retrieval_top_k: Option<i32>,
+    pub icon_type: Option<String>,
+    pub icon_value: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1308,6 +1320,20 @@ pub struct UpdateMemoryNamespaceInput {
     pub embedding_provider: Option<String>,
     #[serde(default)]
     pub update_embedding_provider: bool,
+    pub embedding_dimensions: Option<i32>,
+    #[serde(default)]
+    pub update_embedding_dimensions: bool,
+    pub retrieval_threshold: Option<f32>,
+    #[serde(default)]
+    pub update_retrieval_threshold: bool,
+    pub retrieval_top_k: Option<i32>,
+    #[serde(default)]
+    pub update_retrieval_top_k: bool,
+    pub icon_type: Option<String>,
+    pub icon_value: Option<String>,
+    #[serde(default)]
+    pub update_icon: bool,
+    pub sort_order: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

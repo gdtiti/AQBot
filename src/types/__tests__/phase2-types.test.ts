@@ -56,6 +56,7 @@ describe('Phase-2 type contracts', () => {
       id: 'mn1',
       name: 'Global',
       scope: 'global',
+      sortOrder: 0,
     };
     expect(mn.scope).toBe('global');
   });

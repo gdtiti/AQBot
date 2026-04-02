@@ -1058,11 +1058,16 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
     // Create assistant placeholder upfront (for search status or streaming)
     const tempAssistantId = `temp-assistant-${Date.now()}`;
+    const memIds = get().enabledMemoryNamespaceIds;
+    const hasMemoryRag = memIds.length > 0;
+    let placeholderContent = '';
+    if (searchProviderId) placeholderContent += buildSearchTag('searching');
+    if (hasMemoryRag) placeholderContent += buildMemoryTag('searching');
     const placeholderAssistant: Message = {
       id: tempAssistantId,
       conversation_id: conversationId,
       role: 'assistant',
-      content: searchProviderId ? buildSearchTag('searching') : '',
+      content: placeholderContent,
       provider_id: null,
       model_id: null,
       token_count: null,
@@ -1102,22 +1107,25 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
             searchResultTag = buildSearchTag('done', searchResult.results);
           }
         } catch (e) {
-          console.warn('[sendMessage] search failed, sending without search:', e);
+          // Search failed, continue without search results
         }
-        // Replace searching tag with results (or empty if search failed)
-        _streamPrefix = searchResultTag;
+        // Replace searching tag with results, keep memory searching tag if present
+        const memoryPart = hasMemoryRag ? buildMemoryTag('searching') : '';
+        _streamPrefix = searchResultTag + memoryPart;
         set((s) => ({
           messages: s.messages.map(m =>
-            m.id === tempAssistantId ? { ...m, content: searchResultTag } : m
+            m.id === tempAssistantId ? { ...m, content: searchResultTag + memoryPart } : m
           ),
         }));
+      } else if (hasMemoryRag) {
+        // Memory RAG only — set prefix so searching tag flows into stream buffer
+        _streamPrefix = buildMemoryTag('searching');
       }
 
       const mcpIds = get().enabledMcpServerIds;
       const thinkingBudget = getEffectiveThinkingBudget(get, conversationId);
       const kbIds = get().enabledKnowledgeBaseIds;
       const memIds = get().enabledMemoryNamespaceIds;
-      console.warn('[sendMessage] RAG IDs:', { kbIds, memIds, kbSent: kbIds.length > 0, memSent: memIds.length > 0 });
       const userMessage = await invoke<Message>('send_message', {
         conversationId,
         content: finalContent,
@@ -1961,27 +1969,37 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       if (_listenerGen !== gen) return;
       if (!get().streaming) return;
       const { conversation_id, sources } = event.payload;
-      console.warn('[rag-context-retrieved] event received:', { conversation_id, sourcesCount: sources.length, sources });
-      if (sources.length === 0) return;
 
-      const memTag = buildMemoryTag('done', sources);
+      const searchingTag = buildMemoryTag('searching');
+      // If no results, just remove the searching tag; otherwise replace with done
+      const memTag = sources.length > 0 ? buildMemoryTag('done', sources) : '';
 
       if (_streamBuffer && _streamBuffer.conversationId === conversation_id) {
-        // Buffer already started — prepend tag to existing content
-        _streamBuffer.content = memTag + _streamBuffer.content;
+        if (_streamBuffer.content.includes(searchingTag)) {
+          _streamBuffer.content = _streamBuffer.content.replace(searchingTag, memTag);
+        } else if (memTag) {
+          _streamBuffer.content = memTag + _streamBuffer.content;
+        }
       } else {
-        // Buffer not yet created — append to prefix
-        _streamPrefix = memTag + _streamPrefix;
+        if (_streamPrefix.includes(searchingTag)) {
+          _streamPrefix = _streamPrefix.replace(searchingTag, memTag);
+        } else if (memTag) {
+          _streamPrefix = memTag + _streamPrefix;
+        }
       }
 
-      // Update UI immediately to show the memory retrieval card
+      // Update UI immediately: replace searching tag
       if (get().activeConversationId === conversation_id) {
         const msgId = get().streamingMessageId;
         if (msgId) {
           set((s) => ({
-            messages: s.messages.map(m =>
-              m.id === msgId ? { ...m, content: memTag + (m.content || '') } : m
-            ),
+            messages: s.messages.map(m => {
+              if (m.id !== msgId) return m;
+              const updated = m.content.includes(searchingTag)
+                ? m.content.replace(searchingTag, memTag)
+                : memTag ? memTag + (m.content || '') : m.content;
+              return { ...m, content: updated };
+            }),
           }));
         }
       }

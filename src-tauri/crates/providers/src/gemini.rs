@@ -738,10 +738,14 @@ impl ProviderAdapter for GeminiAdapter {
             .input
             .iter()
             .map(|text| {
-                serde_json::json!({
+                let mut req = serde_json::json!({
                     "model": format!("models/{}", request.model),
                     "content": { "parts": [{ "text": text }] }
-                })
+                });
+                if let Some(dims) = request.dimensions {
+                    req["outputDimensionality"] = serde_json::json!(dims);
+                }
+                req
             })
             .collect();
 

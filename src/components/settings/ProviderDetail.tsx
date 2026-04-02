@@ -31,8 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { useProviderStore, useUIStore } from '@/stores';
 import { SmartProviderIcon } from '@/lib/providerIcons';
 import { getEditableCapabilities, getVisibleModelCapabilities, sanitizeModelCapabilities } from '@/lib/modelCapabilities';
-import IconPickerModal from './IconPickerModal';
-import { AvatarEditBadge } from '@/components/shared/AvatarEditBadge';
+import { IconEditor } from '@/components/shared/IconEditor';
 import { DynamicLobeIcon } from '@/components/shared/DynamicLobeIcon';
 import type { Model, ModelCapability, ModelType, ModelParamOverrides, ProviderType } from '@/types';
 import { ModelParamSliders } from '@/components/common/ModelParamSliders';
@@ -176,8 +175,6 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
   const [editUseMaxCompletionTokens, setEditUseMaxCompletionTokens] = useState(false);
   const [editNoSystemRole, setEditNoSystemRole] = useState(false);
   const [editForceMaxTokens, setEditForceMaxTokens] = useState(false);
-  const [iconPickerOpen, setIconPickerOpen] = useState(false);
-  const [providerIconPickerOpen, setProviderIconPickerOpen] = useState(false);
   const [iconOverrides, setIconOverrides] = useState<Record<string, string>>({});
   const [apiHostLocal, setApiHostLocal] = useState(provider?.api_host ?? '');
   const [apiPathLocal, setApiPathLocal] = useState(provider?.api_path ?? '');
@@ -619,15 +616,24 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <AvatarEditBadge size={40}>
-            <div
-              className="cursor-pointer rounded-lg p-0.5 transition-colors hover:opacity-80"
-              onClick={() => setProviderIconPickerOpen(true)}
-              title={t('settings.chooseIcon')}
-            >
-              <SmartProviderIcon provider={provider} size={40} type="avatar" shape="square" />
-            </div>
-          </AvatarEditBadge>
+          <IconEditor
+            iconType={provider.icon ? 'model_icon' : null}
+            iconValue={provider.icon ?? null}
+            onChange={(type, value) => {
+              if (type === 'model_icon' && value) {
+                updateProvider(providerId, { icon: value });
+              } else if (type === 'emoji' || type === 'url' || type === 'file') {
+                updateProvider(providerId, { icon: `${type}:${value}` });
+              } else {
+                updateProvider(providerId, { icon: '' });
+              }
+            }}
+            size={40}
+            shape="square"
+            defaultIcon={<SmartProviderIcon provider={provider} size={40} type="avatar" shape="square" />}
+            showModelIcons
+            modelIconsDefaultTab="provider"
+          />
           <div>
             <div className="flex items-center gap-2">
               <Title level={4} className="!mb-0">
@@ -1254,18 +1260,29 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
           <div className="space-y-3">
             {/* Model Icon + Name + ID */}
             <div className="flex items-center gap-3">
-              <AvatarEditBadge size={32}>
-                <div
-                  className="cursor-pointer rounded-lg p-1 transition-colors hover:bg-gray-100"
-                  onClick={() => setIconPickerOpen(true)}
-                  title={t('settings.chooseIcon')}
-                >
-                  {iconOverrides[editingModel.model_id]
-                    ? <DynamicLobeIcon iconId={iconOverrides[editingModel.model_id]} size={32} type="avatar" />
-                    : <ModelIcon model={editingModel.model_id} size={32} type="avatar" />
+              <IconEditor
+                iconType={iconOverrides[editingModel.model_id] ? 'model_icon' : null}
+                iconValue={iconOverrides[editingModel.model_id] ? `model:${iconOverrides[editingModel.model_id]}` : null}
+                onChange={(type, value) => {
+                  if (editingModel) {
+                    if (type === 'model_icon' && value) {
+                      const iconId = value.indexOf(':') > 0 ? value.substring(value.indexOf(':') + 1) : value;
+                      setIconOverrides((prev) => ({ ...prev, [editingModel.model_id]: iconId }));
+                    } else {
+                      // Clear override for non-model_icon types (or clear)
+                      setIconOverrides((prev) => {
+                        const next = { ...prev };
+                        delete next[editingModel.model_id];
+                        return next;
+                      });
+                    }
                   }
-                </div>
-              </AvatarEditBadge>
+                }}
+                size={32}
+                showModelIcons
+                showClear={!!iconOverrides[editingModel.model_id]}
+                defaultIcon={<ModelIcon model={editingModel.model_id} size={32} type="avatar" />}
+              />
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <span className="font-medium truncate">{editingModel.name || editingModel.model_id}</span>
                 {editingModel.name && (
@@ -1408,28 +1425,6 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
           </div>
         )}
       </Modal>
-
-      {/* Model Icon Picker Modal */}
-      <IconPickerModal
-        open={iconPickerOpen}
-        onClose={() => setIconPickerOpen(false)}
-        onSelect={(iconId) => {
-          if (editingModel) {
-            setIconOverrides((prev) => ({ ...prev, [editingModel.model_id]: iconId }));
-          }
-        }}
-      />
-
-      {/* Provider Icon Picker Modal */}
-      <IconPickerModal
-        open={providerIconPickerOpen}
-        onClose={() => setProviderIconPickerOpen(false)}
-        defaultTab="provider"
-        onSelect={(iconId, group) => {
-          const iconValue = `${group}:${iconId}`;
-          updateProvider(providerId, { icon: iconValue });
-        }}
-      />
 
       {/* Single Model Test Modal */}
       <Modal

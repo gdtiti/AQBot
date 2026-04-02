@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Input, Slider, Button, Tooltip, Card, Dropdown, Avatar, theme } from 'antd';
-import type { MenuProps } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Modal, Input, Slider, Button, Tooltip, Card, theme } from 'antd';
 import { ModelIcon } from '@lobehub/icons';
-import { Info, Undo2, FileImage, Link, Smile, Bot } from 'lucide-react';
+import { Info, Undo2, Bot } from 'lucide-react';
 import { useConversationStore, useSettingsStore } from '@/stores';
 import { CONV_ICON_KEY, type ConvIconType, type ConvIcon } from '@/lib/convIcon';
-import { EmojiPicker } from '@/components/shared/EmojiPicker';
-import { AvatarEditBadge } from '@/components/shared/AvatarEditBadge';
+import { IconEditor } from '@/components/shared/IconEditor';
 import { ModelParamSliders } from '@/components/common/ModelParamSliders';
+import type { MenuProps } from 'antd';
 
 interface ConversationSettingsModalProps {
   open: boolean;
@@ -39,10 +38,6 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
   // Icon state
   const [iconType, setIconType] = useState<ConvIconType>('model');
   const [iconValue, setIconValue] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const [urlInputValue, setUrlInputValue] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -72,8 +67,6 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
         setIconType('model');
         setIconValue('');
       }
-      setShowEmojiPicker(false);
-      setShowUrlInput(false);
     }
   }, [open, conversation]);
 
@@ -111,83 +104,14 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setIconType('file');
-      setIconValue(reader.result as string);
-      setShowEmojiPicker(false);
-      setShowUrlInput(false);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-
-  const avatarMenuItems: MenuProps['items'] = [
+  const useModelIconMenuItem: MenuProps['items'] = [
     {
-      key: 'model',
+      key: 'use_model',
       icon: <Bot size={14} />,
       label: '使用模型图标',
-      onClick: () => {
-        setIconType('model');
-        setIconValue('');
-        setShowEmojiPicker(false);
-        setShowUrlInput(false);
-      },
-    },
-    {
-      key: 'file',
-      icon: <FileImage size={14} />,
-      label: '选择图片',
-      onClick: () => {
-        fileInputRef.current?.click();
-        setShowEmojiPicker(false);
-        setShowUrlInput(false);
-      },
-    },
-    {
-      key: 'url',
-      icon: <Link size={14} />,
-      label: '图片链接',
-      onClick: () => {
-        setShowUrlInput(true);
-        setShowEmojiPicker(false);
-        setUrlInputValue(iconType === 'url' ? iconValue : '');
-      },
-    },
-    {
-      key: 'emoji',
-      icon: <Smile size={14} />,
-      label: 'Emoji',
-      onClick: () => {
-        setShowEmojiPicker(true);
-        setShowUrlInput(false);
-      },
+      onClick: () => { setIconType('model'); setIconValue(''); },
     },
   ];
-
-  const renderConvAvatar = () => {
-    const size = 64;
-    if (iconType === 'emoji' && iconValue) {
-      return (
-        <Avatar size={size} style={{ fontSize: 32, background: token.colorBgContainer, border: `1px solid ${token.colorBorder}`, cursor: 'pointer' }}>
-          {iconValue}
-        </Avatar>
-      );
-    }
-    if ((iconType === 'url' || iconType === 'file') && iconValue) {
-      return (
-        <Avatar size={size} src={iconValue} style={{ cursor: 'pointer' }} />
-      );
-    }
-    return (
-      <div style={{ cursor: 'pointer' }}>
-        <ModelIcon model={conversation.model_id} size={size} type="avatar" />
-      </div>
-    );
-  };
 
   const sliderRowStyle: React.CSSProperties = {
     display: 'flex',
@@ -222,65 +146,26 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
       }
     >
       <div data-os-scrollbar style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
-        {/* Avatar with Dropdown */}
+        {/* Avatar with IconEditor */}
         <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px' }}>
-          <AvatarEditBadge size={64}>
-            <Dropdown menu={{ items: avatarMenuItems }} trigger={['click']} placement="bottom">
-              {renderConvAvatar()}
-            </Dropdown>
-          </AvatarEditBadge>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
+          <IconEditor
+            iconType={iconType === 'model' ? null : iconType}
+            iconValue={iconType === 'model' ? null : iconValue}
+            onChange={(type, value) => {
+              if (type && value) {
+                setIconType(type as ConvIconType);
+                setIconValue(value);
+              } else {
+                setIconType('model');
+                setIconValue('');
+              }
+            }}
+            size={64}
+            defaultIcon={<ModelIcon model={conversation.model_id} size={64} type="avatar" />}
+            prependMenuItems={useModelIconMenuItem}
+            showClear={iconType !== 'model'}
           />
         </div>
-
-        {/* Emoji Picker */}
-        <EmojiPicker
-          open={showEmojiPicker}
-          onClose={() => setShowEmojiPicker(false)}
-          onEmojiSelect={(emoji) => {
-            setIconType('emoji');
-            setIconValue(emoji);
-            setShowEmojiPicker(false);
-          }}
-        />
-
-        {/* URL Input */}
-        {showUrlInput && (
-          <div style={{ marginBottom: 16 }}>
-            <Input
-              placeholder="输入图片链接..."
-              value={urlInputValue}
-              onChange={(e) => setUrlInputValue(e.target.value)}
-              onPressEnter={() => {
-                if (urlInputValue.trim()) {
-                  setIconType('url');
-                  setIconValue(urlInputValue.trim());
-                  setShowUrlInput(false);
-                }
-              }}
-              suffix={
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => {
-                    if (urlInputValue.trim()) {
-                      setIconType('url');
-                      setIconValue(urlInputValue.trim());
-                      setShowUrlInput(false);
-                    }
-                  }}
-                >
-                  确认
-                </Button>
-              }
-            />
-          </div>
-        )}
 
         {/* Name */}
         <div style={{ marginBottom: 16 }}>

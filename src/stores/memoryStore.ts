@@ -18,6 +18,7 @@ interface MemoryState {
   deleteItem: (namespaceId: string, itemId: string) => Promise<void>;
   updateItem: (namespaceId: string, itemId: string, input: UpdateMemoryItemInput) => Promise<void>;
   setSelectedNamespaceId: (id: string | null) => void;
+  reorderNamespaces: (namespaceIds: string[]) => Promise<void>;
 }
 
 export const useMemoryStore = create<MemoryState>((set, get) => ({
@@ -115,5 +116,18 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
 
   setSelectedNamespaceId: (id) => {
     set({ selectedNamespaceId: id });
+  },
+
+  reorderNamespaces: async (namespaceIds) => {
+    await invoke('reorder_memory_namespaces', { namespaceIds });
+    set((s) => {
+      const ordered = namespaceIds
+        .map((id, i) => {
+          const n = s.namespaces.find((n) => n.id === id);
+          return n ? { ...n, sortOrder: i } : null;
+        })
+        .filter(Boolean) as MemoryNamespace[];
+      return { namespaces: ordered };
+    });
   },
 }));

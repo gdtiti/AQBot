@@ -5,6 +5,12 @@ export type MemoryNamespace = {
   name: string;
   scope: MemoryScope;
   embeddingProvider?: string;
+  embeddingDimensions?: number;
+  retrievalThreshold?: number;
+  retrievalTopK?: number;
+  iconType?: string;
+  iconValue?: string;
+  sortOrder: number;
 };
 
 export type MemoryItem = {
@@ -22,6 +28,9 @@ export type CreateMemoryNamespaceInput = {
   name: string;
   scope: MemoryScope;
   embeddingProvider?: string;
+  embeddingDimensions?: number;
+  retrievalThreshold?: number;
+  retrievalTopK?: number;
 };
 
 export type CreateMemoryItemInput = {
@@ -40,4 +49,14 @@ export type UpdateMemoryNamespaceInput = {
   name?: string;
   embeddingProvider?: string;
   updateEmbeddingProvider?: boolean;
+  embeddingDimensions?: number;
+  updateEmbeddingDimensions?: boolean;
+  retrievalThreshold?: number;
+  updateRetrievalThreshold?: boolean;
+  retrievalTopK?: number;
+  updateRetrievalTopK?: boolean;
+  iconType?: string;
+  iconValue?: string;
+  updateIcon?: boolean;
+  sortOrder?: number;
 };

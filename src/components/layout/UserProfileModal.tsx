@@ -1,13 +1,10 @@
-import { useState, useRef } from 'react';
-import { Modal, Input, Avatar, Dropdown, theme } from 'antd';
-import type { MenuProps } from 'antd';
-import { User, FileImage, Link, Smile } from 'lucide-react';
+import { useState } from 'react';
+import { Modal, Input, Avatar, theme } from 'antd';
+import { User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUserProfileStore } from '@/stores/userProfileStore';
 import type { AvatarType } from '@/stores/userProfileStore';
-import { useResolvedAvatarSrc } from '@/hooks/useResolvedAvatarSrc';
-import { EmojiPicker } from '@/components/shared/EmojiPicker';
-import { AvatarEditBadge } from '@/components/shared/AvatarEditBadge';
+import { IconEditor } from '@/components/shared/IconEditor';
 
 interface UserProfileModalProps {
   open: boolean;
@@ -19,126 +16,14 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
   const { token } = theme.useToken();
   const profile = useUserProfileStore((s) => s.profile);
   const updateProfile = useUserProfileStore((s) => s.updateProfile);
-  const saveAvatarFile = useUserProfileStore((s) => s.saveAvatarFile);
 
   const [name, setName] = useState(profile.name);
   const [avatarType, setAvatarType] = useState<AvatarType>(profile.avatarType);
   const [avatarValue, setAvatarValue] = useState(profile.avatarValue);
-  const [urlInput, setUrlInput] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const resolvedAvatarSrc = useResolvedAvatarSrc(avatarType, avatarValue);
 
   const handleSave = () => {
     updateProfile({ name: name.trim(), avatarType, avatarValue });
     onClose();
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUri = reader.result as string;
-      saveAvatarFile(dataUri)
-        .then(() => {
-          const stored = useUserProfileStore.getState().profile;
-          setAvatarType(stored.avatarType);
-          setAvatarValue(stored.avatarValue);
-        })
-        .catch(() => {
-          // Fallback: store data URI directly
-          setAvatarType('file');
-          setAvatarValue(dataUri);
-        });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-
-  const handleUrlConfirm = () => {
-    if (urlInput.trim()) {
-      setAvatarType('url');
-      setAvatarValue(urlInput.trim());
-      setShowUrlInput(false);
-    }
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    setAvatarType('emoji');
-    setAvatarValue(emoji);
-    setShowEmojiPicker(false);
-  };
-
-  const avatarMenuItems: MenuProps['items'] = [
-    {
-      key: 'file',
-      icon: <FileImage size={14} />,
-      label: t('userProfile.selectImage'),
-      onClick: () => fileInputRef.current?.click(),
-    },
-    {
-      key: 'url',
-      icon: <Link size={14} />,
-      label: t('userProfile.imageUrl'),
-      onClick: () => {
-        setShowUrlInput(true);
-        setShowEmojiPicker(false);
-      },
-    },
-    {
-      key: 'emoji',
-      icon: <Smile size={14} />,
-      label: t('userProfile.emoji'),
-      onClick: () => {
-        setShowEmojiPicker(true);
-        setShowUrlInput(false);
-      },
-    },
-  ];
-
-  const renderAvatar = () => {
-    const size = 72;
-    if (avatarType === 'emoji' && avatarValue) {
-      return (
-        <div
-          style={{
-            width: size,
-            height: size,
-            borderRadius: '50%',
-            backgroundColor: token.colorFillSecondary,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 36,
-            cursor: 'pointer',
-          }}
-        >
-          {avatarValue}
-        </div>
-      );
-    }
-    if ((avatarType === 'url' || avatarType === 'file') && avatarValue) {
-      const src = avatarType === 'file' ? resolvedAvatarSrc : avatarValue;
-      return (
-        <Avatar
-          size={size}
-          src={src}
-          style={{ cursor: 'pointer' }}
-        />
-      );
-    }
-    return (
-      <Avatar
-        size={size}
-        icon={<User size={16} />}
-        style={{ cursor: 'pointer', backgroundColor: token.colorPrimary }}
-      />
-    );
   };
 
   return (
@@ -152,48 +37,22 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
       destroyOnHidden
     >
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '16px 0' }}>
-        {/* Avatar with dropdown */}
-        <AvatarEditBadge size={72}>
-          <Dropdown
-            menu={{ items: avatarMenuItems }}
-            trigger={['click']}
-            placement="bottom"
-          >
-            {renderAvatar()}
-          </Dropdown>
-        </AvatarEditBadge>
-
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
-        />
-
-        {/* URL input */}
-        {showUrlInput && (
-          <Input
-            placeholder={t('userProfile.urlPlaceholder')}
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            onPressEnter={handleUrlConfirm}
-            addonAfter={
-              <span style={{ cursor: 'pointer' }} onClick={handleUrlConfirm}>
-                OK
-              </span>
-            }
-            size="small"
-            style={{ maxWidth: 280 }}
-          />
-        )}
-
-        {/* Emoji picker */}
-        <EmojiPicker
-          open={showEmojiPicker}
-          onClose={() => setShowEmojiPicker(false)}
-          onEmojiSelect={handleEmojiSelect}
+        <IconEditor
+          iconType={avatarType}
+          iconValue={avatarValue}
+          onChange={(type, value) => {
+            setAvatarType((type as AvatarType) ?? 'icon');
+            setAvatarValue(value ?? '');
+          }}
+          size={72}
+          defaultIcon={
+            <Avatar
+              size={72}
+              icon={<User size={16} />}
+              style={{ cursor: 'pointer', backgroundColor: token.colorPrimary }}
+            />
+          }
+          showClear={false}
         />
 
         {/* Name input */}

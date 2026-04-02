@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
-  Dropdown,
   Modal,
   Form,
   Input,
@@ -19,13 +18,11 @@ import {
   message,
 } from 'antd';
 import type { MenuProps } from 'antd';
-import { Plus, Trash2, RefreshCw, Radio, Terminal, Plug, Smile, FileImage, Link, Globe } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Radio, Terminal, Plug, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useMcpStore } from '@/stores';
-import { invoke, isTauri } from '@/lib/invoke';
 import { McpServerIcon } from '@/components/shared/McpServerIcon';
-import { EmojiPicker } from '@/components/shared/EmojiPicker';
-import { AvatarEditBadge } from '@/components/shared/AvatarEditBadge';
+import { IconEditor } from '@/components/shared/IconEditor';
 import type { McpServer, CreateMcpServerInput, ToolDescriptor } from '@/types';
 
 const BUILTIN_DISPLAY_NAME_KEYS: Record<string, string> = {
@@ -165,10 +162,6 @@ function McpServerDetail({
   const { t } = useTranslation();
   const { updateServer, deleteServer, toolDescriptors, loadToolDescriptors, discoverTools } = useMcpStore();
   const [discovering, setDiscovering] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const [iconUrlInput, setIconUrlInput] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Local state for text inputs to avoid cursor-jump on every keystroke
   const [localName, setLocalName] = useState(server.name);
@@ -236,72 +229,29 @@ function McpServerDetail({
     onDeleted();
   };
 
-  const handleEmojiSelect = async (emoji: string) => {
-    await updateServer(server.id, { iconType: 'emoji', iconValue: emoji });
-    setShowEmojiPicker(false);
-  };
-
-  const handleIconUrlConfirm = async () => {
-    if (iconUrlInput.trim()) {
-      await updateServer(server.id, { iconType: 'url', iconValue: iconUrlInput.trim() });
-      setShowUrlInput(false);
-      setIconUrlInput('');
-    }
-  };
-
-  const handleIconFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUri = reader.result as string;
-      const match = dataUri.match(/^data:([^;]+);base64,(.+)$/s);
-      if (match && isTauri()) {
-        try {
-          const relativePath = await invoke<string>('save_avatar_file', { data: match[2], mimeType: match[1] });
-          await updateServer(server.id, { iconType: 'file', iconValue: relativePath });
-        } catch {
-          await updateServer(server.id, { iconType: 'file', iconValue: dataUri });
-        }
-      }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-
-  const handleResetIcon = async () => {
-    await updateServer(server.id, { iconType: '', iconValue: '' });
-  };
-
-  const avatarMenuItems: MenuProps['items'] = [
-    { key: 'emoji', icon: <Smile size={14} />, label: t('userProfile.emoji', 'Emoji'),
-      onClick: () => { setShowEmojiPicker(true); setShowUrlInput(false); } },
-    { key: 'file', icon: <FileImage size={14} />, label: t('userProfile.selectImage', '选择图片'),
-      onClick: () => fileInputRef.current?.click() },
-    { key: 'url', icon: <Link size={14} />, label: t('userProfile.imageUrl', '图片链接'),
-      onClick: () => { setShowUrlInput(true); setShowEmojiPicker(false); } },
+  const resetIconMenuItem: MenuProps['items'] = [
     { type: 'divider' as const },
     { key: 'reset', icon: <Plug size={14} />, label: t('settings.mcpServers.resetIcon', '恢复默认'),
-      onClick: handleResetIcon },
+      onClick: async () => { await updateServer(server.id, { iconType: '', iconValue: '' }); } },
   ];
 
   return (
     <div className="p-6 pb-12 overflow-y-auto h-full">
-      {/* Hidden file input for avatar upload */}
-      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleIconFileSelect} />
-
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           {isBuiltin ? (
             <McpServerIcon server={server} size={36} />
           ) : (
-            <AvatarEditBadge size={36}>
-              <Dropdown menu={{ items: avatarMenuItems }} trigger={['click']} placement="bottomLeft">
-                <span style={{ cursor: 'pointer' }}>
-                  <McpServerIcon server={server} size={36} />
-                </span>
-              </Dropdown>
-            </AvatarEditBadge>
+            <IconEditor
+              iconType={server.iconType}
+              iconValue={server.iconValue}
+              onChange={async (type, value) => {
+                await updateServer(server.id, { iconType: type ?? '', iconValue: value ?? '' });
+              }}
+              size={36}
+              defaultIcon={<McpServerIcon server={server} size={36} />}
+              extraMenuItems={resetIconMenuItem}
+            />
           )}
           <span style={{ fontWeight: 600, fontSize: 16 }}>{displayName}</span>
           {isBuiltin && (
@@ -323,25 +273,6 @@ function McpServerDetail({
         )}
       </div>
 
-      {/* Emoji picker / URL input for avatar */}
-      {!isBuiltin && (
-        <EmojiPicker
-          open={showEmojiPicker}
-          onClose={() => setShowEmojiPicker(false)}
-          onEmojiSelect={handleEmojiSelect}
-        />
-      )}
-      {!isBuiltin && showUrlInput && (
-        <Input
-          placeholder="https://example.com/icon.png"
-          value={iconUrlInput}
-          onChange={(e) => setIconUrlInput(e.target.value)}
-          onPressEnter={handleIconUrlConfirm}
-          addonAfter={<span style={{ cursor: 'pointer' }} onClick={handleIconUrlConfirm}>OK</span>}
-          size="small"
-          style={{ maxWidth: 300, marginBottom: 12 }}
-        />
-      )}
 
       {!isBuiltin && (
         <>

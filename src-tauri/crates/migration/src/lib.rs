@@ -11,6 +11,8 @@ mod m20250108_000001_add_provider_icon;
 mod m20250109_000001_add_conversation_categories;
 mod m20250110_000001_add_memory_item_index_status;
 mod m20250111_000001_add_memory_item_index_error;
+mod m20250113_000001_add_memory_namespace_settings;
+mod m20250114_000001_add_memory_namespace_icon_sort;
 
 pub struct Migrator;
 
@@ -29,6 +31,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20250109_000001_add_conversation_categories::Migration),
             Box::new(m20250110_000001_add_memory_item_index_status::Migration),
             Box::new(m20250111_000001_add_memory_item_index_error::Migration),
+            Box::new(m20250113_000001_add_memory_namespace_settings::Migration),
+            Box::new(m20250114_000001_add_memory_namespace_icon_sort::Migration),
         ]
     }
 }

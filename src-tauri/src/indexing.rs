@@ -33,8 +33,9 @@ impl rag::AsyncEmbedFn for ProviderEmbedFn {
         master_key: &[u8; 32],
         embedding_provider: &str,
         texts: Vec<String>,
+        dimensions: Option<usize>,
     ) -> Result<EmbedResponse> {
-        generate_embeddings(db, master_key, embedding_provider, texts).await
+        generate_embeddings(db, master_key, embedding_provider, texts, dimensions).await
     }
 }
 
@@ -100,6 +101,7 @@ pub async fn generate_embeddings(
     master_key: &[u8; 32],
     embedding_provider: &str,
     texts: Vec<String>,
+    dimensions: Option<usize>,
 ) -> Result<EmbedResponse> {
     let (provider_id, model_id) = parse_embedding_provider(embedding_provider)?;
     let (ctx, provider_config) = build_embed_context(db, master_key, &provider_id).await?;
@@ -113,6 +115,7 @@ pub async fn generate_embeddings(
     let request = EmbedRequest {
         model: model_id,
         input: texts,
+        dimensions,
     };
 
     adapter.embed(&ctx, request).await
@@ -151,7 +154,7 @@ pub async fn index_knowledge_document(
 
     let chunk_texts: Vec<String> = chunks.iter().map(|(_, text, _)| text.clone()).collect();
     let embed_response =
-        generate_embeddings(db, master_key, embedding_provider, chunk_texts).await?;
+        generate_embeddings(db, master_key, embedding_provider, chunk_texts, None).await?;
 
     rag::index(
         vector_store,
@@ -178,6 +181,7 @@ pub async fn index_memory_item(
     item_id: &str,
     content: &str,
     embedding_provider: &str,
+    dimensions: Option<usize>,
 ) -> Result<()> {
     let chunks = rag::prepare_direct_chunk(item_id, content);
 
@@ -187,7 +191,7 @@ pub async fn index_memory_item(
 
     let chunk_texts: Vec<String> = chunks.iter().map(|(_, text, _)| text.clone()).collect();
     let embed_response =
-        generate_embeddings(db, master_key, embedding_provider, chunk_texts).await?;
+        generate_embeddings(db, master_key, embedding_provider, chunk_texts, dimensions).await?;
 
     rag::index(
         vector_store,
@@ -220,6 +224,7 @@ pub async fn search_knowledge(
         knowledge_base_id,
         query,
         top_k,
+        None,
         ProviderEmbedFn,
     )
     .await
@@ -234,6 +239,11 @@ pub async fn search_memory(
     query: &str,
     top_k: usize,
 ) -> Result<Vec<VectorSearchResult>> {
+    // Look up namespace settings for dimensions
+    let dims = aqbot_core::repo::memory::get_namespace(db, namespace_id)
+        .await
+        .ok()
+        .and_then(|ns| ns.embedding_dimensions.map(|v| v as usize));
     rag::search(
         &MemoryRAG,
         db,
@@ -242,6 +252,7 @@ pub async fn search_memory(
         namespace_id,
         query,
         top_k,
+        dims,
         ProviderEmbedFn,
     )
     .await

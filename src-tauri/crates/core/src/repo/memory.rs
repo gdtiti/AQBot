@@ -1,3 +1,4 @@
+use sea_orm::sea_query::Expr;
 use sea_orm::*;
 
 use crate::entity::{memory_items, memory_namespaces};
@@ -14,6 +15,12 @@ fn model_to_namespace(m: memory_namespaces::Model) -> MemoryNamespace {
         name: m.name,
         scope: m.scope,
         embedding_provider: m.embedding_provider,
+        embedding_dimensions: m.embedding_dimensions,
+        retrieval_threshold: m.retrieval_threshold,
+        retrieval_top_k: m.retrieval_top_k,
+        icon_type: m.icon_type,
+        icon_value: m.icon_value,
+        sort_order: m.sort_order,
     }
 }
 
@@ -32,7 +39,7 @@ fn model_to_item(m: memory_items::Model) -> MemoryItem {
 
 pub async fn list_namespaces(db: &DatabaseConnection) -> Result<Vec<MemoryNamespace>> {
     let models = memory_namespaces::Entity::find()
-        .order_by_asc(memory_namespaces::Column::Name)
+        .order_by_asc(memory_namespaces::Column::SortOrder)
         .all(db)
         .await?;
 
@@ -59,6 +66,12 @@ pub async fn create_namespace(
         name: Set(input.name),
         scope: Set(input.scope),
         embedding_provider: Set(input.embedding_provider),
+        embedding_dimensions: Set(input.embedding_dimensions),
+        retrieval_threshold: Set(input.retrieval_threshold),
+        retrieval_top_k: Set(input.retrieval_top_k),
+        icon_type: Set(input.icon_type),
+        icon_value: Set(input.icon_value),
+        sort_order: Set(0),
     };
 
     am.insert(db).await?;
@@ -92,9 +105,36 @@ pub async fn update_namespace(
     if input.update_embedding_provider {
         am.embedding_provider = Set(input.embedding_provider);
     }
+    if input.update_embedding_dimensions {
+        am.embedding_dimensions = Set(input.embedding_dimensions);
+    }
+    if input.update_retrieval_threshold {
+        am.retrieval_threshold = Set(input.retrieval_threshold);
+    }
+    if input.update_retrieval_top_k {
+        am.retrieval_top_k = Set(input.retrieval_top_k);
+    }
+    if input.update_icon {
+        am.icon_type = Set(input.icon_type);
+        am.icon_value = Set(input.icon_value);
+    }
+    if let Some(sort_order) = input.sort_order {
+        am.sort_order = Set(sort_order);
+    }
     am.update(db).await?;
 
     get_namespace(db, id).await
+}
+
+pub async fn reorder_namespaces(db: &DatabaseConnection, namespace_ids: &[String]) -> Result<()> {
+    for (i, id) in namespace_ids.iter().enumerate() {
+        memory_namespaces::Entity::update_many()
+            .col_expr(memory_namespaces::Column::SortOrder, Expr::value(i as i32))
+            .filter(memory_namespaces::Column::Id.eq(id))
+            .exec(db)
+            .await?;
+    }
+    Ok(())
 }
 
 pub async fn list_items(db: &DatabaseConnection, namespace_id: &str) -> Result<Vec<MemoryItem>> {

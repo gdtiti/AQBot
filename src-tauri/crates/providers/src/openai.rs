@@ -154,6 +154,8 @@ struct OpenAIModel {
 struct OpenAIEmbedRequest {
     model: String,
     input: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dimensions: Option<usize>,
 }
 
 #[derive(Deserialize)]
@@ -742,6 +744,7 @@ impl ProviderAdapter for OpenAIAdapter {
         let body = OpenAIEmbedRequest {
             model: request.model,
             input: request.input,
+            dimensions: request.dimensions,
         };
 
         let resp = crate::apply_request_headers(

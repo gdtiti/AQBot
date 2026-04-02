@@ -197,6 +197,7 @@ pub fn run() {
             commands::memory::rebuild_memory_index,
             commands::memory::clear_memory_index,
             commands::memory::reindex_memory_item,
+            commands::memory::reorder_memory_namespaces,
             // backup
             commands::backup::list_backups,
             commands::backup::create_backup,

@@ -751,9 +751,6 @@ async fn generate_ai_title_with(
         use_max_completion_tokens,
     };
 
-    tracing::info!("Title generation: provider={}, model={}, base_url={:?}, api_path={:?}, use_max_completion_tokens={:?}",
-        provider.id, model_id, ctx.base_url, ctx.api_path, use_max_completion_tokens);
-
     let registry = ProviderRegistry::create_default();
     let registry_key = provider_type_to_registry_key(&provider.provider_type);
     let adapter = match registry.get(registry_key) {
@@ -1559,10 +1556,6 @@ pub async fn send_message(
     // RAG retrieval: search enabled knowledge bases and memory namespaces
     let kb_ids = enabled_knowledge_base_ids.unwrap_or_default();
     let mem_ids = enabled_memory_namespace_ids.unwrap_or_default();
-    tracing::info!(
-        "RAG retrieval: kb_ids={:?}, mem_ids={:?}, query_len={}",
-        kb_ids, mem_ids, content.len()
-    );
     let rag_result = crate::indexing::collect_rag_context(
         &state.sea_db,
         &state.master_key,
@@ -1574,21 +1567,17 @@ pub async fn send_message(
     )
     .await;
 
-    tracing::info!("RAG context parts: {}", rag_result.context_parts.len());
-
     // Build memory retrieval tag for persistence before moving source_results
     let memory_tag = build_memory_retrieval_tag(&rag_result.source_results);
 
-    // Emit structured RAG results to frontend for real-time display during streaming
-    if !rag_result.source_results.is_empty() {
-        let _ = app.emit(
-            "rag-context-retrieved",
-            RagContextRetrievedEvent {
-                conversation_id: conversation_id.clone(),
-                sources: rag_result.source_results,
-            },
-        );
-    }
+    // Always emit RAG results to frontend so it can replace the searching indicator
+    let _ = app.emit(
+        "rag-context-retrieved",
+        RagContextRetrievedEvent {
+            conversation_id: conversation_id.clone(),
+            sources: rag_result.source_results,
+        },
+    );
 
     if !rag_result.context_parts.is_empty() {
         chat_messages.push(ChatMessage {
@@ -1943,15 +1932,14 @@ pub async fn regenerate_message(
 
         let tag = build_memory_retrieval_tag(&rag_result.source_results);
 
-        if !rag_result.source_results.is_empty() {
-            let _ = app.emit(
-                "rag-context-retrieved",
-                RagContextRetrievedEvent {
-                    conversation_id: conversation_id.clone(),
-                    sources: rag_result.source_results,
-                },
-            );
-        }
+        // Always emit so frontend can replace the searching indicator
+        let _ = app.emit(
+            "rag-context-retrieved",
+            RagContextRetrievedEvent {
+                conversation_id: conversation_id.clone(),
+                sources: rag_result.source_results,
+            },
+        );
 
         if !rag_result.context_parts.is_empty() {
             chat_messages.push(ChatMessage {
@@ -2219,15 +2207,14 @@ pub async fn regenerate_with_model(
 
         let tag = build_memory_retrieval_tag(&rag_result.source_results);
 
-        if !rag_result.source_results.is_empty() {
-            let _ = app.emit(
-                "rag-context-retrieved",
-                RagContextRetrievedEvent {
-                    conversation_id: conversation_id.clone(),
-                    sources: rag_result.source_results,
-                },
-            );
-        }
+        // Always emit so frontend can replace the searching indicator
+        let _ = app.emit(
+            "rag-context-retrieved",
+            RagContextRetrievedEvent {
+                conversation_id: conversation_id.clone(),
+                sources: rag_result.source_results,
+            },
+        );
 
         if !rag_result.context_parts.is_empty() {
             chat_messages.push(ChatMessage {

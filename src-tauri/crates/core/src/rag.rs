@@ -115,17 +115,14 @@ pub async fn search<S: RAGSource + ?Sized>(
     container_id: &str,
     query: &str,
     top_k: usize,
+    dimensions: Option<usize>,
     embed_fn: impl AsyncEmbedFn,
 ) -> Result<Vec<VectorSearchResult>> {
     let embedding_provider = source.resolve_embedding_provider(db, container_id).await?;
     let cid = collection_id(source.collection_prefix(), container_id);
-    tracing::info!(
-        "RAG search: collection_id={}, embedding_provider={}, query_len={}",
-        cid, embedding_provider, query.len(),
-    );
 
     let embed_response = embed_fn
-        .generate(db, master_key, &embedding_provider, vec![query.to_string()])
+        .generate(db, master_key, &embedding_provider, vec![query.to_string()], dimensions)
         .await?;
 
     let query_embedding = embed_response
@@ -134,10 +131,7 @@ pub async fn search<S: RAGSource + ?Sized>(
         .next()
         .ok_or_else(|| AQBotError::Provider("No query embedding returned".into()))?;
 
-    tracing::info!("RAG search: query embedding dims={}", query_embedding.len());
-
     let results = vector_store.search(&cid, query_embedding, top_k).await?;
-    tracing::info!("RAG search: {} results from vector store", results.len());
     Ok(results)
 }
 
@@ -259,6 +253,7 @@ pub struct RAGSourceRef {
 }
 
 /// The type of RAG source.
+#[derive(PartialEq)]
 pub enum RAGSourceType {
     Knowledge,
     Memory,
@@ -308,6 +303,21 @@ pub async fn collect_rag_context(
 
     for src_ref in &sources {
         let source = src_ref.source();
+
+        // Resolve per-source search parameters (top_k, threshold, dimensions)
+        let (source_top_k, threshold, dims) = if src_ref.source_type == RAGSourceType::Memory {
+            match crate::repo::memory::get_namespace(db, &src_ref.container_id).await {
+                Ok(ns) => (
+                    ns.retrieval_top_k.map(|v| v as usize).unwrap_or(top_k),
+                    ns.retrieval_threshold.unwrap_or(0.0),
+                    ns.embedding_dimensions.map(|v| v as usize),
+                ),
+                Err(_) => (top_k, 0.0, None),
+            }
+        } else {
+            (top_k, 0.0, None)
+        };
+
         let result = search(
             source.as_ref(),
             db,
@@ -315,19 +325,23 @@ pub async fn collect_rag_context(
             vector_store,
             &src_ref.container_id,
             query,
-            top_k,
+            source_top_k,
+            dims,
             embed_fn.clone(),
         )
         .await;
 
         match result {
-            Ok(results) if !results.is_empty() => {
-                tracing::info!(
-                    "RAG search returned {} results for {} {}",
-                    results.len(),
-                    source.collection_prefix(),
-                    src_ref.container_id,
-                );
+            Ok(raw_results) if !raw_results.is_empty() => {
+                // Apply distance threshold filter
+                let results: Vec<_> = if threshold > 0.0 {
+                    raw_results.into_iter().filter(|r| r.score <= threshold).collect()
+                } else {
+                    raw_results
+                };
+                if results.is_empty() {
+                    continue;
+                }
 
                 let items: Vec<RagRetrievedItem> = results
                     .iter()
@@ -391,5 +405,6 @@ pub trait AsyncEmbedFn: Send + Sync + Clone {
         master_key: &[u8; 32],
         embedding_provider: &str,
         texts: Vec<String>,
+        dimensions: Option<usize>,
     ) -> Result<crate::types::EmbedResponse>;
 }

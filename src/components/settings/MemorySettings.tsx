@@ -331,7 +331,7 @@ function MemoryItemsPanel({
         query: searchQuery,
         topK: 5,
       });
-      setSearchResults(results);
+      setSearchResults([...results].sort((a, b) => a.score - b.score));
     } catch (e) {
       messageApi.error(String(e));
     } finally {
@@ -667,36 +667,61 @@ function MemoryItemsPanel({
       </div>
 
       {/* Search results */}
-      {searchResults && (
-        <div className="mb-4">
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {t('settings.memory.searchResults', '搜索结果')}: {searchResults.length} {t('settings.memory.items', '条')}
-          </Typography.Text>
-          {searchResults.length > 0 ? (
-            <div className="mt-2 flex flex-col gap-2">
-              {searchResults.map((r, i) => (
-                <div
-                  key={i}
-                  className="p-2 rounded"
-                  style={{ background: 'var(--fill-quaternary)', border: '1px solid var(--border-color)' }}
-                >
-                  <Typography.Text ellipsis style={{ maxWidth: '100%' }}>
-                    {r.content}
-                  </Typography.Text>
-                  <div className="mt-1">
-                    <Tag style={{ fontSize: 11 }}>
-                      {t('settings.memory.distance', '距离')}: {r.score.toFixed(4)}
-                    </Tag>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.memory.noResults', '无匹配结果')} />
-          )}
-          <Divider />
-        </div>
-      )}
+      <Modal
+        title={`${t('settings.memory.searchResults', '搜索结果')} (${searchResults?.length || 0})`}
+        open={searchResults !== null}
+        onCancel={() => setSearchResults(null)}
+        footer={null}
+        width={700}
+        mask={{ enabled: true, blur: true }}
+      >
+        {searchResults && searchResults.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.memory.noResults', '无匹配结果')} />
+        ) : (
+          <Table
+            dataSource={searchResults || []}
+            rowKey={(_, i) => String(i)}
+            pagination={{ pageSize: 10, size: 'small' }}
+            size="small"
+            bordered
+            columns={[
+              {
+                title: 'ID',
+                dataIndex: 'document_id',
+                key: 'document_id',
+                width: 100,
+                ellipsis: true,
+                render: (id: string) => <span style={{ fontSize: 12 }}>{id.slice(0, 8)}</span>,
+              },
+              {
+                title: t('settings.memory.itemContent', '内容'),
+                dataIndex: 'content',
+                key: 'content',
+                ellipsis: { showTitle: false },
+                render: (content: string) => (
+                  <Typography.Paragraph
+                    ellipsis={{ rows: 2 }}
+                    style={{ margin: 0, fontSize: 13 }}
+                  >
+                    {content}
+                  </Typography.Paragraph>
+                ),
+              },
+              {
+                title: t('settings.memory.similarity', '相似度'),
+                dataIndex: 'score',
+                key: 'score',
+                width: 90,
+                defaultSortOrder: 'ascend' as const,
+                sorter: (a: VectorSearchResult, b: VectorSearchResult) => a.score - b.score,
+                render: (score: number) => (
+                  <Tag color="blue" style={{ fontSize: 11 }}>{(1 / (1 + score)).toFixed(4)}</Tag>
+                ),
+              },
+            ]}
+          />
+        )}
+      </Modal>
 
       <Table
         dataSource={items}

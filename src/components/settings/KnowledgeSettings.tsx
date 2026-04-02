@@ -376,7 +376,7 @@ function KnowledgeBaseDetail({
         query: searchQuery,
         topK: 5,
       });
-      setSearchResults(results);
+      setSearchResults([...results].sort((a, b) => a.score - b.score));
     } catch (e) {
       messageApi.error(String(e));
     } finally {
@@ -927,42 +927,77 @@ function KnowledgeBaseDetail({
       </div>
 
       {/* Search Results */}
-      {searchResults && (
-        <div className="mb-4">
-          <Typography.Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-            {t('settings.knowledge.searchResults', '检索结果')} ({searchResults.length})
-          </Typography.Text>
-          {searchResults.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.knowledge.noResults', '未找到结果')} />
-          ) : (
-            <div className="flex flex-col gap-2">
-              {searchResults.map((r) => (
-                <div
-                  key={r.id}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    fontSize: 13,
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <Tag style={{ fontSize: 11 }}>#{r.chunk_index}</Tag>
-                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                      {t('settings.knowledge.score', '相似度')}: {(1 - r.score).toFixed(4)}
-                    </Typography.Text>
-                  </div>
-                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {r.content.length > 300 ? r.content.slice(0, 300) + '...' : r.content}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <Divider style={{ margin: '12px 0' }} />
-        </div>
-      )}
+      <Modal
+        title={`${t('settings.knowledge.searchResults', '检索结果')} (${searchResults?.length || 0})`}
+        open={searchResults !== null}
+        onCancel={() => setSearchResults(null)}
+        footer={null}
+        width={700}
+        mask={{ enabled: true, blur: true }}
+      >
+        {searchResults && searchResults.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.knowledge.noResults', '未找到结果')} />
+        ) : (
+          <Table
+            dataSource={searchResults || []}
+            rowKey="id"
+            pagination={{ pageSize: 10, size: 'small' }}
+            size="small"
+            bordered
+            columns={[
+              {
+                title: t('settings.knowledge.chunkIndex', '序号'),
+                dataIndex: 'chunk_index',
+                key: 'chunk_index',
+                width: 70,
+                render: (idx: number) => <Tag style={{ fontSize: 11 }}>#{idx}</Tag>,
+              },
+              {
+                title: t('settings.knowledge.docTitle', '文档'),
+                dataIndex: 'document_id',
+                key: 'document_id',
+                width: 120,
+                ellipsis: true,
+                render: (docId: string) => {
+                  const doc = documents.find(d => d.id === docId);
+                  return <span style={{ fontSize: 12 }}>{doc?.title || docId.slice(0, 8)}</span>;
+                },
+              },
+              {
+                title: t('settings.knowledge.chunkContent', '内容'),
+                dataIndex: 'content',
+                key: 'content',
+                ellipsis: { showTitle: false },
+                render: (content: string) => (
+                  <Typography.Paragraph
+                    ellipsis={{ rows: 2 }}
+                    style={{ margin: 0, fontSize: 13, cursor: 'pointer' }}
+                    onClick={() => {
+                      setChunkViewId(null);
+                      setChunkViewContent(content);
+                      setChunkEditing(false);
+                      setChunkViewOpen(true);
+                    }}
+                  >
+                    {content}
+                  </Typography.Paragraph>
+                ),
+              },
+              {
+                title: t('settings.knowledge.score', '相似度'),
+                dataIndex: 'score',
+                key: 'score',
+                width: 90,
+                defaultSortOrder: 'ascend' as const,
+                sorter: (a: VectorSearchResult, b: VectorSearchResult) => a.score - b.score,
+                render: (score: number) => (
+                  <Tag color="blue" style={{ fontSize: 11 }}>{(1 / (1 + score)).toFixed(4)}</Tag>
+                ),
+              },
+            ]}
+          />
+        )}
+      </Modal>
 
       <Table
         dataSource={documents}

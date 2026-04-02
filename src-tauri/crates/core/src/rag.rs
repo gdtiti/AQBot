@@ -349,6 +349,8 @@ pub async fn collect_rag_context(
                         content: r.content.clone(),
                         score: r.score,
                         document_id: r.document_id.clone(),
+                        id: r.id.clone(),
+                        document_name: None,
                     })
                     .collect();
 
@@ -383,6 +385,32 @@ pub async fn collect_rag_context(
                     src_ref.container_id,
                     e
                 );
+            }
+        }
+    }
+
+    // Batch-lookup document titles for knowledge sources
+    {
+        let kb_doc_ids: Vec<String> = source_results
+            .iter()
+            .filter(|s| s.source_type == "knowledge")
+            .flat_map(|s| s.items.iter().map(|it| it.document_id.clone()))
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        if !kb_doc_ids.is_empty() {
+            match crate::repo::knowledge::get_document_titles(db, &kb_doc_ids).await {
+                Ok(titles) => {
+                    for src in source_results.iter_mut().filter(|s| s.source_type == "knowledge") {
+                        for item in &mut src.items {
+                            item.document_name = titles.get(&item.document_id).cloned();
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to lookup document titles: {e}");
+                }
             }
         }
     }

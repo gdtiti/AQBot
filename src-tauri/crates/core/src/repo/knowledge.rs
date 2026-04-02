@@ -241,3 +241,18 @@ pub async fn delete_document(db: &DatabaseConnection, id: &str) -> Result<()> {
     }
     Ok(())
 }
+
+/// Batch lookup document titles by IDs. Returns a map of document_id -> title.
+pub async fn get_document_titles(
+    db: &DatabaseConnection,
+    doc_ids: &[String],
+) -> Result<std::collections::HashMap<String, String>> {
+    if doc_ids.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+    let models = knowledge_documents::Entity::find()
+        .filter(knowledge_documents::Column::Id.is_in(doc_ids.iter().map(|s| s.as_str())))
+        .all(db)
+        .await?;
+    Ok(models.into_iter().map(|m| (m.id, m.title)).collect())
+}

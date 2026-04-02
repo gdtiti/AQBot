@@ -2,6 +2,10 @@ export interface MemoryRetrievedItem {
   content: string;
   score: number;
   document_id: string;
+  /** Chunk ID within the vector store */
+  id: string;
+  /** Human-readable document name (knowledge items only) */
+  document_name?: string;
 }
 
 export interface MemorySourceResult {

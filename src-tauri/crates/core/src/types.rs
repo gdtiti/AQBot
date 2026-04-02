@@ -807,6 +807,12 @@ pub struct RagRetrievedItem {
     pub content: String,
     pub score: f32,
     pub document_id: String,
+    /// Chunk ID within the vector store.
+    #[serde(default)]
+    pub id: String,
+    /// Human-readable document name (populated for knowledge items).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub document_name: Option<String>,
 }
 
 /// Results from a single RAG source (knowledge base or memory namespace).

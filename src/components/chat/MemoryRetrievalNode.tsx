@@ -164,7 +164,11 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
               }}
             >
               <Database size={10} style={{ flexShrink: 0 }} />
-              <span style={{ opacity: 0.7 }}>{item.document_id.slice(0, 8)}</span>
+              {item.id ? (
+                <span style={{ opacity: 0.5 }}>#{item.id.slice(0, 6)}</span>
+              ) : (
+                <span style={{ opacity: 0.5 }}>{item.document_id?.slice(0, 8) || '—'}</span>
+              )}
               <span style={{ color: token.colorPrimary, fontFamily: 'monospace' }}>
                 {(1 / (1 + item.score)).toFixed(3)}
               </span>
@@ -202,6 +206,11 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
                   <span style={{ fontWeight: 500, color: token.colorText }}>
                     {t('chat.memoryRetrieval.label', '记忆')}
                   </span>
+                  {item.id && (
+                    <span style={{ fontSize: 10, color: token.colorTextQuaternary }}>
+                      #{item.id.slice(0, 8)}
+                    </span>
+                  )}
                   <span
                     style={{
                       marginLeft: 'auto',
@@ -209,7 +218,7 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
                       color: token.colorTextQuaternary,
                     }}
                   >
-                    {item.score.toFixed(3)}
+                    {(1 / (1 + item.score)).toFixed(4)}
                   </span>
                 </div>
                 <p

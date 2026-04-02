@@ -260,26 +260,44 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
 
   // Resolve actual request URLs for preview
   const resolvedUrls = useMemo(() => {
-    const host = apiHostLocal || DEFAULT_HOSTS[provider?.provider_type ?? 'custom'] || '';
-    const path = apiPathLocal || DEFAULT_PATHS[provider?.provider_type ?? 'custom'] || '';
+    const providerType = provider?.provider_type ?? 'custom';
+    const host = apiHostLocal || DEFAULT_HOSTS[providerType] || '';
+    const path = apiPathLocal || DEFAULT_PATHS[providerType] || '';
 
-    // resolve base_url: strip trailing !, auto-add /v1 if missing
+    // Default version path per provider type
+    const defaultVersion = providerType === 'gemini' ? '/v1beta' : '/v1';
+
+    // Check if URL ends with a versioned path like /v1, /v1beta, /v2, etc.
+    const hasVersionSuffix = (url: string) => {
+      const lastSeg = url.split('/').pop() || '';
+      return /^v\d/.test(lastSeg);
+    };
+    // Extract version prefix like "/v1", "/v1beta"
+    const extractVersionPrefix = (url: string): string | null => {
+      const lastSeg = url.split('/').pop() || '';
+      return /^v\d/.test(lastSeg) ? `/${lastSeg}` : null;
+    };
+
+    // resolve base_url: strip trailing !, auto-add default version if missing
     const trimmed = host.replace(/\/+$/, '');
     const forced = trimmed.endsWith('!');
     const rawHost = forced ? trimmed.slice(0, -1).replace(/\/+$/, '') : trimmed;
-    const resolvedBase = forced ? rawHost : rawHost.endsWith('/v1') ? rawHost : `${rawHost}/v1`;
+    const resolvedBase = forced ? rawHost : hasVersionSuffix(rawHost) ? rawHost : `${rawHost}${defaultVersion}`;
 
-    // resolve chat url: strip ! from path, dedup /v1
+    // resolve chat url: strip ! from path, dedup version prefix
     const pathForced = path.endsWith('!');
     const rawPath = pathForced ? path.slice(0, -1) : path;
     const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
     let chatUrl: string;
     if (pathForced) {
       chatUrl = `${resolvedBase}${normalizedPath}`;
-    } else if (resolvedBase.endsWith('/v1') && normalizedPath.startsWith('/v1')) {
-      chatUrl = `${resolvedBase}${normalizedPath.slice(3)}`;
     } else {
-      chatUrl = `${resolvedBase}${normalizedPath}`;
+      const ver = extractVersionPrefix(resolvedBase);
+      if (ver && normalizedPath.startsWith(ver)) {
+        chatUrl = `${resolvedBase}${normalizedPath.slice(ver.length)}`;
+      } else {
+        chatUrl = `${resolvedBase}${normalizedPath}`;
+      }
     }
 
     return { resolvedBase, chatUrl };
@@ -639,7 +657,20 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
               <Title level={4} className="!mb-0">
                 {provider.name}
               </Title>
-              <Text type="secondary" className="text-sm">({t('settings.endpointFormat')}：{provider.provider_type === 'openai' ? 'OpenAI' : provider.provider_type === 'openai_responses' ? 'OpenAI Responses' : provider.provider_type === 'anthropic' ? 'Anthropic' : provider.provider_type === 'gemini' ? 'Gemini' : provider.provider_type})</Text>
+              <Select
+                size="small"
+                value={provider.provider_type}
+                onChange={(val) => updateProvider(providerId, { provider_type: val as ProviderType })}
+                style={{ minWidth: 140 }}
+                options={[
+                  { label: 'OpenAI', value: 'openai' },
+                  { label: 'OpenAI Responses', value: 'openai_responses' },
+                  { label: 'Anthropic', value: 'anthropic' },
+                  { label: 'Gemini', value: 'gemini' },
+                  { label: t('settings.custom', '自定义'), value: 'custom' },
+                ]}
+                popupMatchSelectWidth={false}
+              />
             </div>
           </div>
         </div>

@@ -15,7 +15,7 @@ use tokio_stream::wrappers::ReceiverStream;
 
 use aqbot_core::crypto::decrypt_key;
 use aqbot_core::types::*;
-use aqbot_providers::{resolve_base_url, ProviderAdapter, ProviderRequestContext};
+use aqbot_providers::{resolve_base_url_for_type, ProviderAdapter, ProviderRequestContext};
 
 use crate::auth::AuthenticatedKey;
 use crate::server::GatewayAppState;
@@ -148,7 +148,7 @@ pub async fn chat_completions(
         api_key,
         key_id: provider_key.id.clone(),
         provider_id: provider.id.clone(),
-        base_url: Some(resolve_base_url(&provider.api_host)),
+        base_url: Some(resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
         custom_headers: provider

@@ -119,7 +119,7 @@ pub async fn validate_provider_key(
         api_key: decrypted,
         key_id: key_id.clone(),
         provider_id: provider.id.clone(),
-        base_url: Some(aqbot_providers::resolve_base_url(&provider.api_host)),
+        base_url: Some(aqbot_providers::resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
         custom_headers: provider
@@ -217,7 +217,7 @@ pub async fn fetch_remote_models(
         api_key: decrypted,
         key_id: key_row.id.clone(),
         provider_id: provider.id.clone(),
-        base_url: Some(aqbot_providers::resolve_base_url(&provider.api_host)),
+        base_url: Some(aqbot_providers::resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
         custom_headers: provider
@@ -264,7 +264,7 @@ pub async fn test_model(
         api_key: decrypted,
         key_id: key_row.id.clone(),
         provider_id: provider.id.clone(),
-        base_url: Some(aqbot_providers::resolve_base_url(&provider.api_host)),
+        base_url: Some(aqbot_providers::resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
         custom_headers: provider

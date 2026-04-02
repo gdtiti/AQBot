@@ -46,6 +46,7 @@ export interface CreateProviderInput {
 
 export interface UpdateProviderInput {
   name?: string;
+  provider_type?: ProviderType;
   api_host?: string;
   api_path?: string | null;
   enabled?: boolean;

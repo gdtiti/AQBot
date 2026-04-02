@@ -1,6 +1,6 @@
 use crate::AppState;
 use aqbot_core::types::*;
-use aqbot_providers::{registry::ProviderRegistry, resolve_base_url, ProviderRequestContext};
+use aqbot_providers::{registry::ProviderRegistry, resolve_base_url_for_type, ProviderRequestContext};
 use base64::Engine;
 use sea_orm::*;
 use std::sync::atomic::AtomicBool;
@@ -668,7 +668,7 @@ async fn generate_ai_title(
             api_key: dk,
             key_id: key_row.id.clone(),
             provider_id: provider.id.clone(),
-            base_url: Some(resolve_base_url(&provider.api_host)),
+            base_url: Some(resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
             api_path: provider.api_path.clone(),
             proxy_config: proxy,
             custom_headers: provider
@@ -844,7 +844,7 @@ pub async fn regenerate_conversation_title(
         api_key: decrypted_key,
         key_id: key_row.id.clone(),
         provider_id: provider.id.clone(),
-        base_url: Some(resolve_base_url(&provider.api_host)),
+        base_url: Some(resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
         custom_headers: provider
@@ -1733,7 +1733,7 @@ pub async fn send_message(
         api_key: decrypted_key,
         key_id: key_row.id.clone(),
         provider_id: provider.id.clone(),
-        base_url: Some(resolve_base_url(&provider.api_host)),
+        base_url: Some(resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
         custom_headers: provider
@@ -2018,7 +2018,7 @@ pub async fn regenerate_message(
         api_key: decrypted_key,
         key_id: key_row.id.clone(),
         provider_id: provider.id.clone(),
-        base_url: Some(resolve_base_url(&provider.api_host)),
+        base_url: Some(resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
         custom_headers: provider
@@ -2286,7 +2286,7 @@ pub async fn regenerate_with_model(
         api_key: decrypted_key,
         key_id: key_row.id.clone(),
         provider_id: provider.id.clone(),
-        base_url: Some(resolve_base_url(&provider.api_host)),
+        base_url: Some(resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
         api_path: provider.api_path.clone(),
         proxy_config: resolved_proxy,
         custom_headers: provider
@@ -2544,7 +2544,7 @@ async fn do_compress(
         api_key: comp_key,
         key_id: comp_key_id,
         provider_id: comp_provider.id.clone(),
-        base_url: Some(resolve_base_url(&comp_provider.api_host)),
+        base_url: Some(resolve_base_url_for_type(&comp_provider.api_host, &comp_provider.provider_type)),
         api_path: comp_provider.api_path.clone(),
         proxy_config: comp_proxy,
         custom_headers: comp_provider

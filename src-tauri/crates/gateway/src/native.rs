@@ -2,7 +2,7 @@ use aqbot_core::{
     crypto::decrypt_key,
     types::{GatewayKey, ProviderConfig, ProviderProxyConfig, ProviderType, TokenUsage},
 };
-use aqbot_providers::{build_http_client, resolve_base_url, ProviderRequestContext};
+use aqbot_providers::{build_http_client, resolve_base_url_for_type, ProviderRequestContext};
 use axum::{
     body::{to_bytes, Body, Bytes},
     extract::{Extension, Path, Request, State},
@@ -566,7 +566,7 @@ async fn resolve_native_context(
             api_key,
             key_id: provider_key.id.clone(),
             provider_id: provider.id.clone(),
-            base_url: Some(resolve_base_url(&provider.api_host)),
+            base_url: Some(resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
             api_path: provider.api_path.clone(),
             proxy_config: resolved_proxy,
             custom_headers: provider

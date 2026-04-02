@@ -16,7 +16,7 @@ use aqbot_core::types::*;
 use aqbot_core::vector_store::{VectorSearchResult, VectorStore};
 
 use aqbot_providers::{
-    registry::ProviderRegistry, resolve_base_url, ProviderAdapter, ProviderRequestContext,
+    registry::ProviderRegistry, resolve_base_url_for_type, ProviderAdapter, ProviderRequestContext,
 };
 
 // ── AsyncEmbedFn implementation ──────────────────────────────────────────────
@@ -83,7 +83,7 @@ pub async fn build_embed_context(
         api_key: decrypted_key,
         key_id: key_row.id.clone(),
         provider_id: provider.id.clone(),
-        base_url: Some(resolve_base_url(&provider.api_host)),
+        base_url: Some(resolve_base_url_for_type(&provider.api_host, &provider.provider_type)),
         api_path: None,
         proxy_config: resolved_proxy,
         custom_headers: provider

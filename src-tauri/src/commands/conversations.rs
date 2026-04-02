@@ -63,25 +63,29 @@ async fn persist_attachments(
 }
 
 /// Strip display-only tags from assistant message content so they aren't sent to the AI.
-/// Strips: `<memory-retrieval data-aqbot="1">` tags and `:::mcp ... :::` fenced blocks.
+/// Strips: `<knowledge-retrieval data-aqbot="1">` and `<memory-retrieval data-aqbot="1">` tags,
+/// and `:::mcp ... :::` fenced blocks.
 fn strip_display_tags(content: &str) -> String {
-    // Strip memory-retrieval tag with data-aqbot attribute
+    // Strip knowledge-retrieval and memory-retrieval tags with data-aqbot attribute
     let content = {
-        const TAG_START: &str = "<memory-retrieval ";
-        if let Some(rest) = content.strip_prefix(TAG_START) {
-            if rest.contains("data-aqbot=") {
-                if let Some(end_pos) = content.find("</memory-retrieval>") {
-                    let after_tag = &content[end_pos + "</memory-retrieval>".len()..];
-                    after_tag.trim_start_matches('\n').to_string()
-                } else {
-                    content.to_string()
+        let mut s = content.to_string();
+        for tag_name in &["knowledge-retrieval", "memory-retrieval"] {
+            let tag_start = format!("<{} ", tag_name);
+            let tag_end = format!("</{}>", tag_name);
+            while let Some(start_pos) = s.find(&tag_start) {
+                let rest = &s[start_pos + tag_start.len()..];
+                if rest.contains("data-aqbot=") {
+                    if let Some(end_offset) = s[start_pos..].find(&tag_end) {
+                        let after = &s[start_pos + end_offset + tag_end.len()..];
+                        let before = &s[..start_pos];
+                        s = format!("{}{}", before.trim_end_matches('\n'), after.trim_start_matches('\n'));
+                        continue;
+                    }
                 }
-            } else {
-                content.to_string()
+                break;
             }
-        } else {
-            content.to_string()
         }
+        s
     };
 
     // Strip :::mcp blocks
@@ -942,14 +946,24 @@ pub async fn cancel_stream(
     Ok(())
 }
 
-/// Build a `<memory-retrieval>` HTML tag from RAG source results for persistence.
-/// Prefixed with an HTML comment marker to distinguish from AI-generated content.
+/// Build separate `<knowledge-retrieval>` and `<memory-retrieval>` HTML tags
+/// from RAG source results for persistence, split by source type.
 fn build_memory_retrieval_tag(sources: &[RagSourceResult]) -> String {
     if sources.is_empty() {
         return String::new();
     }
-    let json = serde_json::to_string(sources).unwrap_or_default();
-    format!("<memory-retrieval status=\"done\" data-aqbot=\"1\">\n{}\n</memory-retrieval>\n\n", json)
+    let knowledge: Vec<&RagSourceResult> = sources.iter().filter(|s| s.source_type == "knowledge").collect();
+    let memory: Vec<&RagSourceResult> = sources.iter().filter(|s| s.source_type != "knowledge").collect();
+    let mut result = String::new();
+    if !knowledge.is_empty() {
+        let json = serde_json::to_string(&knowledge).unwrap_or_default();
+        result.push_str(&format!("<knowledge-retrieval status=\"done\" data-aqbot=\"1\">\n{}\n</knowledge-retrieval>\n\n", json));
+    }
+    if !memory.is_empty() {
+        let json = serde_json::to_string(&memory).unwrap_or_default();
+        result.push_str(&format!("<memory-retrieval status=\"done\" data-aqbot=\"1\">\n{}\n</memory-retrieval>\n\n", json));
+    }
+    result
 }
 
 /// Spawn the streaming background task shared by send_message and regenerate_message.

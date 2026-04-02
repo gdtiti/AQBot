@@ -16,8 +16,24 @@ export interface RagContextRetrievedEvent {
 }
 
 /**
+ * Build a `<knowledge-retrieval>` custom tag for markstream-react rendering.
+ */
+export function buildKnowledgeTag(
+  status: 'searching' | 'done' | 'error',
+  sources?: MemorySourceResult[],
+): string {
+  if (status === 'searching') {
+    return '<knowledge-retrieval status="searching" data-aqbot="1"></knowledge-retrieval>';
+  }
+  if (status === 'error') {
+    return '<knowledge-retrieval status="error" data-aqbot="1"></knowledge-retrieval>';
+  }
+  const json = JSON.stringify(sources ?? []);
+  return `<knowledge-retrieval status="done" data-aqbot="1">\n${json}\n</knowledge-retrieval>\n\n`;
+}
+
+/**
  * Build a `<memory-retrieval>` custom tag for markstream-react rendering.
- * Includes `data-aqbot` attribute to distinguish from AI-generated content.
  */
 export function buildMemoryTag(
   status: 'searching' | 'done' | 'error',

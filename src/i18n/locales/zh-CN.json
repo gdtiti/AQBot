@@ -171,9 +171,21 @@
       "title": "知识库",
       "empty": "请先在设置中添加知识库"
     },
+    "knowledgeRetrieval": {
+      "searching": "正在检索知识库...",
+      "error": "知识库检索失败",
+      "resultsCount": "检索到 {{count}} 条知识",
+      "label": "知识库"
+    },
     "memory": {
       "title": "记忆",
       "empty": "请先在设置中添加记忆命名空间"
+    },
+    "memoryRetrieval": {
+      "searching": "正在检索记忆...",
+      "error": "记忆检索失败",
+      "resultsCount": "检索到 {{count}} 条记忆",
+      "label": "记忆"
     }
   },
   "gateway": {

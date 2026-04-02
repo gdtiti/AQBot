@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { invoke, listen, type UnlistenFn, isTauri } from '@/lib/invoke';
 import { supportsReasoning, findModelByIds } from '@/lib/modelCapabilities';
 import { formatSearchContent, buildSearchTag } from '@/lib/searchUtils';
-import { buildMemoryTag, type RagContextRetrievedEvent } from '@/lib/memoryUtils';
+import { buildKnowledgeTag, buildMemoryTag, type RagContextRetrievedEvent } from '@/lib/memoryUtils';
 import { useProviderStore } from '@/stores/providerStore';
 import { useSearchStore } from '@/stores/searchStore';
 import type {
@@ -1058,10 +1058,14 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
     // Create assistant placeholder upfront (for search status or streaming)
     const tempAssistantId = `temp-assistant-${Date.now()}`;
+    const kbIds = get().enabledKnowledgeBaseIds;
     const memIds = get().enabledMemoryNamespaceIds;
+    const hasKnowledgeRag = kbIds.length > 0;
     const hasMemoryRag = memIds.length > 0;
+    const hasAnyRag = hasKnowledgeRag || hasMemoryRag;
     let placeholderContent = '';
     if (searchProviderId) placeholderContent += buildSearchTag('searching');
+    if (hasKnowledgeRag) placeholderContent += buildKnowledgeTag('searching');
     if (hasMemoryRag) placeholderContent += buildMemoryTag('searching');
     const placeholderAssistant: Message = {
       id: tempAssistantId,
@@ -1109,17 +1113,20 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         } catch (e) {
           // Search failed, continue without search results
         }
-        // Replace searching tag with results, keep memory searching tag if present
-        const memoryPart = hasMemoryRag ? buildMemoryTag('searching') : '';
-        _streamPrefix = searchResultTag + memoryPart;
+        // Replace searching tag with results, keep RAG searching tags if present
+        const kbPart = hasKnowledgeRag ? buildKnowledgeTag('searching') : '';
+        const memPart = hasMemoryRag ? buildMemoryTag('searching') : '';
+        _streamPrefix = searchResultTag + kbPart + memPart;
         set((s) => ({
           messages: s.messages.map(m =>
-            m.id === tempAssistantId ? { ...m, content: searchResultTag + memoryPart } : m
+            m.id === tempAssistantId ? { ...m, content: searchResultTag + kbPart + memPart } : m
           ),
         }));
-      } else if (hasMemoryRag) {
-        // Memory RAG only — set prefix so searching tag flows into stream buffer
-        _streamPrefix = buildMemoryTag('searching');
+      } else if (hasAnyRag) {
+        // RAG only — set prefix so searching tags flow into stream buffer
+        const kbPart = hasKnowledgeRag ? buildKnowledgeTag('searching') : '';
+        const memPart = hasMemoryRag ? buildMemoryTag('searching') : '';
+        _streamPrefix = kbPart + memPart;
       }
 
       const mcpIds = get().enabledMcpServerIds;
@@ -1970,34 +1977,40 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       if (!get().streaming) return;
       const { conversation_id, sources } = event.payload;
 
-      const searchingTag = buildMemoryTag('searching');
-      // If no results, just remove the searching tag; otherwise replace with done
-      const memTag = sources.length > 0 ? buildMemoryTag('done', sources) : '';
+      // Split sources by type and build separate tags
+      const knowledgeSources = sources.filter(s => s.source_type === 'knowledge');
+      const memorySources = sources.filter(s => s.source_type === 'memory');
+
+      const kbSearching = buildKnowledgeTag('searching');
+      const memSearching = buildMemoryTag('searching');
+      const kbDone = knowledgeSources.length > 0 ? buildKnowledgeTag('done', knowledgeSources) : '';
+      const memDone = memorySources.length > 0 ? buildMemoryTag('done', memorySources) : '';
+
+      // Replace each searching tag with its done counterpart (or remove if empty)
+      const replaceTag = (content: string, searching: string, done: string) => {
+        if (content.includes(searching)) return content.replace(searching, done);
+        if (done) return done + content;
+        return content;
+      };
 
       if (_streamBuffer && _streamBuffer.conversationId === conversation_id) {
-        if (_streamBuffer.content.includes(searchingTag)) {
-          _streamBuffer.content = _streamBuffer.content.replace(searchingTag, memTag);
-        } else if (memTag) {
-          _streamBuffer.content = memTag + _streamBuffer.content;
-        }
+        _streamBuffer.content = replaceTag(_streamBuffer.content, kbSearching, kbDone);
+        _streamBuffer.content = replaceTag(_streamBuffer.content, memSearching, memDone);
       } else {
-        if (_streamPrefix.includes(searchingTag)) {
-          _streamPrefix = _streamPrefix.replace(searchingTag, memTag);
-        } else if (memTag) {
-          _streamPrefix = memTag + _streamPrefix;
-        }
+        _streamPrefix = replaceTag(_streamPrefix, kbSearching, kbDone);
+        _streamPrefix = replaceTag(_streamPrefix, memSearching, memDone);
       }
 
-      // Update UI immediately: replace searching tag
+      // Update UI immediately
       if (get().activeConversationId === conversation_id) {
         const msgId = get().streamingMessageId;
         if (msgId) {
           set((s) => ({
             messages: s.messages.map(m => {
               if (m.id !== msgId) return m;
-              const updated = m.content.includes(searchingTag)
-                ? m.content.replace(searchingTag, memTag)
-                : memTag ? memTag + (m.content || '') : m.content;
+              let updated = m.content;
+              updated = replaceTag(updated, kbSearching, kbDone);
+              updated = replaceTag(updated, memSearching, memDone);
               return { ...m, content: updated };
             }),
           }));

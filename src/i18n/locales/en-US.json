@@ -171,9 +171,21 @@
       "title": "Knowledge Base",
       "empty": "Please add a knowledge base in settings first"
     },
+    "knowledgeRetrieval": {
+      "searching": "Searching knowledge base...",
+      "error": "Knowledge base search failed",
+      "resultsCount": "Retrieved {{count}} knowledge items",
+      "label": "Knowledge"
+    },
     "memory": {
       "title": "Memory",
       "empty": "Please add a memory namespace in settings first"
+    },
+    "memoryRetrieval": {
+      "searching": "Searching memory...",
+      "error": "Memory search failed",
+      "resultsCount": "Retrieved {{count}} memory items",
+      "label": "Memory"
     }
   },
   "gateway": {

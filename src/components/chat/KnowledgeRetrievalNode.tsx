@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { theme } from 'antd';
-import { Brain, ChevronDown, ChevronRight, AlertCircle, Database } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import type { NodeComponentProps } from 'markstream-react';
 import { useTranslation } from 'react-i18next';
 import type { MemorySourceResult, MemoryRetrievedItem } from '@/lib/memoryUtils';
 
-type MemoryRetrievalNodeData = {
-  type: 'memory-retrieval';
+type KnowledgeRetrievalNodeData = {
+  type: 'knowledge-retrieval';
   content?: string;
   attrs?: Record<string, string> | [string, string][];
   loading?: boolean;
 };
 
 function getAttrValue(
-  attrs: MemoryRetrievalNodeData['attrs'],
+  attrs: KnowledgeRetrievalNodeData['attrs'],
   key: string,
 ): string | undefined {
   if (!attrs) return undefined;
@@ -29,13 +29,12 @@ function truncateContent(text: string, maxLen = 120): string {
   return text.slice(0, maxLen) + '…';
 }
 
-export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNodeData>) {
+export function KnowledgeRetrievalNode(props: NodeComponentProps<KnowledgeRetrievalNodeData>) {
   const { node } = props;
   const { token } = theme.useToken();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
-  // Guard against undefined node (e.g. from malformed HTML comment prefixes in old data)
   if (!node) return null;
 
   const status = getAttrValue(node.attrs, 'status') ?? (node.loading ? 'searching' : 'done');
@@ -70,10 +69,10 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
           className="animate-spin"
           style={{ display: 'inline-flex', width: 16, height: 16 }}
         >
-          <Brain size={16} style={{ color: token.colorPrimary }} />
+          <BookOpen size={16} style={{ color: token.colorPrimary }} />
         </span>
         <span style={{ color: token.colorTextSecondary, fontSize: 13 }}>
-          {t('chat.memoryRetrieval.searching', '正在检索记忆...')}
+          {t('chat.knowledgeRetrieval.searching', '正在检索知识库...')}
         </span>
       </div>
     );
@@ -96,7 +95,7 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
         }}
       >
         <AlertCircle size={16} />
-        <span>{node.content || t('chat.memoryRetrieval.error', '记忆检索失败')}</span>
+        <span>{node.content || t('chat.knowledgeRetrieval.error', '知识库检索失败')}</span>
       </div>
     );
   }
@@ -126,11 +125,11 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
           userSelect: 'none',
         }}
       >
-        <Brain size={14} style={{ color: token.colorPrimary }} />
+        <BookOpen size={14} style={{ color: token.colorPrimary }} />
         <span style={{ fontSize: 13, fontWeight: 500 }}>
-          {t('chat.memoryRetrieval.resultsCount', {
+          {t('chat.knowledgeRetrieval.resultsCount', {
             count: totalItems,
-            defaultValue: '检索到 {{count}} 条记忆',
+            defaultValue: '检索到 {{count}} 条知识',
           })}
         </span>
         <span style={{ marginLeft: 'auto', color: token.colorTextTertiary }}>
@@ -163,7 +162,7 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
                 color: token.colorTextSecondary,
               }}
             >
-              <Database size={10} style={{ flexShrink: 0 }} />
+              <BookOpen size={10} style={{ flexShrink: 0 }} />
               <span style={{ opacity: 0.7 }}>{item.document_id.slice(0, 8)}</span>
               <span style={{ color: token.colorPrimary, fontFamily: 'monospace' }}>
                 {(1 / (1 + item.score)).toFixed(3)}
@@ -198,9 +197,9 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
                     marginBottom: 2,
                   }}
                 >
-                  <Database size={12} style={{ color: token.colorPrimary, flexShrink: 0 }} />
+                  <BookOpen size={12} style={{ color: token.colorPrimary, flexShrink: 0 }} />
                   <span style={{ fontWeight: 500, color: token.colorText }}>
-                    {t('chat.memoryRetrieval.label', '记忆')}
+                    {t('chat.knowledgeRetrieval.label', '知识库')}
                   </span>
                   <span
                     style={{

@@ -22,6 +22,7 @@ import { parseSearchContent } from '@/lib/searchUtils';
 import { CHAT_CUSTOM_HTML_TAGS, parseChatMarkdown, stripAqbotTags, type ChatMarkdownNode } from '@/lib/chatMarkdown';
 import { WebSearchNode } from './WebSearchNode';
 import { MemoryRetrievalNode } from './MemoryRetrievalNode';
+import { KnowledgeRetrievalNode } from './KnowledgeRetrievalNode';
 import { McpContainerNode } from './McpContainerNode';
 import { getDistanceToHistoryTop, shouldShowScrollToBottom } from './chatScroll';
 import { formatTokenCount } from '../gateway/tokenFormat';
@@ -741,7 +742,7 @@ function ChatD2Node(props: NodeComponentProps<ChatD2CodeBlockNode>) {
   return <ChatD2BlockNode node={node} isDark={ctx?.isDark} />;
 }
 
-setCustomComponents('chat', { thinking: ThinkingNode, 'web-search': WebSearchNode, 'memory-retrieval': MemoryRetrievalNode, d2: ChatD2Node, vmr_container: McpContainerNode });
+setCustomComponents('chat', { thinking: ThinkingNode, 'web-search': WebSearchNode, 'knowledge-retrieval': KnowledgeRetrievalNode, 'memory-retrieval': MemoryRetrievalNode, d2: ChatD2Node, vmr_container: McpContainerNode });
 
 const AssistantMarkdown = React.memo(function AssistantMarkdown({
   content,

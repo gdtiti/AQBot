@@ -47,6 +47,7 @@ describe('Phase-2 type contracts', () => {
       id: 'kb1',
       name: 'Test KB',
       enabled: true,
+      sortOrder: 0,
     };
     expect(kb.enabled).toBe(true);
   });

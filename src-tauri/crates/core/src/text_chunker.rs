@@ -10,6 +10,32 @@ pub const DEFAULT_CHUNK_SIZE: usize = 2000;
 /// Default overlap in characters (~50 tokens).
 pub const DEFAULT_OVERLAP: usize = 200;
 
+/// Find the nearest char boundary at or before the given byte position.
+fn floor_char_boundary(s: &str, index: usize) -> usize {
+    if index >= s.len() {
+        s.len()
+    } else {
+        let mut i = index;
+        while i > 0 && !s.is_char_boundary(i) {
+            i -= 1;
+        }
+        i
+    }
+}
+
+/// Find the nearest char boundary at or after the given byte position.
+fn ceil_char_boundary(s: &str, index: usize) -> usize {
+    if index >= s.len() {
+        s.len()
+    } else {
+        let mut i = index;
+        while i < s.len() && !s.is_char_boundary(i) {
+            i += 1;
+        }
+        i
+    }
+}
+
 /// Split text into overlapping chunks, breaking at paragraph/sentence boundaries.
 pub fn chunk_text(text: &str, chunk_size: usize, overlap: usize) -> Vec<TextChunk> {
     let text = text.trim();
@@ -27,7 +53,8 @@ pub fn chunk_text(text: &str, chunk_size: usize, overlap: usize) -> Vec<TextChun
     let mut start = 0;
 
     while start < text.len() {
-        let end = (start + chunk_size).min(text.len());
+        // Snap to char boundary to avoid slicing inside multi-byte chars (e.g. CJK)
+        let end = floor_char_boundary(text, (start + chunk_size).min(text.len()));
 
         // Find a good break point near `end`
         let actual_end = if end >= text.len() {
@@ -51,7 +78,8 @@ pub fn chunk_text(text: &str, chunk_size: usize, overlap: usize) -> Vec<TextChun
             actual_end - start
         };
 
-        start += advance.max(1);
+        // Snap new start to a char boundary
+        start = ceil_char_boundary(text, start + advance.max(1));
 
         // If remaining text is tiny, it's already covered by the last chunk's overlap
         if start >= text.len() || text.len() - start < overlap {
@@ -127,5 +155,29 @@ mod tests {
         assert!(chunks.len() > 1);
         // First chunk should be roughly 200 chars
         assert!(chunks[0].content.len() <= 200);
+    }
+
+    #[test]
+    fn test_chunking_cjk_no_panic() {
+        // CJK characters are 3 bytes each in UTF-8.
+        // A chunk_size of 100 bytes lands inside a multi-byte char → must not panic.
+        let text = "中".repeat(200); // 600 bytes
+        let chunks = chunk_text(&text, 100, 20);
+        assert!(chunks.len() > 1);
+        for chunk in &chunks {
+            // Every chunk must be valid UTF-8 (no partial chars)
+            assert!(chunk.content.is_char_boundary(0));
+            assert!(chunk.content.is_char_boundary(chunk.content.len()));
+        }
+    }
+
+    #[test]
+    fn test_chunking_mixed_ascii_cjk() {
+        let text = "Hello世界！这是一段混合中英文的测试文本。".repeat(50);
+        let chunks = chunk_text(&text, 150, 30);
+        assert!(!chunks.is_empty());
+        for chunk in &chunks {
+            assert!(!chunk.content.is_empty());
+        }
     }
 }

@@ -969,6 +969,15 @@ pub struct KnowledgeBase {
     pub description: Option<String>,
     pub embedding_provider: Option<String>,
     pub enabled: bool,
+    pub icon_type: Option<String>,
+    pub icon_value: Option<String>,
+    pub sort_order: i32,
+    pub embedding_dimensions: Option<i32>,
+    pub retrieval_threshold: Option<f32>,
+    pub retrieval_top_k: Option<i32>,
+    pub chunk_size: Option<i32>,
+    pub chunk_overlap: Option<i32>,
+    pub separator: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -981,6 +990,8 @@ pub struct KnowledgeDocument {
     pub mime_type: String,
     pub size_bytes: i64,
     pub indexing_status: String, // pending | indexing | ready | failed
+    pub doc_type: String,        // file | url | text | ...
+    pub index_error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1298,6 +1309,28 @@ pub struct UpdateKnowledgeBaseInput {
     pub description: Option<String>,
     pub embedding_provider: Option<String>,
     pub enabled: Option<bool>,
+    pub icon_type: Option<String>,
+    pub icon_value: Option<String>,
+    #[serde(default)]
+    pub update_icon: bool,
+    pub embedding_dimensions: Option<i32>,
+    #[serde(default)]
+    pub update_embedding_dimensions: bool,
+    pub retrieval_threshold: Option<f32>,
+    #[serde(default)]
+    pub update_retrieval_threshold: bool,
+    pub retrieval_top_k: Option<i32>,
+    #[serde(default)]
+    pub update_retrieval_top_k: bool,
+    pub chunk_size: Option<i32>,
+    #[serde(default)]
+    pub update_chunk_size: bool,
+    pub chunk_overlap: Option<i32>,
+    #[serde(default)]
+    pub update_chunk_overlap: bool,
+    pub separator: Option<String>,
+    #[serde(default)]
+    pub update_separator: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -13,6 +13,11 @@ mod m20250110_000001_add_memory_item_index_status;
 mod m20250111_000001_add_memory_item_index_error;
 mod m20250113_000001_add_memory_namespace_settings;
 mod m20250114_000001_add_memory_namespace_icon_sort;
+mod m20250115_000001_add_knowledge_base_icon_sort;
+mod m20250116_000001_add_knowledge_base_retrieval_settings;
+mod m20250117_000001_add_knowledge_base_chunking_config;
+mod m20250118_000001_add_knowledge_document_type;
+mod m20250119_000001_add_knowledge_document_index_error;
 
 pub struct Migrator;
 
@@ -33,6 +38,11 @@ impl MigratorTrait for Migrator {
             Box::new(m20250111_000001_add_memory_item_index_error::Migration),
             Box::new(m20250113_000001_add_memory_namespace_settings::Migration),
             Box::new(m20250114_000001_add_memory_namespace_icon_sort::Migration),
+            Box::new(m20250115_000001_add_knowledge_base_icon_sort::Migration),
+            Box::new(m20250116_000001_add_knowledge_base_retrieval_settings::Migration),
+            Box::new(m20250117_000001_add_knowledge_base_chunking_config::Migration),
+            Box::new(m20250118_000001_add_knowledge_document_type::Migration),
+            Box::new(m20250119_000001_add_knowledge_document_index_error::Migration),
         ]
     }
 }

@@ -323,7 +323,24 @@ pub async fn clear_memory_index(
         .vector_store
         .delete_collection(&collection_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Reset all items to "pending"
+    let items = aqbot_core::repo::memory::list_items(&state.sea_db, &namespace_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    for item in items {
+        let _ = aqbot_core::repo::memory::update_item_index_status(
+            &state.sea_db,
+            &item.id,
+            "pending",
+            None,
+        )
+        .await;
+    }
+
+    Ok(())
 }
 
 #[tauri::command]

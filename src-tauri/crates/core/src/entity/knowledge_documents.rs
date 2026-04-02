@@ -12,6 +12,8 @@ pub struct Model {
     pub mime_type: String,
     pub size_bytes: i64,
     pub indexing_status: String,
+    pub doc_type: String,
+    pub index_error: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

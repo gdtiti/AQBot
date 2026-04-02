@@ -8,6 +8,15 @@ export type KnowledgeBase = {
   description?: string;
   embeddingProvider?: string;
   enabled: boolean;
+  iconType?: string;
+  iconValue?: string;
+  sortOrder: number;
+  embeddingDimensions?: number;
+  retrievalThreshold?: number;
+  retrievalTopK?: number;
+  chunkSize?: number;
+  chunkOverlap?: number;
+  separator?: string;
 };
 
 export type KnowledgeDocument = {
@@ -18,6 +27,8 @@ export type KnowledgeDocument = {
   mimeType: string;
   sizeBytes: number;
   indexingStatus: IndexingStatus;
+  docType: string;
+  indexError?: string;
 };
 
 export type RetrievalHit = {
@@ -38,4 +49,20 @@ export type CreateKnowledgeBaseInput = {
   enabled?: boolean;
 };
 
-export type UpdateKnowledgeBaseInput = Partial<CreateKnowledgeBaseInput>;
+export type UpdateKnowledgeBaseInput = Partial<CreateKnowledgeBaseInput> & {
+  iconType?: string | null;
+  iconValue?: string | null;
+  updateIcon?: boolean;
+  embeddingDimensions?: number;
+  updateEmbeddingDimensions?: boolean;
+  retrievalThreshold?: number;
+  updateRetrievalThreshold?: boolean;
+  retrievalTopK?: number;
+  updateRetrievalTopK?: boolean;
+  chunkSize?: number;
+  updateChunkSize?: boolean;
+  chunkOverlap?: number;
+  updateChunkOverlap?: boolean;
+  separator?: string;
+  updateSeparator?: boolean;
+};

@@ -392,21 +392,26 @@ function MemoryItemsPanel({
               }}
             />
           </Tooltip>
-          <Tooltip title={t('settings.memory.reindexItem', '重新索引')}>
-            <Button
-              size="small"
-              type="text"
-              icon={<Zap size={14} />}
-              loading={record.indexStatus === 'indexing'}
-              disabled={!namespace.embeddingProvider}
-              onClick={async () => {
-                await invoke('reindex_memory_item', { namespaceId: namespace.id, itemId: record.id }).catch((e) => {
-                  messageApi.error(String(e));
-                });
-                loadItems(namespace.id);
-              }}
-            />
-          </Tooltip>
+          <Popconfirm
+            title={t('settings.memory.rebuildItemConfirm', '确定重新索引该记录？')}
+            placement="bottom"
+            onConfirm={async () => {
+              await invoke('reindex_memory_item', { namespaceId: namespace.id, itemId: record.id }).catch((e) => {
+                messageApi.error(String(e));
+              });
+              loadItems(namespace.id);
+            }}
+          >
+            <Tooltip title={t('settings.memory.reindexItem', '重新索引')}>
+              <Button
+                size="small"
+                type="text"
+                icon={<Zap size={14} />}
+                loading={record.indexStatus === 'indexing'}
+                disabled={!namespace.embeddingProvider}
+              />
+            </Tooltip>
+          </Popconfirm>
           <Popconfirm
             title={t('settings.memory.deleteConfirm')}
             onConfirm={() => deleteItem(namespace.id, record.id)}
@@ -591,25 +596,30 @@ function MemoryItemsPanel({
               setItemModalOpen(true);
             }} />
           </Tooltip>
-          <Tooltip title={t('settings.memory.rebuildIndex', '重建索引')}>
-            <Button
-              icon={<Zap size={14} />}
-              loading={rebuildingIndex}
-              disabled={!namespace.embeddingProvider}
-              onClick={async () => {
-                setRebuildingIndex(true);
-                rebuildingRef.current = true;
-                try {
-                  await invoke('rebuild_memory_index', { namespaceId: namespace.id });
-                  loadItems(namespace.id);
-                } catch (e) {
-                  setRebuildingIndex(false);
-                  rebuildingRef.current = false;
-                  messageApi.error(String(e));
-                }
-              }}
-            />
-          </Tooltip>
+          <Popconfirm
+            title={t('settings.memory.rebuildIndexConfirm', '确定重建索引？将重新生成所有记录的向量嵌入。')}
+            placement="bottom"
+            onConfirm={async () => {
+              setRebuildingIndex(true);
+              rebuildingRef.current = true;
+              try {
+                await invoke('rebuild_memory_index', { namespaceId: namespace.id });
+                loadItems(namespace.id);
+              } catch (e) {
+                setRebuildingIndex(false);
+                rebuildingRef.current = false;
+                messageApi.error(String(e));
+              }
+            }}
+          >
+            <Tooltip title={t('settings.memory.rebuildIndex', '重建索引')}>
+              <Button
+                icon={<Zap size={14} />}
+                loading={rebuildingIndex}
+                disabled={!namespace.embeddingProvider}
+              />
+            </Tooltip>
+          </Popconfirm>
         </div>
         <div className="flex items-center gap-2">
           {namespace.embeddingProvider && (
@@ -633,18 +643,26 @@ function MemoryItemsPanel({
               </Tooltip>
             </>
           )}
-          <Tooltip title={t('settings.memory.clearIndex', '清空索引')}>
-            <Button
-              danger
-              icon={<Trash size={14} />}
-              disabled={!namespace.embeddingProvider}
-              onClick={() => {
-                invoke('clear_memory_index', { namespaceId: namespace.id })
-                  .then(() => messageApi.success(t('settings.memory.clearSuccess', '索引已清空')))
-                  .catch((e) => messageApi.error(String(e)));
-              }}
-            />
-          </Tooltip>
+          <Popconfirm
+            title={t('settings.memory.clearIndexConfirm', '确定清空所有索引？此操作不可撤销。')}
+            onConfirm={async () => {
+              try {
+                await invoke('clear_memory_index', { namespaceId: namespace.id });
+                loadItems(namespace.id);
+                messageApi.success(t('settings.memory.clearSuccess', '索引已清空'));
+              } catch (e) {
+                messageApi.error(String(e));
+              }
+            }}
+          >
+            <Tooltip title={t('settings.memory.clearIndex', '清空索引')}>
+              <Button
+                danger
+                icon={<Trash size={14} />}
+                disabled={!namespace.embeddingProvider}
+              />
+            </Tooltip>
+          </Popconfirm>
         </div>
       </div>
 

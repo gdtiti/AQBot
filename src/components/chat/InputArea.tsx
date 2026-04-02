@@ -9,6 +9,7 @@ import { findModelByIds, supportsReasoning, modelHasCapability } from '@/lib/mod
 import { estimateMessageTokens, estimateTokens } from '@/lib/tokenEstimator';
 import { McpServerIcon } from '@/components/shared/McpServerIcon';
 import { NamespaceIcon } from '@/components/shared/NamespaceIcon';
+import { KnowledgeBaseIcon } from '@/components/shared/KnowledgeBaseIcon';
 import { getShortcutBinding, formatShortcutForDisplay } from '@/lib/shortcuts';
 import type { ShortcutAction } from '@/lib/shortcuts';
 import { VoiceCall } from './VoiceCall';
@@ -323,7 +324,10 @@ export function InputArea() {
               checked={enabledKnowledgeBaseIds.includes(kb.id)}
               onChange={() => toggleKnowledgeBase(kb.id)}
             >
-              <span style={{ fontSize: 13 }}>{kb.name}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                <KnowledgeBaseIcon kb={kb} size={14} />
+                {kb.name}
+              </span>
             </Checkbox>
           </div>
         ))}

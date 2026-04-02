@@ -18,6 +18,7 @@ interface KnowledgeState {
   createBase: (input: CreateKnowledgeBaseInput) => Promise<KnowledgeBase | null>;
   updateBase: (id: string, input: UpdateKnowledgeBaseInput) => Promise<void>;
   deleteBase: (id: string) => Promise<void>;
+  reorderBases: (baseIds: string[]) => Promise<void>;
   loadDocuments: (baseId: string) => Promise<void>;
   addDocument: (baseId: string, title: string, sourcePath: string, mimeType: string) => Promise<void>;
   deleteDocument: (knowledgeBaseId: string, documentId: string) => Promise<void>;
@@ -69,6 +70,19 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => ({
     } catch (e) {
       set({ error: String(e) });
       throw e;
+    }
+  },
+
+  reorderBases: async (baseIds) => {
+    const prev = get().bases;
+    const reordered = baseIds
+      .map((id) => prev.find((b) => b.id === id))
+      .filter(Boolean) as KnowledgeBase[];
+    set({ bases: reordered });
+    try {
+      await invoke('reorder_knowledge_bases', { baseIds });
+    } catch (e) {
+      set({ bases: prev, error: String(e) });
     }
   },
 

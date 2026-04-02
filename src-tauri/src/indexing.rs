@@ -135,14 +135,16 @@ pub async fn index_knowledge_document(
     source_path: &str,
     mime_type: &str,
     embedding_provider: &str,
+    chunk_size: Option<i32>,
+    chunk_overlap: Option<i32>,
 ) -> Result<()> {
     aqbot_core::repo::knowledge::update_document_status(db, document_id, "indexing").await?;
 
     let strategy = ChunkStrategy::ParseAndChunk {
         source_path: source_path.to_string(),
         mime_type: mime_type.to_string(),
-        chunk_size: aqbot_core::text_chunker::DEFAULT_CHUNK_SIZE,
-        overlap: aqbot_core::text_chunker::DEFAULT_OVERLAP,
+        chunk_size: chunk_size.map(|v| v as usize).unwrap_or(aqbot_core::text_chunker::DEFAULT_CHUNK_SIZE),
+        overlap: chunk_overlap.map(|v| v as usize).unwrap_or(aqbot_core::text_chunker::DEFAULT_OVERLAP),
     };
 
     let chunks = rag::prepare_chunks(document_id, &strategy)?;

@@ -37,6 +37,8 @@ pub struct VectorSearchResult {
     pub content: String,
     /// Distance score (lower is more similar for L2 distance)
     pub score: f32,
+    /// Whether this chunk has an embedding in vec0
+    pub has_embedding: bool,
 }
 
 /// sqlite-vec–backed vector store for knowledge base embeddings.
@@ -121,36 +123,51 @@ impl VectorStore {
         // Delete previous embeddings for this document.
         self.delete_rows_by_document(&name, doc_id).await?;
 
-        // Insert new records.
-        // IMPORTANT: Insert into vec0 FIRST (it auto-assigns its own rowid
-        // and ignores explicit rowid values), then use that rowid for meta.
+        // Determine the next safe rowid to avoid UNIQUE conflicts.
+        // We must check both _meta AND vec0 tables because orphan rows
+        // can exist in vec0 after a previous crash/panic mid-insert.
+        let meta_max = self
+            .db
+            .query_one(Statement::from_string(
+                DbBackend::Sqlite,
+                format!("SELECT COALESCE(MAX(rowid), 0) AS max_rid FROM {name}_meta"),
+            ))
+            .await
+            .map_err(Self::wrap)?
+            .and_then(|r| r.try_get::<i64>("", "max_rid").ok())
+            .unwrap_or(0);
+
+        let vec_max = self
+            .db
+            .query_one(Statement::from_string(
+                DbBackend::Sqlite,
+                format!("SELECT COALESCE(MAX(rowid), 0) AS max_rid FROM {name}"),
+            ))
+            .await
+            .ok()
+            .flatten()
+            .and_then(|r| r.try_get::<i64>("", "max_rid").ok())
+            .unwrap_or(0);
+
+        let mut next_rowid: i64 = meta_max.max(vec_max) + 1;
+
+        // Insert new records with explicit correlated rowids.
         for record in &records {
             let vec_json = Self::embedding_to_json(&record.embedding);
+            let rid = next_rowid;
+            next_rowid += 1;
 
-            // Step 1: Insert embedding into vec0 (without explicit rowid)
+            // Insert embedding into vec0 with explicit rowid
             self.db
                 .execute(Statement::from_sql_and_values(
                     DbBackend::Sqlite,
-                    &format!("INSERT INTO {name} (embedding) VALUES ($1)"),
-                    vec![vec_json.into()],
+                    &format!("INSERT INTO {name} (rowid, embedding) VALUES ($1, $2)"),
+                    vec![rid.into(), vec_json.into()],
                 ))
                 .await
                 .map_err(Self::wrap)?;
 
-            // Step 2: Get the rowid that vec0 auto-assigned
-            let last = self
-                .db
-                .query_one(Statement::from_string(
-                    DbBackend::Sqlite,
-                    "SELECT last_insert_rowid() AS rid",
-                ))
-                .await
-                .map_err(Self::wrap)?
-                .ok_or_else(|| AQBotError::Provider("last_insert_rowid failed".into()))?;
-
-            let rowid: i64 = last.try_get("", "rid").map_err(Self::wrap)?;
-
-            // Step 3: Insert meta with the same rowid from vec0
+            // Insert meta with the same rowid
             self.db
                 .execute(Statement::from_sql_and_values(
                     DbBackend::Sqlite,
@@ -159,7 +176,7 @@ impl VectorStore {
                          VALUES ($1, $2, $3, $4, $5)"
                     ),
                     vec![
-                        rowid.into(),
+                        rid.into(),
                         record.id.clone().into(),
                         record.document_id.clone().into(),
                         record.chunk_index.into(),
@@ -171,6 +188,97 @@ impl VectorStore {
         }
 
         Ok(())
+    }
+
+    /// Add a single chunk to an existing collection.
+    /// Returns the generated chunk ID.
+    pub async fn add_single_chunk(
+        &self,
+        collection_id: &str,
+        document_id: &str,
+        content: &str,
+        embedding: &[f32],
+    ) -> Result<String> {
+        let name = Self::collection_name(collection_id);
+        let meta_table = format!("{name}_meta");
+
+        if !self.table_exists(&meta_table).await? {
+            return Err(AQBotError::NotFound("Collection not found".into()));
+        }
+
+        // Determine next chunk_index for this document
+        let max_index = self
+            .db
+            .query_one(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                &format!("SELECT COALESCE(MAX(chunk_index), -1) AS max_idx FROM {meta_table} WHERE document_id = $1"),
+                vec![document_id.to_string().into()],
+            ))
+            .await
+            .map_err(Self::wrap)?
+            .and_then(|r| r.try_get::<i32>("", "max_idx").ok())
+            .unwrap_or(-1);
+
+        let chunk_index = max_index + 1;
+        let chunk_id = format!("{}_{}", document_id, chunk_index);
+
+        // Determine next safe rowid
+        let meta_max = self
+            .db
+            .query_one(Statement::from_string(
+                DbBackend::Sqlite,
+                format!("SELECT COALESCE(MAX(rowid), 0) AS max_rid FROM {meta_table}"),
+            ))
+            .await
+            .map_err(Self::wrap)?
+            .and_then(|r| r.try_get::<i64>("", "max_rid").ok())
+            .unwrap_or(0);
+
+        let vec_max = self
+            .db
+            .query_one(Statement::from_string(
+                DbBackend::Sqlite,
+                format!("SELECT COALESCE(MAX(rowid), 0) AS max_rid FROM {name}"),
+            ))
+            .await
+            .ok()
+            .flatten()
+            .and_then(|r| r.try_get::<i64>("", "max_rid").ok())
+            .unwrap_or(0);
+
+        let rid: i64 = meta_max.max(vec_max) + 1;
+        let vec_json = Self::embedding_to_json(embedding);
+
+        // Insert embedding into vec0
+        self.db
+            .execute(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                &format!("INSERT INTO {name} (rowid, embedding) VALUES ($1, $2)"),
+                vec![rid.into(), vec_json.into()],
+            ))
+            .await
+            .map_err(Self::wrap)?;
+
+        // Insert meta
+        self.db
+            .execute(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                &format!(
+                    "INSERT INTO {meta_table} (rowid, id, document_id, chunk_index, content) \
+                     VALUES ($1, $2, $3, $4, $5)"
+                ),
+                vec![
+                    rid.into(),
+                    chunk_id.clone().into(),
+                    document_id.to_string().into(),
+                    chunk_index.into(),
+                    content.to_string().into(),
+                ],
+            ))
+            .await
+            .map_err(Self::wrap)?;
+
+        Ok(chunk_id)
     }
 
     /// Search for the most similar vectors in a knowledge base.
@@ -227,6 +335,7 @@ impl VectorStore {
                     .try_get::<f64>("", "distance")
                     .map(|v| v as f32)
                     .map_err(Self::wrap)?,
+                has_embedding: true,
             });
         }
 
@@ -257,6 +366,271 @@ impl VectorStore {
         let _ = self
             .exec(&format!("DROP TABLE IF EXISTS {name}_meta"))
             .await;
+        Ok(())
+    }
+
+    /// Clear only the embedding vectors (vec0), keeping chunk metadata (_meta) intact.
+    /// This allows re-embedding without losing user edits or manually added chunks.
+    pub async fn clear_embeddings(&self, collection_id: &str) -> Result<()> {
+        let name = Self::collection_name(collection_id);
+
+        // Drop and recreate vec0 to clear all embeddings
+        // We need the dimensions to recreate, so read from an existing row first
+        let dim_row = self
+            .db
+            .query_one(Statement::from_string(
+                DbBackend::Sqlite,
+                format!("SELECT vec_length(embedding) AS dim FROM {name} LIMIT 1"),
+            ))
+            .await
+            .ok()
+            .flatten();
+
+        let _ = self.exec(&format!("DROP TABLE IF EXISTS {name}")).await;
+
+        // Recreate vec0 if we know the dimensions
+        if let Some(row) = dim_row {
+            if let Ok(dim) = row.try_get::<i32>("", "dim") {
+                let _ = self
+                    .exec(&format!(
+                        "CREATE VIRTUAL TABLE IF NOT EXISTS {name} USING vec0(embedding float[{dim}])"
+                    ))
+                    .await;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// List all chunk metadata with rowids for re-embedding.
+    /// Returns (rowid, chunk_id, content) tuples.
+    pub async fn list_all_chunks(
+        &self,
+        collection_id: &str,
+    ) -> Result<Vec<(i64, String, String)>> {
+        self.list_chunks_raw(collection_id, None).await
+    }
+
+    /// List chunks (rowid, id, content) for a specific document.
+    pub async fn list_document_chunks_raw(
+        &self,
+        collection_id: &str,
+        document_id: &str,
+    ) -> Result<Vec<(i64, String, String)>> {
+        self.list_chunks_raw(collection_id, Some(document_id)).await
+    }
+
+    /// Internal helper: list chunks with optional document_id filter.
+    async fn list_chunks_raw(
+        &self,
+        collection_id: &str,
+        document_id: Option<&str>,
+    ) -> Result<Vec<(i64, String, String)>> {
+        let name = Self::collection_name(collection_id);
+        let meta_table = format!("{name}_meta");
+
+        if !self.table_exists(&meta_table).await? {
+            return Ok(vec![]);
+        }
+
+        let rows = if let Some(doc_id) = document_id {
+            self.db
+                .query_all(Statement::from_sql_and_values(
+                    DbBackend::Sqlite,
+                    &format!("SELECT rowid, id, content FROM \"{meta_table}\" WHERE document_id = $1 ORDER BY rowid"),
+                    vec![doc_id.to_string().into()],
+                ))
+                .await
+                .map_err(Self::wrap)?
+        } else {
+            self.db
+                .query_all(Statement::from_string(
+                    DbBackend::Sqlite,
+                    format!("SELECT rowid, id, content FROM {meta_table} ORDER BY rowid"),
+                ))
+                .await
+                .map_err(Self::wrap)?
+        };
+
+        let mut result = Vec::new();
+        for row in &rows {
+            let rid: i64 = row.try_get("", "rowid").map_err(Self::wrap)?;
+            let id: String = row.try_get("", "id").map_err(Self::wrap)?;
+            let content: String = row.try_get("", "content").map_err(Self::wrap)?;
+            result.push((rid, id, content));
+        }
+
+        Ok(result)
+    }
+
+    /// Re-insert embeddings for existing chunks (used after clear_embeddings).
+    /// The vec0 table must already exist (or be recreated with correct dimensions).
+    pub async fn reinsert_embeddings(
+        &self,
+        collection_id: &str,
+        entries: Vec<(i64, Vec<f32>)>, // (rowid, embedding)
+    ) -> Result<()> {
+        self.upsert_document_embeddings(collection_id, entries).await
+    }
+
+    /// Insert or replace embeddings for specific rowids.
+    /// Creates vec0 if needed, deletes existing rows, then inserts new embeddings.
+    pub async fn upsert_document_embeddings(
+        &self,
+        collection_id: &str,
+        entries: Vec<(i64, Vec<f32>)>,
+    ) -> Result<()> {
+        if entries.is_empty() {
+            return Ok(());
+        }
+
+        let dimensions = entries[0].1.len();
+        let name = Self::collection_name(collection_id);
+
+        // Ensure the vec0 table exists with correct dimensions
+        self.db
+            .execute(Statement::from_string(
+                DbBackend::Sqlite,
+                format!("CREATE VIRTUAL TABLE IF NOT EXISTS {name} USING vec0(embedding float[{dimensions}])"),
+            ))
+            .await
+            .map_err(Self::wrap)?;
+
+        for (rid, embedding) in &entries {
+            // Delete existing row if present (ignore errors — may not exist)
+            let _ = self
+                .db
+                .execute(Statement::from_sql_and_values(
+                    DbBackend::Sqlite,
+                    &format!("DELETE FROM {name} WHERE rowid = $1"),
+                    vec![(*rid).into()],
+                ))
+                .await;
+
+            let vec_json = Self::embedding_to_json(embedding);
+            self.db
+                .execute(Statement::from_sql_and_values(
+                    DbBackend::Sqlite,
+                    &format!("INSERT INTO {name} (rowid, embedding) VALUES ($1, $2)"),
+                    vec![(*rid).into(), vec_json.into()],
+                ))
+                .await
+                .map_err(Self::wrap)?;
+        }
+
+        Ok(())
+    }
+
+    /// Delete a single chunk by its id from both vec0 and metadata tables.
+    pub async fn delete_chunk(&self, collection_id: &str, chunk_id: &str) -> Result<()> {
+        let name = Self::collection_name(collection_id);
+        let meta_table = format!("{name}_meta");
+
+        if !self.table_exists(&meta_table).await? {
+            return Ok(());
+        }
+
+        // Get the rowid from _meta
+        let row = self
+            .db
+            .query_one(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                &format!("SELECT rowid FROM {meta_table} WHERE id = $1"),
+                vec![chunk_id.to_string().into()],
+            ))
+            .await
+            .map_err(Self::wrap)?;
+
+        if let Some(row) = row {
+            let rid: i64 = row.try_get("", "rowid").map_err(Self::wrap)?;
+            // Delete from vec0
+            let _ = self
+                .db
+                .execute(Statement::from_sql_and_values(
+                    DbBackend::Sqlite,
+                    &format!("DELETE FROM {name} WHERE rowid = $1"),
+                    vec![rid.into()],
+                ))
+                .await;
+            // Delete from _meta
+            self.db
+                .execute(Statement::from_sql_and_values(
+                    DbBackend::Sqlite,
+                    &format!("DELETE FROM {meta_table} WHERE id = $1"),
+                    vec![chunk_id.to_string().into()],
+                ))
+                .await
+                .map_err(Self::wrap)?;
+        }
+
+        Ok(())
+    }
+
+    /// Update the text content of a single chunk in the metadata table.
+    pub async fn update_chunk_content(
+        &self,
+        collection_id: &str,
+        chunk_id: &str,
+        new_content: &str,
+    ) -> Result<()> {
+        let name = Self::collection_name(collection_id);
+        let meta_table = format!("{name}_meta");
+
+        if !self.table_exists(&meta_table).await? {
+            return Err(AQBotError::NotFound("Collection not found".into()));
+        }
+
+        self.db
+            .execute(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                &format!("UPDATE {meta_table} SET content = $1 WHERE id = $2"),
+                vec![new_content.to_string().into(), chunk_id.to_string().into()],
+            ))
+            .await
+            .map_err(Self::wrap)?;
+
+        Ok(())
+    }
+
+    /// Update the embedding vector for a single chunk identified by its chunk id.
+    pub async fn update_chunk_embedding(
+        &self,
+        collection_id: &str,
+        chunk_id: &str,
+        embedding: &[f32],
+    ) -> Result<()> {
+        let name = Self::collection_name(collection_id);
+        let meta_table = format!("{name}_meta");
+
+        if !self.table_exists(&meta_table).await? {
+            return Err(AQBotError::NotFound("Collection not found".into()));
+        }
+
+        // Get the rowid from _meta
+        let row = self
+            .db
+            .query_one(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                &format!("SELECT rowid FROM {meta_table} WHERE id = $1"),
+                vec![chunk_id.to_string().into()],
+            ))
+            .await
+            .map_err(Self::wrap)?
+            .ok_or_else(|| AQBotError::NotFound(format!("Chunk {} not found", chunk_id)))?;
+
+        let rid: i64 = row.try_get("", "rowid").map_err(Self::wrap)?;
+        let vec_json = Self::embedding_to_json(embedding);
+
+        // Update embedding in vec0
+        self.db
+            .execute(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                &format!("UPDATE {name} SET embedding = $1 WHERE rowid = $2"),
+                vec![vec_json.into(), rid.into()],
+            ))
+            .await
+            .map_err(Self::wrap)?;
+
         Ok(())
     }
 
@@ -322,6 +696,62 @@ impl VectorStore {
             .await
             .map_err(Self::wrap)?;
         Ok(row.is_some())
+    }
+
+    /// List all chunks stored for a specific document within a collection.
+    pub async fn list_document_chunks(
+        &self,
+        collection_id: &str,
+        document_id: &str,
+    ) -> Result<Vec<VectorSearchResult>> {
+        let name = Self::collection_name(collection_id);
+        let meta_table = format!("{name}_meta");
+
+        if !self.table_exists(&meta_table).await? {
+            return Ok(vec![]);
+        }
+
+        let vec_exists = self.table_exists(&name).await?;
+
+        let sql = if vec_exists {
+            format!(
+                "SELECT m.id, m.document_id, m.chunk_index, m.content, \
+                 CASE WHEN v.rowid IS NOT NULL THEN 1 ELSE 0 END AS has_embedding \
+                 FROM \"{meta_table}\" m \
+                 LEFT JOIN \"{name}\" v ON m.rowid = v.rowid \
+                 WHERE m.document_id = $1 ORDER BY m.chunk_index"
+            )
+        } else {
+            format!(
+                "SELECT id, document_id, chunk_index, content, 0 AS has_embedding \
+                 FROM \"{meta_table}\" WHERE document_id = $1 ORDER BY chunk_index"
+            )
+        };
+
+        let rows = self
+            .db
+            .query_all(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                &sql,
+                vec![document_id.to_string().into()],
+            ))
+            .await
+            .map_err(Self::wrap)?;
+
+        let mut results = Vec::with_capacity(rows.len());
+        for row in &rows {
+            let has_emb: i32 = row.try_get("", "has_embedding").unwrap_or(0);
+            results.push(VectorSearchResult {
+                id: row.try_get("", "id").map_err(Self::wrap)?,
+                document_id: row.try_get("", "document_id").map_err(Self::wrap)?,
+                chunk_index: row.try_get("", "chunk_index").map_err(Self::wrap)?,
+                content: row.try_get("", "content").map_err(Self::wrap)?,
+                score: 0.0,
+                has_embedding: has_emb != 0,
+            });
+        }
+
+        Ok(results)
     }
 
     /// Shorthand for executing a statement with no parameters.

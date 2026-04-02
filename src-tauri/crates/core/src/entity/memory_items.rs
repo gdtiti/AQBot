@@ -11,6 +11,8 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub content: String,
     pub source: String,
+    pub index_status: String,
+    pub index_error: Option<String>,
     pub updated_at: String,
 }
 

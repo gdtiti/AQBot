@@ -65,6 +65,9 @@ pub async fn add_memory_item(
         .map_err(|e| e.to_string())?;
 
     if let Some(ref embedding_provider) = ns.embedding_provider {
+        // Set status to indexing
+        let _ = aqbot_core::repo::memory::update_item_index_status(&state.sea_db, &item.id, "indexing", None).await;
+
         let db = state.sea_db.clone();
         let master_key = state.master_key;
         let vector_store = state.vector_store.clone();
@@ -85,22 +88,33 @@ pub async fn add_memory_item(
             )
             .await;
 
-            if let Err(e) = &result {
-                tracing::error!("Memory embedding failed for item {}: {}", item_id, e);
-            }
+            let (status, err_msg) = match &result {
+                Ok(_) => ("ready", None),
+                Err(e) => {
+                    tracing::error!("Memory embedding failed for item {}: {}", item_id, e);
+                    ("failed", Some(e.to_string()))
+                }
+            };
+            let _ = aqbot_core::repo::memory::update_item_index_status(&db, &item_id, status, err_msg.as_deref()).await;
 
             let _ = app.emit(
                 "memory-item-indexed",
                 serde_json::json!({
                     "itemId": item_id,
                     "success": result.is_ok(),
-                    "error": result.err().map(|e| e.to_string()),
+                    "status": status,
+                    "error": err_msg,
                 }),
             );
         });
-    }
 
-    Ok(item)
+        // Return item with "indexing" status
+        return Ok(MemoryItem { index_status: "indexing".to_string(), ..item });
+    } else {
+        // No embedding provider — mark as skipped
+        let _ = aqbot_core::repo::memory::update_item_index_status(&state.sea_db, &item.id, "skipped", None).await;
+        return Ok(MemoryItem { index_status: "skipped".to_string(), ..item });
+    }
 }
 
 #[tauri::command]
@@ -119,6 +133,82 @@ pub async fn delete_memory_item(
     aqbot_core::repo::memory::delete_item(&state.sea_db, &id)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_memory_item(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    namespace_id: String,
+    id: String,
+    input: UpdateMemoryItemInput,
+) -> Result<MemoryItem, String> {
+    let content_changed = input.content.is_some();
+    let item = aqbot_core::repo::memory::update_item(&state.sea_db, &id, input)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Re-index if content changed and namespace has embedding provider
+    if content_changed {
+        let ns = aqbot_core::repo::memory::get_namespace(&state.sea_db, &namespace_id)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if let Some(ref embedding_provider) = ns.embedding_provider {
+            // Set status to indexing
+            let _ = aqbot_core::repo::memory::update_item_index_status(&state.sea_db, &id, "indexing", None).await;
+
+            let db = state.sea_db.clone();
+            let master_key = state.master_key;
+            let vector_store = state.vector_store.clone();
+            let item_id = item.id.clone();
+            let content = item.content.clone();
+            let ep = embedding_provider.clone();
+            let ns_id = namespace_id.clone();
+
+            tokio::spawn(async move {
+                // Delete old embedding first
+                let collection_id = format!("mem_{}", ns_id);
+                let _ = vector_store
+                    .delete_document_embeddings(&collection_id, &item_id)
+                    .await;
+
+                let result = crate::indexing::index_memory_item(
+                    &db,
+                    &master_key,
+                    &vector_store,
+                    &ns_id,
+                    &item_id,
+                    &content,
+                    &ep,
+                )
+                .await;
+
+                let (status, err_msg) = match &result {
+                    Ok(_) => ("ready", None),
+                    Err(e) => {
+                        tracing::error!("Memory re-embedding failed for item {}: {}", item_id, e);
+                        ("failed", Some(e.to_string()))
+                    }
+                };
+                let _ = aqbot_core::repo::memory::update_item_index_status(&db, &item_id, status, err_msg.as_deref()).await;
+
+                let _ = app.emit(
+                    "memory-item-indexed",
+                    serde_json::json!({
+                        "itemId": item_id,
+                        "success": result.is_ok(),
+                        "status": status,
+                        "error": err_msg,
+                    }),
+                );
+            });
+
+            return Ok(MemoryItem { index_status: "indexing".to_string(), ..item });
+        }
+    }
+
+    Ok(item)
 }
 
 #[tauri::command]
@@ -163,6 +253,11 @@ pub async fn rebuild_memory_index(
         .await
         .map_err(|e| e.to_string())?;
 
+    // Set all items to indexing status
+    for item in &items {
+        let _ = aqbot_core::repo::memory::update_item_index_status(&state.sea_db, &item.id, "indexing", None).await;
+    }
+
     let db = state.sea_db.clone();
     let master_key = state.master_key;
     let vector_store = state.vector_store.clone();
@@ -181,9 +276,26 @@ pub async fn rebuild_memory_index(
             )
             .await;
 
-            if let Err(e) = &result {
-                tracing::error!("Memory re-indexing failed for item {}: {}", item.id, e);
-            }
+            let (status, err_msg) = match &result {
+                Ok(_) => ("ready", None),
+                Err(e) => {
+                    tracing::error!("Memory re-indexing failed for item {}: {}", item.id, e);
+                    ("failed", Some(e.to_string()))
+                }
+            };
+            let _ = aqbot_core::repo::memory::update_item_index_status(&db, &item.id, status, err_msg.as_deref()).await;
+
+            // Emit per-item event for real-time progress
+            let _ = app.emit(
+                "memory-item-indexed",
+                serde_json::json!({
+                    "itemId": item.id,
+                    "success": result.is_ok(),
+                    "status": status,
+                    "error": err_msg,
+                    "isRebuild": true,
+                }),
+            );
         }
 
         let _ = app.emit(
@@ -206,4 +318,78 @@ pub async fn clear_memory_index(
         .delete_collection(&collection_id)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn reindex_memory_item(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    namespace_id: String,
+    item_id: String,
+) -> Result<(), String> {
+    let ns = aqbot_core::repo::memory::get_namespace(&state.sea_db, &namespace_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let embedding_provider = ns
+        .embedding_provider
+        .ok_or("No embedding provider configured")?;
+
+    let items = aqbot_core::repo::memory::list_items(&state.sea_db, &namespace_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let item = items
+        .into_iter()
+        .find(|i| i.id == item_id)
+        .ok_or("Item not found")?;
+
+    let _ = aqbot_core::repo::memory::update_item_index_status(&state.sea_db, &item_id, "indexing", None).await;
+
+    let db = state.sea_db.clone();
+    let master_key = state.master_key;
+    let vector_store = state.vector_store.clone();
+    let ep = embedding_provider.clone();
+    let ns_id = namespace_id.clone();
+    let iid = item_id.clone();
+    let content = item.content.clone();
+
+    tokio::spawn(async move {
+        let collection_id = format!("mem_{}", ns_id);
+        let _ = vector_store
+            .delete_document_embeddings(&collection_id, &iid)
+            .await;
+
+        let result = crate::indexing::index_memory_item(
+            &db,
+            &master_key,
+            &vector_store,
+            &ns_id,
+            &iid,
+            &content,
+            &ep,
+        )
+        .await;
+
+        let (status, err_msg) = match &result {
+            Ok(_) => ("ready", None),
+            Err(e) => {
+                tracing::error!("Memory reindex failed for item {}: {}", iid, e);
+                ("failed", Some(e.to_string()))
+            }
+        };
+        let _ = aqbot_core::repo::memory::update_item_index_status(&db, &iid, status, err_msg.as_deref()).await;
+
+        let _ = app.emit(
+            "memory-item-indexed",
+            serde_json::json!({
+                "itemId": iid,
+                "success": result.is_ok(),
+                "status": status,
+                "error": err_msg,
+            }),
+        );
+    });
+
+    Ok(())
 }

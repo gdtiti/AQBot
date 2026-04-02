@@ -4,6 +4,8 @@
   },
   "nav": {
     "chat": "对话",
+    "knowledge": "知识库",
+    "memory": "记忆",
     "gateway": "网关",
     "files": "文件",
     "settings": "设置"

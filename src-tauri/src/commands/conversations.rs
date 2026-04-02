@@ -1478,56 +1478,18 @@ pub async fn send_message(
     }
 
     // RAG retrieval: search enabled knowledge bases and memory namespaces
-    let mut rag_context_parts: Vec<String> = Vec::new();
-
     let kb_ids = enabled_knowledge_base_ids.unwrap_or_default();
-    for kb_id in &kb_ids {
-        match crate::indexing::search_knowledge(
-            &state.sea_db,
-            &state.master_key,
-            &state.vector_store,
-            kb_id,
-            &content,
-            5,
-        )
-        .await
-        {
-            Ok(results) if !results.is_empty() => {
-                let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
-                rag_context_parts.push(format!(
-                    "[Knowledge Base Reference]\n{}",
-                    snippets.join("\n---\n")
-                ));
-            }
-            Err(e) => {
-                tracing::debug!("RAG knowledge search failed for kb {}: {}", kb_id, e);
-            }
-            _ => {}
-        }
-    }
-
     let mem_ids = enabled_memory_namespace_ids.unwrap_or_default();
-    for ns_id in &mem_ids {
-        match crate::indexing::search_memory(
-            &state.sea_db,
-            &state.master_key,
-            &state.vector_store,
-            ns_id,
-            &content,
-            5,
-        )
-        .await
-        {
-            Ok(results) if !results.is_empty() => {
-                let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
-                rag_context_parts.push(format!("[Memory Reference]\n{}", snippets.join("\n---\n")));
-            }
-            Err(e) => {
-                tracing::debug!("RAG memory search failed for ns {}: {}", ns_id, e);
-            }
-            _ => {}
-        }
-    }
+    let rag_context_parts = crate::indexing::collect_rag_context(
+        &state.sea_db,
+        &state.master_key,
+        &state.vector_store,
+        &kb_ids,
+        &mem_ids,
+        &content,
+        5,
+    )
+    .await;
 
     if !rag_context_parts.is_empty() {
         chat_messages.push(ChatMessage {
@@ -1866,54 +1828,19 @@ pub async fn regenerate_message(
 
     // RAG retrieval for regeneration
     {
-        let mut rag_parts: Vec<String> = Vec::new();
         let kb_ids = enabled_knowledge_base_ids.unwrap_or_default();
-        for kb_id in &kb_ids {
-            match crate::indexing::search_knowledge(
-                &state.sea_db,
-                &state.master_key,
-                &state.vector_store,
-                kb_id,
-                &last_user_msg.content,
-                5,
-            )
-            .await
-            {
-                Ok(results) if !results.is_empty() => {
-                    let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
-                    rag_parts.push(format!(
-                        "[Knowledge Base Reference]\n{}",
-                        snippets.join("\n---\n")
-                    ));
-                }
-                Err(e) => {
-                    tracing::debug!("RAG knowledge search failed for kb {}: {}", kb_id, e);
-                }
-                _ => {}
-            }
-        }
         let mem_ids = enabled_memory_namespace_ids.unwrap_or_default();
-        for ns_id in &mem_ids {
-            match crate::indexing::search_memory(
-                &state.sea_db,
-                &state.master_key,
-                &state.vector_store,
-                ns_id,
-                &last_user_msg.content,
-                5,
-            )
-            .await
-            {
-                Ok(results) if !results.is_empty() => {
-                    let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
-                    rag_parts.push(format!("[Memory Reference]\n{}", snippets.join("\n---\n")));
-                }
-                Err(e) => {
-                    tracing::debug!("RAG memory search failed for ns {}: {}", ns_id, e);
-                }
-                _ => {}
-            }
-        }
+        let rag_parts = crate::indexing::collect_rag_context(
+            &state.sea_db,
+            &state.master_key,
+            &state.vector_store,
+            &kb_ids,
+            &mem_ids,
+            &last_user_msg.content,
+            5,
+        )
+        .await;
+
         if !rag_parts.is_empty() {
             chat_messages.push(ChatMessage {
                 role: "system".to_string(),
@@ -2163,48 +2090,19 @@ pub async fn regenerate_with_model(
 
     // RAG retrieval
     {
-        let mut rag_parts: Vec<String> = Vec::new();
         let kb_ids = enabled_knowledge_base_ids.unwrap_or_default();
-        for kb_id in &kb_ids {
-            match crate::indexing::search_knowledge(
-                &state.sea_db,
-                &state.master_key,
-                &state.vector_store,
-                kb_id,
-                &user_msg.content,
-                5,
-            )
-            .await
-            {
-                Ok(results) if !results.is_empty() => {
-                    let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
-                    rag_parts.push(format!(
-                        "[Knowledge Base Reference]\n{}",
-                        snippets.join("\n---\n")
-                    ));
-                }
-                _ => {}
-            }
-        }
         let mem_ids = enabled_memory_namespace_ids.unwrap_or_default();
-        for ns_id in &mem_ids {
-            match crate::indexing::search_memory(
-                &state.sea_db,
-                &state.master_key,
-                &state.vector_store,
-                ns_id,
-                &user_msg.content,
-                5,
-            )
-            .await
-            {
-                Ok(results) if !results.is_empty() => {
-                    let snippets: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
-                    rag_parts.push(format!("[Memory Reference]\n{}", snippets.join("\n---\n")));
-                }
-                _ => {}
-            }
-        }
+        let rag_parts = crate::indexing::collect_rag_context(
+            &state.sea_db,
+            &state.master_key,
+            &state.vector_store,
+            &kb_ids,
+            &mem_ids,
+            &user_msg.content,
+            5,
+        )
+        .await;
+
         if !rag_parts.is_empty() {
             chat_messages.push(ChatMessage {
                 role: "system".to_string(),

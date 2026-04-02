@@ -6,6 +6,7 @@ pub mod entity;
 pub mod error;
 pub mod file_store;
 pub mod mcp_client;
+pub mod rag;
 pub mod repo;
 pub mod search;
 pub mod storage_inventory;

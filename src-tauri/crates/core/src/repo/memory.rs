@@ -4,7 +4,7 @@ use crate::entity::{memory_items, memory_namespaces};
 use crate::error::{AQBotError, Result};
 use crate::types::{
     CreateMemoryItemInput, CreateMemoryNamespaceInput, MemoryItem, MemoryNamespace,
-    UpdateMemoryNamespaceInput,
+    UpdateMemoryItemInput, UpdateMemoryNamespaceInput,
 };
 use crate::utils::gen_id;
 
@@ -24,6 +24,8 @@ fn model_to_item(m: memory_items::Model) -> MemoryItem {
         title: m.title,
         content: m.content,
         source: m.source,
+        index_status: m.index_status,
+        index_error: m.index_error,
         updated_at: m.updated_at,
     }
 }
@@ -87,7 +89,9 @@ pub async fn update_namespace(
     if let Some(name) = input.name {
         am.name = Set(name);
     }
-    am.embedding_provider = Set(input.embedding_provider);
+    if input.update_embedding_provider {
+        am.embedding_provider = Set(input.embedding_provider);
+    }
     am.update(db).await?;
 
     get_namespace(db, id).await
@@ -132,5 +136,54 @@ pub async fn delete_item(db: &DatabaseConnection, id: &str) -> Result<()> {
     if result.rows_affected == 0 {
         return Err(AQBotError::NotFound(format!("MemoryItem {}", id)));
     }
+    Ok(())
+}
+
+pub async fn update_item(
+    db: &DatabaseConnection,
+    id: &str,
+    input: UpdateMemoryItemInput,
+) -> Result<MemoryItem> {
+    let model = memory_items::Entity::find_by_id(id)
+        .one(db)
+        .await?
+        .ok_or_else(|| AQBotError::NotFound(format!("MemoryItem {}", id)))?;
+
+    let mut am: memory_items::ActiveModel = model.into();
+    if let Some(title) = input.title {
+        am.title = Set(title);
+    }
+    if let Some(content) = input.content {
+        am.content = Set(content);
+        // Content changed — reset index status to pending
+        am.index_status = Set("pending".to_string());
+    }
+    am.updated_at = Set(chrono::Utc::now().to_rfc3339());
+    am.update(db).await?;
+
+    let updated = memory_items::Entity::find_by_id(id)
+        .one(db)
+        .await?
+        .ok_or_else(|| AQBotError::NotFound(format!("MemoryItem {}", id)))?;
+
+    Ok(model_to_item(updated))
+}
+
+pub async fn update_item_index_status(
+    db: &DatabaseConnection,
+    id: &str,
+    status: &str,
+    error: Option<&str>,
+) -> Result<()> {
+    let model = memory_items::Entity::find_by_id(id)
+        .one(db)
+        .await?
+        .ok_or_else(|| AQBotError::NotFound(format!("MemoryItem {}", id)))?;
+
+    let mut am: memory_items::ActiveModel = model.into();
+    am.index_status = Set(status.to_string());
+    am.index_error = Set(error.map(|e| e.to_string()));
+    am.update(db).await?;
+
     Ok(())
 }

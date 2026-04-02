@@ -977,7 +977,9 @@ pub struct MemoryItem {
     pub namespace_id: String,
     pub title: String,
     pub content: String,
-    pub source: String, // manual | auto_extract
+    pub source: String,      // manual | auto_extract
+    pub index_status: String, // pending | indexing | ready | failed | skipped
+    pub index_error: Option<String>,
     pub updated_at: String,
 }
 
@@ -1269,6 +1271,8 @@ pub struct CreateMemoryNamespaceInput {
 pub struct UpdateMemoryNamespaceInput {
     pub name: Option<String>,
     pub embedding_provider: Option<String>,
+    #[serde(default)]
+    pub update_embedding_provider: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1278,4 +1282,11 @@ pub struct CreateMemoryItemInput {
     pub title: String,
     pub content: String,
     pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateMemoryItemInput {
+    pub title: Option<String>,
+    pub content: Option<String>,
 }

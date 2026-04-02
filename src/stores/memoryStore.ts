@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@/lib/invoke';
-import type { MemoryNamespace, MemoryItem, UpdateMemoryNamespaceInput } from '@/types';
+import type { MemoryNamespace, MemoryItem, UpdateMemoryNamespaceInput, UpdateMemoryItemInput } from '@/types';
 
 interface MemoryState {
   namespaces: MemoryNamespace[];
@@ -16,6 +16,7 @@ interface MemoryState {
   loadItems: (namespaceId: string) => Promise<void>;
   addItem: (namespaceId: string, title: string, content: string) => Promise<void>;
   deleteItem: (namespaceId: string, itemId: string) => Promise<void>;
+  updateItem: (namespaceId: string, itemId: string, input: UpdateMemoryItemInput) => Promise<void>;
   setSelectedNamespaceId: (id: string | null) => void;
 }
 
@@ -95,6 +96,16 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
   deleteItem: async (namespaceId, itemId) => {
     try {
       await invoke('delete_memory_item', { namespaceId, id: itemId });
+      await get().loadItems(namespaceId);
+    } catch (e) {
+      set({ error: String(e) });
+      throw e;
+    }
+  },
+
+  updateItem: async (namespaceId, itemId, input) => {
+    try {
+      await invoke<MemoryItem>('update_memory_item', { namespaceId, id: itemId, input });
       await get().loadItems(namespaceId);
     } catch (e) {
       set({ error: String(e) });

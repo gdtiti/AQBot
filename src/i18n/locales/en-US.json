@@ -4,6 +4,8 @@
   },
   "nav": {
     "chat": "Chat",
+    "knowledge": "Knowledge",
+    "memory": "Memory",
     "gateway": "Gateway",
     "files": "Files",
     "settings": "Settings"

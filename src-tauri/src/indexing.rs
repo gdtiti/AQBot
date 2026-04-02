@@ -3,20 +3,42 @@
 //! Provides functions to:
 //! - Parse an `embedding_provider` string ("providerId::modelId")
 //! - Build a `ProviderRequestContext` for embedding API calls
-//! - Index a knowledge base document (parse → chunk → embed → store)
-//! - Index a memory item (embed → store)
-//! - Search knowledge base / memory vectors
+//! - Generate embeddings via provider adapters
+//! - Index knowledge base documents and memory items via the unified RAG layer
+//! - Search knowledge base / memory vectors via the unified RAG layer
+//! - Collect RAG context for conversation injection
 
 use sea_orm::DatabaseConnection;
 
 use aqbot_core::error::{AQBotError, Result};
+use aqbot_core::rag::{self, ChunkStrategy, KnowledgeRAG, MemoryRAG};
 use aqbot_core::types::*;
-use aqbot_core::vector_store::{EmbeddingRecord, VectorSearchResult, VectorStore};
-use aqbot_core::{document_parser, text_chunker};
+use aqbot_core::vector_store::{VectorSearchResult, VectorStore};
 
 use aqbot_providers::{
     registry::ProviderRegistry, resolve_base_url, ProviderAdapter, ProviderRequestContext,
 };
+
+// ── AsyncEmbedFn implementation ──────────────────────────────────────────────
+
+/// Concrete implementation of `AsyncEmbedFn` that uses provider adapters.
+#[derive(Clone)]
+pub struct ProviderEmbedFn;
+
+#[async_trait::async_trait]
+impl rag::AsyncEmbedFn for ProviderEmbedFn {
+    async fn generate(
+        &self,
+        db: &DatabaseConnection,
+        master_key: &[u8; 32],
+        embedding_provider: &str,
+        texts: Vec<String>,
+    ) -> Result<EmbedResponse> {
+        generate_embeddings(db, master_key, embedding_provider, texts).await
+    }
+}
+
+// ── Low-level embedding utilities ────────────────────────────────────────────
 
 /// Parse an embedding_provider string like "providerId::modelId" into (provider_id, model_id).
 pub fn parse_embedding_provider(embedding_provider: &str) -> Result<(String, String)> {
@@ -96,7 +118,9 @@ pub async fn generate_embeddings(
     adapter.embed(&ctx, request).await
 }
 
-/// Index a single knowledge base document: parse → chunk → embed → store in vector DB.
+// ── Document / item indexing (delegates to rag::index) ───────────────────────
+
+/// Index a single knowledge base document: parse → chunk → embed → store.
 ///
 /// Updates document status to "indexing" then "ready" or "failed".
 pub async fn index_knowledge_document(
@@ -109,65 +133,37 @@ pub async fn index_knowledge_document(
     mime_type: &str,
     embedding_provider: &str,
 ) -> Result<()> {
-    // Update status to indexing
     aqbot_core::repo::knowledge::update_document_status(db, document_id, "indexing").await?;
 
-    // Parse document
-    let path = std::path::Path::new(source_path);
-    let text = document_parser::extract_text(path, mime_type)?;
+    let strategy = ChunkStrategy::ParseAndChunk {
+        source_path: source_path.to_string(),
+        mime_type: mime_type.to_string(),
+        chunk_size: aqbot_core::text_chunker::DEFAULT_CHUNK_SIZE,
+        overlap: aqbot_core::text_chunker::DEFAULT_OVERLAP,
+    };
 
-    if text.trim().is_empty() {
-        aqbot_core::repo::knowledge::update_document_status(db, document_id, "ready").await?;
-        return Ok(());
-    }
-
-    // Chunk text
-    let chunks = text_chunker::chunk_text(
-        &text,
-        text_chunker::DEFAULT_CHUNK_SIZE,
-        text_chunker::DEFAULT_OVERLAP,
-    );
+    let chunks = rag::prepare_chunks(document_id, &strategy)?;
 
     if chunks.is_empty() {
         aqbot_core::repo::knowledge::update_document_status(db, document_id, "ready").await?;
         return Ok(());
     }
 
-    // Collect chunk texts for batch embedding
-    let chunk_texts: Vec<String> = chunks.iter().map(|c| c.content.clone()).collect();
-
-    // Generate embeddings (batch)
+    let chunk_texts: Vec<String> = chunks.iter().map(|(_, text, _)| text.clone()).collect();
     let embed_response =
         generate_embeddings(db, master_key, embedding_provider, chunk_texts).await?;
 
-    if embed_response.embeddings.len() != chunks.len() {
-        return Err(AQBotError::Provider(format!(
-            "Embedding count mismatch: got {} embeddings for {} chunks",
-            embed_response.embeddings.len(),
-            chunks.len()
-        )));
-    }
+    rag::index(
+        vector_store,
+        "kb",
+        knowledge_base_id,
+        document_id,
+        "",
+        embed_response.embeddings,
+        chunks,
+    )
+    .await?;
 
-    // Build embedding records
-    let records: Vec<EmbeddingRecord> = chunks
-        .iter()
-        .zip(embed_response.embeddings.into_iter())
-        .map(|(chunk, embedding)| EmbeddingRecord {
-            id: format!("{}_{}", document_id, chunk.index),
-            document_id: document_id.to_string(),
-            chunk_index: chunk.index,
-            content: chunk.content.clone(),
-            embedding,
-        })
-        .collect();
-
-    // Upsert into vector store (ensure_collection is called internally)
-    let collection_id = format!("kb_{}", knowledge_base_id);
-    vector_store
-        .upsert_embeddings(&collection_id, records)
-        .await?;
-
-    // Update status to ready
     aqbot_core::repo::knowledge::update_document_status(db, document_id, "ready").await?;
 
     Ok(())
@@ -183,41 +179,29 @@ pub async fn index_memory_item(
     content: &str,
     embedding_provider: &str,
 ) -> Result<()> {
-    if content.trim().is_empty() {
+    let chunks = rag::prepare_direct_chunk(item_id, content);
+
+    if chunks.is_empty() {
         return Ok(());
     }
 
-    let collection_id = format!("mem_{}", namespace_id);
+    let chunk_texts: Vec<String> = chunks.iter().map(|(_, text, _)| text.clone()).collect();
+    let embed_response =
+        generate_embeddings(db, master_key, embedding_provider, chunk_texts).await?;
 
-    // Generate embedding for the content
-    let embed_response = generate_embeddings(
-        db,
-        master_key,
-        embedding_provider,
-        vec![content.to_string()],
+    rag::index(
+        vector_store,
+        "mem",
+        namespace_id,
+        item_id,
+        content,
+        embed_response.embeddings,
+        chunks,
     )
-    .await?;
-
-    let embedding = embed_response
-        .embeddings
-        .into_iter()
-        .next()
-        .ok_or_else(|| AQBotError::Provider("No embedding returned".into()))?;
-
-    let record = EmbeddingRecord {
-        id: item_id.to_string(),
-        document_id: item_id.to_string(),
-        chunk_index: 0,
-        content: content.to_string(),
-        embedding,
-    };
-
-    vector_store
-        .upsert_embeddings(&collection_id, vec![record])
-        .await?;
-
-    Ok(())
+    .await
 }
+
+// ── Search (delegates to rag::search) ────────────────────────────────────────
 
 /// Search knowledge base vectors for relevant content.
 pub async fn search_knowledge(
@@ -228,26 +212,17 @@ pub async fn search_knowledge(
     query: &str,
     top_k: usize,
 ) -> Result<Vec<VectorSearchResult>> {
-    // Get the knowledge base to find its embedding provider
-    let kb = aqbot_core::repo::knowledge::get_knowledge_base(db, knowledge_base_id).await?;
-    let embedding_provider = kb.embedding_provider.ok_or_else(|| {
-        AQBotError::Provider("Knowledge base has no embedding provider configured".into())
-    })?;
-
-    // Embed the query
-    let embed_response =
-        generate_embeddings(db, master_key, &embedding_provider, vec![query.to_string()]).await?;
-    let query_embedding = embed_response
-        .embeddings
-        .into_iter()
-        .next()
-        .ok_or_else(|| AQBotError::Provider("No query embedding returned".into()))?;
-
-    // Search vectors
-    let collection_id = format!("kb_{}", knowledge_base_id);
-    vector_store
-        .search(&collection_id, query_embedding, top_k)
-        .await
+    rag::search(
+        &KnowledgeRAG,
+        db,
+        master_key,
+        vector_store,
+        knowledge_base_id,
+        query,
+        top_k,
+        ProviderEmbedFn,
+    )
+    .await
 }
 
 /// Search memory namespace vectors for relevant content.
@@ -259,25 +234,42 @@ pub async fn search_memory(
     query: &str,
     top_k: usize,
 ) -> Result<Vec<VectorSearchResult>> {
-    // Get the namespace to find its embedding provider
-    let ns = aqbot_core::repo::memory::get_namespace(db, namespace_id).await?;
-    let embedding_provider = ns.embedding_provider.ok_or_else(|| {
-        AQBotError::Provider("Memory namespace has no embedding provider configured".into())
-    })?;
+    rag::search(
+        &MemoryRAG,
+        db,
+        master_key,
+        vector_store,
+        namespace_id,
+        query,
+        top_k,
+        ProviderEmbedFn,
+    )
+    .await
+}
 
-    let collection_id = format!("mem_{}", namespace_id);
+// ── Context collection (delegates to rag::collect_rag_context) ───────────────
 
-    // Embed the query
-    let embed_response =
-        generate_embeddings(db, master_key, &embedding_provider, vec![query.to_string()]).await?;
-    let query_embedding = embed_response
-        .embeddings
-        .into_iter()
-        .next()
-        .ok_or_else(|| AQBotError::Provider("No query embedding returned".into()))?;
-
-    // Search vectors
-    vector_store
-        .search(&collection_id, query_embedding, top_k)
-        .await
+/// Collect RAG context from all enabled sources for a conversation query.
+///
+/// Returns formatted context parts ready to be joined into a system message.
+pub async fn collect_rag_context(
+    db: &DatabaseConnection,
+    master_key: &[u8; 32],
+    vector_store: &VectorStore,
+    kb_ids: &[String],
+    mem_ids: &[String],
+    query: &str,
+    top_k: usize,
+) -> Vec<String> {
+    rag::collect_rag_context(
+        db,
+        master_key,
+        vector_store,
+        kb_ids,
+        mem_ids,
+        query,
+        top_k,
+        ProviderEmbedFn,
+    )
+    .await
 }

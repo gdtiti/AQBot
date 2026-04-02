@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Table,
   Button,
@@ -11,17 +11,37 @@ import {
   Empty,
   Divider,
   theme,
+  message,
+  Spin,
+  Tooltip,
 } from 'antd';
-import { Plus, Trash2, Brain, RefreshCw, Trash } from 'lucide-react';
+import { Plus, Trash2, Brain, RefreshCw, Trash, Pencil, Search, RotateCw } from 'lucide-react';
 import { invoke } from '@/lib/invoke';
 import { useTranslation } from 'react-i18next';
 import { useMemoryStore } from '@/stores';
 import { EmbeddingModelSelect } from '@/components/shared/EmbeddingModelSelect';
-import type { MemorySource, MemoryNamespace } from '@/types';
+import { listen } from '@tauri-apps/api/event';
+import type { MemorySource, MemoryNamespace, MemoryItem } from '@/types';
+
+interface VectorSearchResult {
+  id: string;
+  document_id: string;
+  chunk_index: number;
+  content: string;
+  score: number;
+}
 
 const SOURCE_TAG_COLOR: Record<MemorySource, string> = {
   manual: 'blue',
   auto_extract: 'green',
+};
+
+const INDEX_STATUS_CONFIG: Record<string, { color: string; label: string }> = {
+  pending: { color: 'default', label: '待索引' },
+  indexing: { color: 'processing', label: '索引中' },
+  ready: { color: 'success', label: '已索引' },
+  failed: { color: 'error', label: '索引失败' },
+  skipped: { color: 'warning', label: '未配置' },
 };
 
 // ── Left Sidebar: Namespace List ──────────────────────────
@@ -119,13 +139,61 @@ function MemoryItemsPanel({
   namespace: MemoryNamespace;
 }) {
   const { t } = useTranslation();
-  const { items, loading, loadItems, addItem, deleteItem, updateNamespace } = useMemoryStore();
+  const { items, loading, loadItems, addItem, deleteItem, updateItem, updateNamespace } = useMemoryStore();
   const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<MemoryItem | null>(null);
   const [itemForm] = Form.useForm();
+  const [messageApi, contextHolder] = message.useMessage();
+
+  // Pending embedding provider change (for confirmation)
+  const [pendingProvider, setPendingProvider] = useState<string | undefined>(undefined);
+  const [providerConfirmOpen, setProviderConfirmOpen] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<VectorSearchResult[] | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  // Index status
+  const [rebuildingIndex, setRebuildingIndex] = useState(false);
+  const rebuildingRef = useRef(false);
 
   useEffect(() => {
     loadItems(namespace.id);
   }, [namespace.id, loadItems]);
+
+  // Listen for indexing events
+  useEffect(() => {
+    const unlistenIndexed = listen<{ itemId: string; success: boolean; status?: string; error?: string; isRebuild?: boolean }>(
+      'memory-item-indexed',
+      (event) => {
+        loadItems(namespace.id);
+        // Suppress per-item toasts during rebuild
+        if (!event.payload.isRebuild) {
+          if (event.payload.success) {
+            messageApi.success(t('settings.memory.indexSuccess', '索引完成'));
+          } else {
+            messageApi.error(t('settings.memory.indexFailed', '索引失败') + ': ' + (event.payload.error || ''));
+          }
+        }
+      },
+    );
+    const unlistenRebuild = listen<{ namespaceId: string }>(
+      'memory-rebuild-complete',
+      (event) => {
+        if (event.payload.namespaceId === namespace.id) {
+          setRebuildingIndex(false);
+          rebuildingRef.current = false;
+          loadItems(namespace.id);
+          messageApi.success(t('settings.memory.rebuildSuccess', '索引重建完成'));
+        }
+      },
+    );
+    return () => {
+      unlistenIndexed.then((fn) => fn());
+      unlistenRebuild.then((fn) => fn());
+    };
+  }, [namespace.id, messageApi, t, loadItems]);
 
   const handleAddItem = async () => {
     try {
@@ -139,20 +207,72 @@ function MemoryItemsPanel({
     }
   };
 
+  const handleEditItem = async () => {
+    if (!editingItem) return;
+    try {
+      const values = await itemForm.validateFields();
+      await updateItem(namespace.id, editingItem.id, {
+        content: values.content,
+        title: values.content.slice(0, 50),
+      });
+      setEditingItem(null);
+      itemForm.resetFields();
+      messageApi.success(t('settings.memory.updateSuccess', '更新成功'));
+    } catch {
+      // validation error
+    }
+  };
+
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !namespace.embeddingProvider) return;
+    setSearching(true);
+    try {
+      const results = await invoke<VectorSearchResult[]>('search_memory', {
+        namespaceId: namespace.id,
+        query: searchQuery,
+        topK: 5,
+      });
+      setSearchResults(results);
+    } catch (e) {
+      messageApi.error(String(e));
+    } finally {
+      setSearching(false);
+    }
+  }, [searchQuery, namespace.id, namespace.embeddingProvider, messageApi]);
+
   const itemColumns = [
     {
       title: t('settings.memory.itemContent'),
       dataIndex: 'content',
       key: 'content',
       render: (content: string) => (
-        <Typography.Text ellipsis style={{ maxWidth: 400 }}>{content}</Typography.Text>
+        <Typography.Text ellipsis style={{ maxWidth: 360 }}>{content}</Typography.Text>
       ),
+    },
+    {
+      title: t('settings.memory.indexStatusLabel', '索引状态'),
+      dataIndex: 'indexStatus',
+      key: 'indexStatus',
+      width: 100,
+      render: (status: string, record: MemoryItem) => {
+        const cfg = INDEX_STATUS_CONFIG[status] || INDEX_STATUS_CONFIG.pending;
+        const tag = (
+          <Tag color={cfg.color} style={{ fontSize: 11 }}>
+            {status === 'indexing' && <Spin size="small" style={{ marginRight: 4 }} />}
+            {t(`settings.memory.indexStatus.${status}`, cfg.label)}
+          </Tag>
+        );
+        if (status === 'failed' && record.indexError) {
+          return <Tooltip title={record.indexError}>{tag}</Tooltip>;
+        }
+        return tag;
+      },
     },
     {
       title: t('settings.memory.source'),
       dataIndex: 'source',
       key: 'source',
-      width: 100,
+      width: 90,
       render: (source: MemorySource) => (
         <Tag color={SOURCE_TAG_COLOR[source]}>
           {t(`settings.memory.${source === 'auto_extract' ? 'autoExtract' : 'manual'}`)}
@@ -161,20 +281,49 @@ function MemoryItemsPanel({
     },
     {
       key: 'actions',
-      width: 60,
-      render: (_: unknown, record: { id: string }) => (
-        <Popconfirm
-          title={t('settings.memory.deleteConfirm')}
-          onConfirm={() => deleteItem(namespace.id, record.id)}
-        >
-          <Button size="small" danger icon={<Trash2 size={14} />} />
-        </Popconfirm>
+      width: 120,
+      render: (_: unknown, record: MemoryItem) => (
+        <div className="flex gap-1">
+          <Tooltip title={t('settings.memory.reindexItem', '重新索引')}>
+            <Button
+              size="small"
+              type="text"
+              icon={<RotateCw size={14} />}
+              loading={record.indexStatus === 'indexing'}
+              disabled={!namespace.embeddingProvider}
+              onClick={() => {
+                invoke('reindex_memory_item', { namespaceId: namespace.id, itemId: record.id }).catch((e) => {
+                  messageApi.error(String(e));
+                });
+                loadItems(namespace.id);
+              }}
+            />
+          </Tooltip>
+          <Tooltip title={t('settings.memory.editItem', '编辑')}>
+            <Button
+              size="small"
+              type="text"
+              icon={<Pencil size={14} />}
+              onClick={() => {
+                setEditingItem(record);
+                itemForm.setFieldsValue({ content: record.content });
+              }}
+            />
+          </Tooltip>
+          <Popconfirm
+            title={t('settings.memory.deleteConfirm')}
+            onConfirm={() => deleteItem(namespace.id, record.id)}
+          >
+            <Button size="small" danger type="text" icon={<Trash2 size={14} />} />
+          </Popconfirm>
+        </div>
       ),
     },
   ];
 
   return (
     <div className="p-6 pb-12 overflow-y-auto h-full">
+      {contextHolder}
       <div className="flex items-center justify-between mb-4">
         <span style={{ fontWeight: 600, fontSize: 16 }}>{namespace.name}</span>
         <Tag
@@ -201,53 +350,142 @@ function MemoryItemsPanel({
         <span>{t('settings.memory.embeddingModel', '向量模型')}</span>
         <EmbeddingModelSelect
           value={namespace.embeddingProvider ?? undefined}
-          onChange={(val) => updateNamespace(namespace.id, { embeddingProvider: val || undefined })}
+          onChange={(val) => {
+            if (namespace.embeddingProvider && val !== namespace.embeddingProvider) {
+              setPendingProvider(val || undefined);
+              setProviderConfirmOpen(true);
+            } else {
+              updateNamespace(namespace.id, {
+                embeddingProvider: val || undefined,
+                updateEmbeddingProvider: true,
+              });
+            }
+          }}
           placeholder={t('settings.memory.embeddingModelPlaceholder', '选择向量模型')}
           style={{ width: 280 }}
         />
       </div>
+      <Modal
+        title={t('settings.memory.changeEmbeddingTitle', '更换向量模型')}
+        open={providerConfirmOpen}
+        onOk={async () => {
+          await updateNamespace(namespace.id, {
+            embeddingProvider: pendingProvider,
+            updateEmbeddingProvider: true,
+          });
+          setProviderConfirmOpen(false);
+          setPendingProvider(undefined);
+          // Trigger rebuild
+          if (pendingProvider) {
+            setRebuildingIndex(true);
+            invoke('rebuild_memory_index', { namespaceId: namespace.id }).catch((e) => {
+              setRebuildingIndex(false);
+              messageApi.error(String(e));
+            });
+          }
+        }}
+        onCancel={() => { setProviderConfirmOpen(false); setPendingProvider(undefined); }}
+        okButtonProps={{ danger: true }}
+        mask={{ enabled: true, blur: true }}
+      >
+        <p>{t('settings.memory.changeEmbeddingWarning', '更换向量模型后，该命名空间下所有记忆条目将自动重新进行向量索引。此操作不可撤销，是否继续？')}</p>
+      </Modal>
       <Divider style={{ margin: '4px 0' }} />
 
-      {/* Vector operations */}
-      <div style={{ padding: '4px 0' }} className="flex items-center justify-between">
-        <span>{t('settings.memory.vectorOps', '向量操作')}</span>
-        <div className="flex gap-2">
-          <Button
-            size="small"
-            icon={<RefreshCw size={14} />}
-            disabled={!namespace.embeddingProvider}
-            title={t('settings.memory.rebuildIndex', '重建向量索引')}
-            onClick={() => {
-              invoke('rebuild_memory_index', { namespaceId: namespace.id }).catch(console.error);
-            }}
-          >
-            {t('settings.memory.rebuildIndex', '重建索引')}
-          </Button>
-          <Button
-            size="small"
-            danger
-            icon={<Trash size={14} />}
-            disabled={!namespace.embeddingProvider}
-            title={t('settings.memory.clearIndex', '清空向量索引')}
-            onClick={() => {
-              invoke('clear_memory_index', { namespaceId: namespace.id }).catch(console.error);
-            }}
-          >
-            {t('settings.memory.clearIndex', '清空索引')}
-          </Button>
+      {/* Toolbar: vector ops + add on left, search on right */}
+      <div className="flex items-center justify-between mb-3 mt-2 gap-3">
+        <div className="flex items-center gap-2">
+          <Tooltip title={t('settings.memory.rebuildIndex', '重建索引')}>
+            <Button
+              icon={<RefreshCw size={14} />}
+              loading={rebuildingIndex}
+              disabled={!namespace.embeddingProvider}
+              onClick={() => {
+                setRebuildingIndex(true);
+                rebuildingRef.current = true;
+                loadItems(namespace.id);
+                invoke('rebuild_memory_index', { namespaceId: namespace.id }).catch((e) => {
+                  setRebuildingIndex(false);
+                  rebuildingRef.current = false;
+                  messageApi.error(String(e));
+                });
+              }}
+            />
+          </Tooltip>
+          <Tooltip title={t('settings.memory.clearIndex', '清空索引')}>
+            <Button
+              danger
+              icon={<Trash size={14} />}
+              disabled={!namespace.embeddingProvider}
+              onClick={() => {
+                invoke('clear_memory_index', { namespaceId: namespace.id })
+                  .then(() => messageApi.success(t('settings.memory.clearSuccess', '索引已清空')))
+                  .catch((e) => messageApi.error(String(e)));
+              }}
+            />
+          </Tooltip>
+          <Tooltip title={t('settings.memory.addItem', '添加')}>
+            <Button icon={<Plus size={14} />} onClick={() => {
+              setEditingItem(null);
+              itemForm.resetFields();
+              setItemModalOpen(true);
+            }} />
+          </Tooltip>
         </div>
+        {namespace.embeddingProvider && (
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder={t('settings.memory.searchPlaceholder', '搜索记忆...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onPressEnter={handleSearch}
+              style={{ width: 200 }}
+              allowClear
+              onClear={() => setSearchResults(null)}
+            />
+            <Tooltip title={t('settings.memory.search', '搜索')}>
+              <Button
+                icon={<Search size={14} />}
+                loading={searching}
+                onClick={handleSearch}
+                disabled={!searchQuery.trim()}
+              />
+            </Tooltip>
+          </div>
+        )}
       </div>
 
-      <Divider />
-
-      <div className="flex items-center justify-between mb-3">
-        <Typography.Title level={5} style={{ margin: 0 }}>
-          {t('settings.memory.items', '记忆条目')}
-        </Typography.Title>
-        <Button size="small" icon={<Plus size={14} />} onClick={() => setItemModalOpen(true)}>
-          {t('settings.memory.addItem')}
-        </Button>
-      </div>
+      {/* Search results */}
+      {searchResults && (
+        <div className="mb-4">
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {t('settings.memory.searchResults', '搜索结果')}: {searchResults.length} {t('settings.memory.items', '条')}
+          </Typography.Text>
+          {searchResults.length > 0 ? (
+            <div className="mt-2 flex flex-col gap-2">
+              {searchResults.map((r, i) => (
+                <div
+                  key={i}
+                  className="p-2 rounded"
+                  style={{ background: 'var(--fill-quaternary)', border: '1px solid var(--border-color)' }}
+                >
+                  <Typography.Text ellipsis style={{ maxWidth: '100%' }}>
+                    {r.content}
+                  </Typography.Text>
+                  <div className="mt-1">
+                    <Tag style={{ fontSize: 11 }}>
+                      {t('settings.memory.distance', '距离')}: {r.score.toFixed(4)}
+                    </Tag>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.memory.noResults', '无匹配结果')} />
+          )}
+          <Divider />
+        </div>
+      )}
 
       <Table
         dataSource={items}
@@ -256,13 +494,15 @@ function MemoryItemsPanel({
         pagination={false}
         loading={loading}
         size="small"
+        bordered
       />
 
+      {/* Add / Edit Modal */}
       <Modal
-        title={t('settings.memory.addItem')}
-        open={itemModalOpen}
-        onOk={handleAddItem}
-        onCancel={() => { setItemModalOpen(false); itemForm.resetFields(); }}
+        title={editingItem ? t('settings.memory.editItem', '编辑记忆') : t('settings.memory.addItem')}
+        open={itemModalOpen || !!editingItem}
+        onOk={editingItem ? handleEditItem : handleAddItem}
+        onCancel={() => { setItemModalOpen(false); setEditingItem(null); itemForm.resetFields(); }}
         mask={{ enabled: true, blur: true }}
       >
         <Form form={itemForm} layout="vertical">

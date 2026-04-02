@@ -187,9 +187,11 @@ pub fn run() {
             commands::memory::list_memory_items,
             commands::memory::add_memory_item,
             commands::memory::delete_memory_item,
+            commands::memory::update_memory_item,
             commands::memory::search_memory,
             commands::memory::rebuild_memory_index,
             commands::memory::clear_memory_index,
+            commands::memory::reindex_memory_item,
             // backup
             commands::backup::list_backups,
             commands::backup::create_backup,

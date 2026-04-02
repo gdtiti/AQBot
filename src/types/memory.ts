@@ -13,6 +13,8 @@ export type MemoryItem = {
   title: string;
   content: string;
   source: MemorySource;
+  indexStatus: string; // pending | indexing | ready | failed | skipped
+  indexError?: string;
   updatedAt: string;
 };
 
@@ -37,4 +39,5 @@ export type UpdateMemoryItemInput = {
 export type UpdateMemoryNamespaceInput = {
   name?: string;
   embeddingProvider?: string;
+  updateEmbeddingProvider?: boolean;
 };

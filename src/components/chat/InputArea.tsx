@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Button, Tooltip, App, theme, Dropdown, Tag, Popover, Checkbox } from 'antd';
 import type { MenuProps } from 'antd';
-import { Paperclip, Trash2, Mic, Eraser, Scissors, Globe, Brain, BrainCog, Plug, SlidersHorizontal, ArrowUp, Square, Check, Zap, ZapOff, Gauge, Shrink, Upload, LayoutGrid, X } from 'lucide-react';
+import { Paperclip, Trash2, Mic, Eraser, Scissors, Globe, Brain, BrainCog, Plug, SlidersHorizontal, ArrowUp, Square, Check, Zap, ZapOff, Gauge, Shrink, Upload, LayoutGrid, X, BookOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useConversationStore, useProviderStore, useSettingsStore, useSearchStore, useMcpStore } from '@/stores';
+import { useConversationStore, useProviderStore, useSettingsStore, useSearchStore, useMcpStore, useMemoryStore, useKnowledgeStore } from '@/stores';
 import { useUIStore } from '@/stores/uiStore';
 import { findModelByIds, supportsReasoning, modelHasCapability } from '@/lib/modelCapabilities';
 import { estimateMessageTokens, estimateTokens } from '@/lib/tokenEstimator';
@@ -97,19 +97,19 @@ export function InputArea() {
   const setThinkingBudget = useConversationStore((s) => s.setThinkingBudget);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
 
-  // Knowledge base state — disabled (Coming Soon)
-  // const knowledgeBases = useKnowledgeStore((s) => s.bases);
-  // const loadKnowledgeBases = useKnowledgeStore((s) => s.loadBases);
-  // const enabledKnowledgeBaseIds = useConversationStore((s) => s.enabledKnowledgeBaseIds);
-  // const toggleKnowledgeBase = useConversationStore((s) => s.toggleKnowledgeBase);
-  // const [kbPopoverOpen, setKbPopoverOpen] = useState(false);
+  // Knowledge base state
+  const knowledgeBases = useKnowledgeStore((s) => s.bases);
+  const loadKnowledgeBases = useKnowledgeStore((s) => s.loadBases);
+  const enabledKnowledgeBaseIds = useConversationStore((s) => s.enabledKnowledgeBaseIds);
+  const toggleKnowledgeBase = useConversationStore((s) => s.toggleKnowledgeBase);
+  const [kbPopoverOpen, setKbPopoverOpen] = useState(false);
 
-  // Memory state — disabled (Coming Soon)
-  // const memoryNamespaces = useMemoryStore((s) => s.namespaces);
-  // const loadMemoryNamespaces = useMemoryStore((s) => s.loadNamespaces);
-  // const enabledMemoryNamespaceIds = useConversationStore((s) => s.enabledMemoryNamespaceIds);
-  // const toggleMemoryNamespace = useConversationStore((s) => s.toggleMemoryNamespace);
-  // const [memoryPopoverOpen, setMemoryPopoverOpen] = useState(false);
+  // Memory state
+  const memoryNamespaces = useMemoryStore((s) => s.namespaces);
+  const loadMemoryNamespaces = useMemoryStore((s) => s.loadNamespaces);
+  const enabledMemoryNamespaceIds = useConversationStore((s) => s.enabledMemoryNamespaceIds);
+  const toggleMemoryNamespace = useConversationStore((s) => s.toggleMemoryNamespace);
+  const [memoryPopoverOpen, setMemoryPopoverOpen] = useState(false);
 
   // Context clear
   const insertContextClear = useConversationStore((s) => s.insertContextClear);
@@ -132,15 +132,15 @@ export function InputArea() {
     if (mcpServers.length === 0) loadMcpServers();
   }, [mcpServers.length, loadMcpServers]);
 
-  // Load knowledge bases on mount — disabled (Coming Soon)
-  // useEffect(() => {
-  //   if (knowledgeBases.length === 0) loadKnowledgeBases();
-  // }, [knowledgeBases.length, loadKnowledgeBases]);
+  // Load knowledge bases on mount
+  useEffect(() => {
+    if (knowledgeBases.length === 0) loadKnowledgeBases();
+  }, [knowledgeBases.length, loadKnowledgeBases]);
 
-  // Load memory namespaces on mount — disabled (Coming Soon)
-  // useEffect(() => {
-  //   if (memoryNamespaces.length === 0) loadMemoryNamespaces();
-  // }, [memoryNamespaces.length, loadMemoryNamespaces]);
+  // Load memory namespaces on mount
+  useEffect(() => {
+    if (memoryNamespaces.length === 0) loadMemoryNamespaces();
+  }, [memoryNamespaces.length, loadMemoryNamespaces]);
 
   // Persist companion models per conversation in localStorage
   const companionStorageKey = activeConversationId ? `aqbot:companion-models:${activeConversationId}` : null;
@@ -292,83 +292,81 @@ export function InputArea() {
     [setThinkingBudget, thinkingOptions],
   );
 
-  // Knowledge base popover content — disabled (Coming Soon)
-  // const kbPopoverContent = useMemo(() => {
-  //   if (knowledgeBases.length === 0) {
-  //     return (
-  //       <div style={{ padding: '8px 0', minWidth: 180 }}>
-  //         <div style={{ color: token.colorTextSecondary, fontSize: 12, marginBottom: 8 }}>
-  //           {t('chat.knowledge.empty', '请先在设置中添加知识库')}
-  //         </div>
-  //         <Button
-  //           type="link"
-  //           size="small"
-  //           style={{ padding: 0, fontSize: 12 }}
-  //           onClick={() => {
-  //             setKbPopoverOpen(false);
-  //             setSettingsSection('knowledge');
-  //             setActivePage('settings');
-  //           }}
-  //         >
-  //           {t('chat.mcp.goConfig', '前往配置 →')}
-  //         </Button>
-  //       </div>
-  //     );
-  //   }
-  //   return (
-  //     <div style={{ minWidth: 180, maxHeight: 300, overflowY: 'auto' }}>
-  //       {knowledgeBases.map((kb) => (
-  //         <div key={kb.id} style={{ padding: '3px 0' }}>
-  //           <Checkbox
-  //             checked={enabledKnowledgeBaseIds.includes(kb.id)}
-  //             onChange={() => toggleKnowledgeBase(kb.id)}
-  //           >
-  //             <span style={{ fontSize: 13 }}>{kb.name}</span>
-  //           </Checkbox>
-  //         </div>
-  //       ))}
-  //     </div>
-  //   );
-  // }, [knowledgeBases, enabledKnowledgeBaseIds, toggleKnowledgeBase, token, t]);
+  // Knowledge base popover content
+  const kbPopoverContent = useMemo(() => {
+    if (knowledgeBases.length === 0) {
+      return (
+        <div style={{ padding: '8px 0', minWidth: 180 }}>
+          <div style={{ color: token.colorTextSecondary, fontSize: 12, marginBottom: 8 }}>
+            {t('chat.knowledge.empty', '请先添加知识库')}
+          </div>
+          <Button
+            type="link"
+            size="small"
+            style={{ padding: 0, fontSize: 12 }}
+            onClick={() => {
+              setKbPopoverOpen(false);
+              setActivePage('knowledge');
+            }}
+          >
+            {t('chat.mcp.goConfig', '前往配置 →')}
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div style={{ minWidth: 180, maxHeight: 300, overflowY: 'auto' }}>
+        {knowledgeBases.map((kb) => (
+          <div key={kb.id} style={{ padding: '3px 0' }}>
+            <Checkbox
+              checked={enabledKnowledgeBaseIds.includes(kb.id)}
+              onChange={() => toggleKnowledgeBase(kb.id)}
+            >
+              <span style={{ fontSize: 13 }}>{kb.name}</span>
+            </Checkbox>
+          </div>
+        ))}
+      </div>
+    );
+  }, [knowledgeBases, enabledKnowledgeBaseIds, toggleKnowledgeBase, token, t, setActivePage]);
 
-  // Memory namespace popover content — disabled (Coming Soon)
-  // const memoryPopoverContent = useMemo(() => {
-  //   if (memoryNamespaces.length === 0) {
-  //     return (
-  //       <div style={{ padding: '8px 0', minWidth: 180 }}>
-  //         <div style={{ color: token.colorTextSecondary, fontSize: 12, marginBottom: 8 }}>
-  //           {t('chat.memory.empty', '请先在设置中添加记忆命名空间')}
-  //         </div>
-  //         <Button
-  //           type="link"
-  //           size="small"
-  //           style={{ padding: 0, fontSize: 12 }}
-  //           onClick={() => {
-  //             setMemoryPopoverOpen(false);
-  //             setSettingsSection('memory');
-  //             setActivePage('settings');
-  //           }}
-  //         >
-  //           {t('chat.mcp.goConfig', '前往配置 →')}
-  //         </Button>
-  //       </div>
-  //     );
-  //   }
-  //   return (
-  //     <div style={{ minWidth: 180, maxHeight: 300, overflowY: 'auto' }}>
-  //       {memoryNamespaces.map((ns) => (
-  //         <div key={ns.id} style={{ padding: '3px 0' }}>
-  //           <Checkbox
-  //             checked={enabledMemoryNamespaceIds.includes(ns.id)}
-  //             onChange={() => toggleMemoryNamespace(ns.id)}
-  //           >
-  //             <span style={{ fontSize: 13 }}>{ns.name}</span>
-  //           </Checkbox>
-  //         </div>
-  //       ))}
-  //     </div>
-  //   );
-  // }, [memoryNamespaces, enabledMemoryNamespaceIds, toggleMemoryNamespace, token, t]);
+  // Memory namespace popover content
+  const memoryPopoverContent = useMemo(() => {
+    if (memoryNamespaces.length === 0) {
+      return (
+        <div style={{ padding: '8px 0', minWidth: 180 }}>
+          <div style={{ color: token.colorTextSecondary, fontSize: 12, marginBottom: 8 }}>
+            {t('chat.memory.empty', '请先添加记忆命名空间')}
+          </div>
+          <Button
+            type="link"
+            size="small"
+            style={{ padding: 0, fontSize: 12 }}
+            onClick={() => {
+              setMemoryPopoverOpen(false);
+              setActivePage('memory');
+            }}
+          >
+            {t('chat.mcp.goConfig', '前往配置 →')}
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div style={{ minWidth: 180, maxHeight: 300, overflowY: 'auto' }}>
+        {memoryNamespaces.map((ns) => (
+          <div key={ns.id} style={{ padding: '3px 0' }}>
+            <Checkbox
+              checked={enabledMemoryNamespaceIds.includes(ns.id)}
+              onChange={() => toggleMemoryNamespace(ns.id)}
+            >
+              <span style={{ fontSize: 13 }}>{ns.name}</span>
+            </Checkbox>
+          </div>
+        ))}
+      </div>
+    );
+  }, [memoryNamespaces, enabledMemoryNamespaceIds, toggleMemoryNamespace, token, t, setActivePage]);
 
   const currentModel = React.useMemo(() => {
     if (activeConversation) {
@@ -943,7 +941,40 @@ export function InputArea() {
                 />
               </Tooltip>
             </Popover>
-            {/* Knowledge base & Memory buttons — hidden (Coming Soon) */}
+            <Popover
+              trigger="click"
+              placement="topLeft"
+              content={kbPopoverContent}
+              arrow={false}
+              open={kbPopoverOpen}
+              onOpenChange={setKbPopoverOpen}
+            >
+              <Tooltip title={t('chat.knowledge.title', '知识库')} open={kbPopoverOpen ? false : undefined}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<BookOpen size={14} />}
+                  style={enabledKnowledgeBaseIds.length > 0 ? { color: token.colorPrimary } : undefined}
+                />
+              </Tooltip>
+            </Popover>
+            <Popover
+              trigger="click"
+              placement="topLeft"
+              content={memoryPopoverContent}
+              arrow={false}
+              open={memoryPopoverOpen}
+              onOpenChange={setMemoryPopoverOpen}
+            >
+              <Tooltip title={t('chat.memory.title', '记忆')} open={memoryPopoverOpen ? false : undefined}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<Brain size={14} />}
+                  style={enabledMemoryNamespaceIds.length > 0 ? { color: token.colorPrimary } : undefined}
+                />
+              </Tooltip>
+            </Popover>
             <Tooltip title={t('chat.multiModel', '多模型同答')}>
               <Button
                 type="text"

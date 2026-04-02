@@ -54,7 +54,7 @@ const CHAT_RENDER_BATCH_PROPS = {
   renderBatchSize: 48,
   renderBatchDelay: 24,
   renderBatchBudgetMs: 4,
-  maxLiveNodes: 160,
+  maxLiveNodes: Infinity,
   liveNodeBuffer: 24,
 } as const;
 

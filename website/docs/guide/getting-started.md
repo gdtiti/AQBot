@@ -173,7 +173,7 @@ Go to **Settings → Backup** to configure automatic backups:
 - **Enabled** — toggle automatic backups on or off.
 - **Interval** — how often to back up (in hours).
 - **Max count** — number of backups to keep before the oldest is deleted.
-- **Storage target** — local directory (default: `~/Documents/aqbot/backups/`), WebDAV server, or S3-compatible storage.
+- **Storage target** — local directory (default: `~/Documents/aqbot/backups/`) or WebDAV server.
 
 ### Manual Backup & Restore
 

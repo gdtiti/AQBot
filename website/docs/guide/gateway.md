@@ -41,19 +41,6 @@ Treat gateway keys like any other API key. Anyone with the key can send requests
 
 ---
 
-## Program Policies
-
-Program policies let you control which models each connected tool can access and how fast it can make requests.
-
-| Setting | Description |
-|---------|-------------|
-| **Model whitelist** | Restrict the tool to a specific set of models. Requests for unlisted models are rejected. |
-| **Rate limiting** | Cap the number of requests per minute for this tool. |
-
-Create policies in the **Program Policies** section of the gateway settings.
-
----
-
 ## SSL/TLS
 
 The gateway can serve HTTPS alongside or instead of HTTP.

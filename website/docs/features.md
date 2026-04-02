@@ -13,6 +13,8 @@ Connect to the leading AI providers from a single, unified interface. AQBot hand
 - **Message Versions** — Every response can have multiple versions. Switch between them to compare the effects of different models or parameter settings side by side.
 - **Conversation Branching** — Fork a new branch from any message node to explore alternative directions. A side-by-side branch comparison view makes it easy to evaluate different paths.
 - **Conversation Management** — Pin important conversations, archive old ones, browse a time-grouped history, and perform bulk operations to keep your workspace tidy.
+- **Conversation Compression** — Automatically compress lengthy conversations, preserving key information to save context space.
+- **Multi-Model Simultaneous Response** — Ask the same question to multiple models at once, with side-by-side comparison of answers.
 
 ## Content Rendering
 
@@ -22,7 +24,7 @@ AQBot goes far beyond plain-text chat with a rich, interactive rendering pipelin
 - **Monaco Code Editor** — Code blocks embed the Monaco Editor (the engine behind VS Code) with syntax highlighting, one-click copy, and inline diff preview.
 - **Diagram Rendering** — Built-in rendering for Mermaid flowcharts and D2 architecture diagrams, displayed directly in the conversation.
 - **Artifact Panel** — Code snippets, HTML drafts, Markdown notes, and reports can be opened in a dedicated side panel for focused viewing and editing.
-- **Real-Time Voice Chat** — WebRTC-based voice conversations powered by the OpenAI Realtime API for low-latency, natural interaction.
+- **Real-Time Voice Chat** — (Coming Soon) WebRTC-based voice conversations powered by the OpenAI Realtime API for low-latency, natural interaction.
 
 ## Search & Knowledge
 
@@ -42,9 +44,8 @@ The Local Knowledge Base and Memory System are under active development and will
 Extend the model's capabilities with external tools and a powerful command interface.
 
 - **MCP Protocol** — Full [Model Context Protocol](https://modelcontextprotocol.io/) implementation supporting both **stdio** and **HTTP** transports. Connect to local tool servers or remote endpoints seamlessly.
-- **Built-in Tools** — Ready-to-use tools including file read/write, shell execution, and screenshot capture — no extra setup required.
+- **Built-in Tools** — Ready-to-use built-in MCP tools such as `@aqbot/fetch` — no extra setup required.
 - **Tool Execution Panel** — A visual panel displays each tool-call request and its return result, making it easy to audit and debug tool interactions.
-- **Command Palette** — Press `Cmd/Ctrl+K` to open a global command palette for quick navigation, actions, and search across the entire app.
 
 ## API Gateway
 
@@ -53,7 +54,6 @@ AQBot includes a built-in local API server that turns your desktop app into a po
 - **Local API Gateway** — Expose a local server with native support for OpenAI-compatible, Claude, and Gemini interfaces. Use it as a backend for CLI tools, scripts, or other applications.
 - **API Key Management** — Generate, revoke, and enable or disable access keys. Each key supports a description note for easy identification.
 - **Usage Analytics** — Analyze request volume and token usage broken down by key, provider, and date to understand consumption patterns.
-- **Program Policies** — Configure model whitelists and rate limits independently per connected application for fine-grained access control.
 - **SSL/TLS Support** — Built-in self-signed certificate generation with support for importing custom certificates.
 - **Request Logs** — Complete recording of every API request and response passing through the gateway for auditing and debugging.
 - **Configuration Templates** — Pre-built integration templates for popular tools such as Claude Code, Codex CLI, OpenCode, and Gemini CLI so you can get started in seconds.
@@ -68,7 +68,7 @@ Your data never leaves your machine. AQBot is designed with local-first security
 
 - **AES-256 Encryption** — API keys and other sensitive data are encrypted locally with AES-256. The master encryption key is stored with `0600` file permissions (owner-only access on Unix systems).
 - **Isolated Data Directories** — Application state (database, encryption keys, vector indices) lives in `~/.aqbot/`. User-visible files (images, documents, backups) are stored in `~/Documents/aqbot/` for easy access and backup with standard OS tools.
-- **Auto Backup** — Schedule automatic backups to local directories, WebDAV servers, or S3-compatible object storage.
+- **Auto Backup** — Schedule automatic backups to local directories or WebDAV storage.
 - **Backup Restore** — One-click restore from any historical backup to recover your full workspace.
 - **Conversation Export** — Export conversations as PNG screenshots, Markdown documents, plain text, or structured JSON.
 

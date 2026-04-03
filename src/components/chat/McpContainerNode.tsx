@@ -125,10 +125,10 @@ function McpToolCard({ node }: { node: any }) {
 
   const statusColor = status === 'running' ? 'processing' : status === 'error' ? 'error' : 'success';
   const statusLabel = status === 'running'
-    ? t('chat.tool.running', '执行中')
+    ? t('chat.tool.running')
     : status === 'error'
-      ? t('chat.tool.error', '失败')
-      : t('chat.tool.success', '成功');
+      ? t('chat.tool.error')
+      : t('chat.tool.success');
 
   const decodedArgs = useMemo(() => {
     if (!rawArgs) return null;
@@ -164,7 +164,7 @@ function McpToolCard({ node }: { node: any }) {
               {decodedArgs && (
                 <div style={{ marginBottom: resultText ? 8 : 0 }}>
                   <div style={{ fontSize: 12, color: 'var(--ant-color-text-secondary)', marginBottom: 4 }}>
-                    {t('chat.tool.input', '输入参数')}
+                    {t('chat.tool.input')}
                   </div>
                   <span style={{ ...monoStyle, maxHeight: 200 }}>{decodedArgs}</span>
                 </div>
@@ -172,7 +172,7 @@ function McpToolCard({ node }: { node: any }) {
               {!isLoading && resultText && (
                 <div>
                   <div style={{ fontSize: 12, color: 'var(--ant-color-text-secondary)', marginBottom: 4 }}>
-                    {t('chat.tool.output', '执行结果')}
+                    {t('chat.tool.output')}
                   </div>
                   <span style={monoStyle}>{resultText}</span>
                 </div>

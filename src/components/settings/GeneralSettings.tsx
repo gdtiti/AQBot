@@ -27,7 +27,16 @@ export function GeneralSettings() {
             onChange={handleLanguageChange}
             options={[
               { label: '简体中文', value: 'zh-CN' },
+              { label: '繁體中文', value: 'zh-TW' },
               { label: 'English', value: 'en-US' },
+              { label: '日本語', value: 'ja' },
+              { label: '한국어', value: 'ko' },
+              { label: 'Français', value: 'fr' },
+              { label: 'Deutsch', value: 'de' },
+              { label: 'Español', value: 'es' },
+              { label: 'Русский', value: 'ru' },
+              { label: 'हिन्दी', value: 'hi' },
+              { label: 'العربية', value: 'ar' },
             ]}
             style={{ width: 200 }}
           />

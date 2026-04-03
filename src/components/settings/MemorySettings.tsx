@@ -98,7 +98,7 @@ function SortableNamespaceItem({
   const menuItems: MenuProps['items'] = [
     {
       key: 'delete',
-      label: t('settings.memory.deleteNamespace', '删除命名空间'),
+      label: t('settings.memory.deleteNamespace'),
       icon: <Trash2 size={14} />,
       danger: true,
       onClick: (e) => {
@@ -143,7 +143,7 @@ function SortableNamespaceItem({
         color={ns.embeddingProvider ? 'green' : 'default'}
         style={{ marginRight: 4, fontSize: 11 }}
       >
-        {ns.embeddingProvider ? t('settings.memory.vectorReady', '就绪') : t('settings.memory.vectorNotConfigured', '未配置')}
+        {ns.embeddingProvider ? t('settings.memory.vectorReady') : t('settings.memory.vectorNotConfigured')}
       </Tag>
       <Dropdown menu={{ items: menuItems }} trigger={['click']}>
         <Button
@@ -195,7 +195,7 @@ function NamespaceList({
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
         {namespaces.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.memory.empty', '暂无命名空间')} />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.memory.empty')} />
           </div>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -316,7 +316,7 @@ function MemoryItemsPanel({
       });
       setEditingItem(null);
       itemForm.resetFields();
-      messageApi.success(t('settings.memory.updateSuccess', '更新成功'));
+      messageApi.success(t('settings.memory.updateSuccess'));
     } catch {
       // validation error
     }
@@ -347,7 +347,7 @@ function MemoryItemsPanel({
       ellipsis: { showTitle: true },
     },
     {
-      title: t('settings.memory.indexStatusLabel', '索引状态'),
+      title: t('settings.memory.indexStatusLabel'),
       dataIndex: 'indexStatus',
       key: 'indexStatus',
       width: 100,
@@ -381,7 +381,7 @@ function MemoryItemsPanel({
       width: 120,
       render: (_: unknown, record: MemoryItem) => (
         <div className="flex gap-1">
-          <Tooltip title={t('settings.memory.editItem', '编辑')}>
+          <Tooltip title={t('settings.memory.editItem')}>
             <Button
               size="small"
               type="text"
@@ -393,7 +393,7 @@ function MemoryItemsPanel({
             />
           </Tooltip>
           <Popconfirm
-            title={t('settings.memory.rebuildItemConfirm', '确定重新索引该记录？')}
+            title={t('settings.memory.rebuildItemConfirm')}
             placement="bottom"
             onConfirm={async () => {
               await invoke('reindex_memory_item', { namespaceId: namespace.id, itemId: record.id }).catch((e) => {
@@ -402,7 +402,7 @@ function MemoryItemsPanel({
               loadItems(namespace.id);
             }}
           >
-            <Tooltip title={t('settings.memory.reindexItem', '重新索引')}>
+            <Tooltip title={t('settings.memory.reindexItem')}>
               <Button
                 size="small"
                 type="text"
@@ -442,9 +442,9 @@ function MemoryItemsPanel({
             color={namespace.embeddingProvider ? 'green' : 'default'}
             style={{ fontSize: 12 }}
           >
-            {namespace.embeddingProvider ? t('settings.memory.vectorReady', '就绪') : t('settings.memory.vectorNotConfigured', '未配置')}
+            {namespace.embeddingProvider ? t('settings.memory.vectorReady') : t('settings.memory.vectorNotConfigured')}
           </Tag>
-          <Tooltip title={t('settings.memory.namespaceSettings', '命名空间设置')}>
+          <Tooltip title={t('settings.memory.namespaceSettings')}>
             <Button
               size="small"
               type="text"
@@ -467,7 +467,7 @@ function MemoryItemsPanel({
 
       {/* Settings Modal */}
       <Modal
-        title={t('settings.memory.namespaceSettings', '命名空间设置')}
+        title={t('settings.memory.namespaceSettings')}
         open={settingsOpen}
         onOk={async () => {
           const providerChanged = settingsForm.embeddingProvider !== originalProvider;
@@ -505,21 +505,21 @@ function MemoryItemsPanel({
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex items-center justify-between">
-            <span>{t('settings.memory.embeddingModel', '向量模型')}</span>
+            <span>{t('settings.memory.embeddingModel')}</span>
             <EmbeddingModelSelect
               value={settingsForm.embeddingProvider}
               onChange={(val) => setSettingsForm(s => ({ ...s, embeddingProvider: val || undefined }))}
-              placeholder={t('settings.memory.embeddingModelPlaceholder', '选择向量模型')}
+              placeholder={t('settings.memory.embeddingModelPlaceholder')}
               style={{ width: 280 }}
             />
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex items-center justify-between">
-            <span>{t('settings.memory.embeddingDimensions', '嵌入维度')}</span>
+            <span>{t('settings.memory.embeddingDimensions')}</span>
             <InputNumber
               value={settingsForm.embeddingDimensions}
               onChange={(val) => setSettingsForm(s => ({ ...s, embeddingDimensions: val ?? undefined }))}
-              placeholder={t('settings.memory.embeddingDimensionsAuto', '自动')}
+              placeholder={t('settings.memory.embeddingDimensionsAuto')}
               min={1}
               max={65536}
               style={{ width: 280 }}
@@ -527,7 +527,7 @@ function MemoryItemsPanel({
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex items-center justify-between">
-            <span>{t('settings.memory.retrievalThreshold', '检索阈值')}</span>
+            <span>{t('settings.memory.retrievalThreshold')}</span>
             <InputNumber
               value={settingsForm.retrievalThreshold}
               onChange={(val) => setSettingsForm(s => ({ ...s, retrievalThreshold: val ?? 0.1 }))}
@@ -539,7 +539,7 @@ function MemoryItemsPanel({
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex items-center justify-between">
-            <span>{t('settings.memory.retrievalTopK', '检索记录数')}</span>
+            <span>{t('settings.memory.retrievalTopK')}</span>
             <InputNumber
               value={settingsForm.retrievalTopK}
               onChange={(val) => setSettingsForm(s => ({ ...s, retrievalTopK: val ?? 5 }))}
@@ -553,7 +553,7 @@ function MemoryItemsPanel({
 
       {/* Embedding provider change confirmation */}
       <Modal
-        title={t('settings.memory.changeEmbeddingTitle', '更换向量模型')}
+        title={t('settings.memory.changeEmbeddingTitle')}
         open={providerConfirmOpen}
         onOk={async () => {
           await updateNamespace(namespace.id, {
@@ -583,13 +583,13 @@ function MemoryItemsPanel({
         okButtonProps={{ danger: true }}
         mask={{ enabled: true, blur: true }}
       >
-        <p>{t('settings.memory.changeEmbeddingWarning', '更换向量模型后，该命名空间下所有记忆条目将自动重新进行向量索引。此操作不可撤销，是否继续？')}</p>
+        <p>{t('settings.memory.changeEmbeddingWarning')}</p>
       </Modal>
 
       {/* Toolbar: add + rebuild on left, search + clear on right */}
       <div className="flex items-center justify-between mb-3 gap-3">
         <div className="flex items-center gap-2">
-          <Tooltip title={t('settings.memory.addItem', '添加')}>
+          <Tooltip title={t('settings.memory.addItem')}>
             <Button icon={<Plus size={14} />} onClick={() => {
               setEditingItem(null);
               itemForm.resetFields();
@@ -597,7 +597,7 @@ function MemoryItemsPanel({
             }} />
           </Tooltip>
           <Popconfirm
-            title={t('settings.memory.rebuildIndexConfirm', '确定重建索引？将重新生成所有记录的向量嵌入。')}
+            title={t('settings.memory.rebuildIndexConfirm')}
             placement="bottom"
             onConfirm={async () => {
               setRebuildingIndex(true);
@@ -612,7 +612,7 @@ function MemoryItemsPanel({
               }
             }}
           >
-            <Tooltip title={t('settings.memory.rebuildIndex', '重建索引')}>
+            <Tooltip title={t('settings.memory.rebuildIndex')}>
               <Button
                 icon={<Zap size={14} />}
                 loading={rebuildingIndex}
@@ -625,7 +625,7 @@ function MemoryItemsPanel({
           {namespace.embeddingProvider && (
             <>
               <Input
-                placeholder={t('settings.memory.searchPlaceholder', '检索记忆...')}
+                placeholder={t('settings.memory.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onPressEnter={handleSearch}
@@ -633,7 +633,7 @@ function MemoryItemsPanel({
                 allowClear
                 onClear={() => setSearchResults(null)}
               />
-              <Tooltip title={t('settings.memory.search', '搜索')}>
+              <Tooltip title={t('settings.memory.search')}>
                 <Button
                   icon={<Search size={14} />}
                   loading={searching}
@@ -644,18 +644,18 @@ function MemoryItemsPanel({
             </>
           )}
           <Popconfirm
-            title={t('settings.memory.clearIndexConfirm', '确定清空所有索引？此操作不可撤销。')}
+            title={t('settings.memory.clearIndexConfirm')}
             onConfirm={async () => {
               try {
                 await invoke('clear_memory_index', { namespaceId: namespace.id });
                 loadItems(namespace.id);
-                messageApi.success(t('settings.memory.clearSuccess', '索引已清空'));
+                messageApi.success(t('settings.memory.clearSuccess'));
               } catch (e) {
                 messageApi.error(String(e));
               }
             }}
           >
-            <Tooltip title={t('settings.memory.clearIndex', '清空索引')}>
+            <Tooltip title={t('settings.memory.clearIndex')}>
               <Button
                 danger
                 icon={<Trash size={14} />}
@@ -668,7 +668,7 @@ function MemoryItemsPanel({
 
       {/* Search results */}
       <Modal
-        title={`${t('settings.memory.searchResults', '搜索结果')} (${searchResults?.length || 0})`}
+        title={`${t('settings.memory.searchResults')} (${searchResults?.length || 0})`}
         open={searchResults !== null}
         onCancel={() => setSearchResults(null)}
         footer={null}
@@ -676,7 +676,7 @@ function MemoryItemsPanel({
         mask={{ enabled: true, blur: true }}
       >
         {searchResults && searchResults.length === 0 ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.memory.noResults', '无匹配结果')} />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.memory.noResults')} />
         ) : (
           <Table
             dataSource={searchResults || []}
@@ -694,7 +694,7 @@ function MemoryItemsPanel({
                 render: (id: string) => <span style={{ fontSize: 12 }}>{id.slice(0, 8)}</span>,
               },
               {
-                title: t('settings.memory.itemContent', '内容'),
+                title: t('settings.memory.itemContent'),
                 dataIndex: 'content',
                 key: 'content',
                 ellipsis: { showTitle: false },
@@ -708,7 +708,7 @@ function MemoryItemsPanel({
                 ),
               },
               {
-                title: t('settings.memory.similarity', '相似度'),
+                title: t('settings.memory.similarity'),
                 dataIndex: 'score',
                 key: 'score',
                 width: 90,
@@ -735,7 +735,7 @@ function MemoryItemsPanel({
 
       {/* Add / Edit Modal */}
       <Modal
-        title={editingItem ? t('settings.memory.editItem', '编辑记忆') : t('settings.memory.addItem')}
+        title={editingItem ? t('settings.memory.editItem') : t('settings.memory.addItem')}
         open={itemModalOpen || !!editingItem}
         onOk={editingItem ? handleEditItem : handleAddItem}
         onCancel={() => { setItemModalOpen(false); setEditingItem(null); itemForm.resetFields(); }}
@@ -814,7 +814,7 @@ export default function MemorySettings() {
           <div className="flex h-full items-center justify-center">
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={t('settings.memory.selectOrAdd', '请选择或添加命名空间')}
+              description={t('settings.memory.selectOrAdd')}
             />
           </div>
         )}
@@ -833,13 +833,13 @@ export default function MemorySettings() {
           </Form.Item>
           <Form.Item
             name="embeddingProvider"
-            label={t('settings.memory.embeddingModel', '向量模型')}
-            rules={[{ required: true, message: t('settings.memory.embeddingModelPlaceholder', '选择向量模型') }]}
+            label={t('settings.memory.embeddingModel')}
+            rules={[{ required: true, message: t('settings.memory.embeddingModelPlaceholder') }]}
           >
             <EmbeddingModelSelect
               value={nsForm.getFieldValue('embeddingProvider')}
               onChange={(val) => nsForm.setFieldValue('embeddingProvider', val)}
-              placeholder={t('settings.memory.embeddingModelPlaceholder', '选择向量模型')}
+              placeholder={t('settings.memory.embeddingModelPlaceholder')}
             />
           </Form.Item>
         </Form>

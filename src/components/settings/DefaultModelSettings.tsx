@@ -126,20 +126,20 @@ function ModelParamsModal({
       {showPrompt && promptKey && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-            {t('settings.promptLabel', '提示词')}
+            {t('settings.promptLabel')}
           </div>
           <TextArea
             rows={4}
             value={(settings[promptKey] as string | null) ?? (defaultPrompt || DEFAULT_TITLE_SUMMARY_PROMPT)}
             onChange={(e) => saveSettings({ [promptKey]: e.target.value || null } as Partial<AppSettings>)}
-            placeholder={promptPlaceholder || t('settings.titleSummaryPromptPlaceholder', '请根据对话内容生成一个简短的标题...')}
+            placeholder={promptPlaceholder || t('settings.titleSummaryPromptPlaceholder')}
           />
         </div>
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <span style={{ fontSize: 14, fontWeight: 600 }}>
-          {t('settings.modelParams', '模型参数')}
+          {t('settings.modelParams')}
         </span>
         <Button
           type="text"
@@ -170,8 +170,8 @@ function ModelParamsModal({
 
       {showContextCount && contextCountKey && (
         <ContextCountParam
-          label={t('settings.contextCount', '上下文数')}
-          tooltip={t('settings.contextCountTooltip', '发送给模型的历史消息数量')}
+          label={t('settings.contextCount')}
+          tooltip={t('settings.contextCountTooltip')}
           value={settings[contextCountKey] as number | null}
           onChange={(v) => saveSettings({ [contextCountKey]: v } as Partial<AppSettings>)}
         />
@@ -303,17 +303,17 @@ export function DefaultModelSettings() {
     fetchProviders();
   }, [fetchProviders]);
 
-  const placeholderText = t('settings.useActiveModel', '使用当前活跃对话的模型');
+  const placeholderText = t('settings.useActiveModel');
 
   return (
     <div style={{ padding: 24 }}>
       <ModelCard
-        title={t('settings.defaultConversationModel', '默认对话模型')}
-        description={t('settings.defaultConversationModelDesc', '新建对话时默认选择的模型，未设置时将沿用上个活跃对话的模型')}
+        title={t('settings.defaultConversationModel')}
+        description={t('settings.defaultConversationModelDesc')}
         providerIdKey="default_provider_id"
         modelIdKey="default_model_id"
         placeholder={placeholderText}
-        modalTitle={t('settings.defaultConversationModel', '默认对话模型')}
+        modalTitle={t('settings.defaultConversationModel')}
         showPrompt={false}
         showContextCount={true}
         temperatureKey="default_temperature"
@@ -326,12 +326,12 @@ export function DefaultModelSettings() {
       />
 
       <ModelCard
-        title={t('settings.titleSummaryModel', '标题总结模型')}
-        description={t('settings.titleSummaryModelDesc', '自动生成对话标题时所使用的模型，若未设置则使用对话采用的模型生成')}
+        title={t('settings.titleSummaryModel')}
+        description={t('settings.titleSummaryModelDesc')}
         providerIdKey="title_summary_provider_id"
         modelIdKey="title_summary_model_id"
         placeholder={placeholderText}
-        modalTitle={t('settings.titleSummaryModel', '标题总结模型')}
+        modalTitle={t('settings.titleSummaryModel')}
         showPrompt={true}
         showContextCount={false}
         promptKey="title_summary_prompt"
@@ -344,12 +344,12 @@ export function DefaultModelSettings() {
       />
 
       <ModelCard
-        title={t('settings.compressionModel', '上下文压缩模型')}
-        description={t('settings.compressionModelDesc', '压缩对话上下文时所使用的模型，若未设置则使用对话采用的模型')}
+        title={t('settings.compressionModel')}
+        description={t('settings.compressionModelDesc')}
         providerIdKey="compression_provider_id"
         modelIdKey="compression_model_id"
         placeholder={placeholderText}
-        modalTitle={t('settings.compressionModel', '上下文压缩模型')}
+        modalTitle={t('settings.compressionModel')}
         showPrompt={true}
         showContextCount={false}
         promptKey="compression_prompt"
@@ -360,7 +360,7 @@ export function DefaultModelSettings() {
         defaultTopP={1.0}
         defaultMaxTokens={1024}
         defaultPrompt={DEFAULT_COMPRESSION_PROMPT}
-        promptPlaceholder={t('settings.compressionPromptPlaceholder', '请将对话历史压缩为简洁摘要...')}
+        promptPlaceholder={t('settings.compressionPromptPlaceholder')}
       />
     </div>
   );

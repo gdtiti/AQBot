@@ -18,17 +18,17 @@ export function ConversationSettings() {
         title={
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <MessageSquare size={16} />
-            {t('settings.defaultSystemPrompt', '全局系统预设')}
+            {t('settings.defaultSystemPrompt')}
           </span>
         }
       >
         <div style={{ fontSize: 12, color: token.colorTextDescription, marginBottom: 12 }}>
-          {t('settings.defaultSystemPromptDesc', '所有对话的默认系统预设，对话中单独设置的系统预设会覆盖此全局设置')}
+          {t('settings.defaultSystemPromptDesc')}
         </div>
         <TextArea
           value={settings.default_system_prompt ?? ''}
           onChange={(e) => saveSettings({ default_system_prompt: e.target.value || null })}
-          placeholder={t('settings.defaultSystemPromptPlaceholder', '输入全局系统预设...')}
+          placeholder={t('settings.defaultSystemPromptPlaceholder')}
           autoSize={{ minRows: 3, maxRows: 10 }}
         />
       </Card>

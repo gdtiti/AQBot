@@ -207,7 +207,7 @@ export function InputArea() {
           key: '__empty',
           label: (
             <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>
-              {t('chat.search.noProviders', '请先在设置中配置搜索引擎')}
+              {t('chat.search.noProviders')}
             </span>
           ),
           disabled: true,
@@ -250,7 +250,7 @@ export function InputArea() {
       return (
         <div style={{ padding: '8px 0', minWidth: 180 }}>
           <div style={{ color: token.colorTextSecondary, fontSize: 12, marginBottom: 8 }}>
-            {t('chat.mcp.noServers', '请先在设置中配置并启用 MCP 服务器')}
+            {t('chat.mcp.noServers')}
           </div>
           <Button
             type="link"
@@ -262,7 +262,7 @@ export function InputArea() {
               setActivePage('settings');
             }}
           >
-            {t('chat.mcp.goConfig', '前往配置 →')}
+            {t('chat.mcp.goConfig')}
           </Button>
         </div>
       );
@@ -294,22 +294,22 @@ export function InputArea() {
 
     return (
       <div style={{ minWidth: 180, maxHeight: 300, overflowY: 'auto' }}>
-        {builtinServers.length > 0 && renderGroup(t('settings.mcp.builtin', '内置工具'), builtinServers)}
+        {builtinServers.length > 0 && renderGroup(t('settings.mcp.builtin'), builtinServers)}
         {builtinServers.length > 0 && customServers.length > 0 && (
           <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, margin: '6px 0' }} />
         )}
-        {customServers.length > 0 && renderGroup(t('settings.mcp.custom', '自定义'), customServers)}
+        {customServers.length > 0 && renderGroup(t('settings.mcp.custom'), customServers)}
       </div>
     );
   }, [mcpServers, enabledMcpServerIds, toggleMcpServer, token, t]);
 
   const thinkingOptions = useMemo(() => ([
-    { key: 'default', label: t('chat.thinking.default', '默认'), value: null },
-    { key: 'none', label: t('chat.thinking.none', '禁止思考'), value: 0 },
-    { key: 'low', label: t('chat.thinking.low', '低强度'), value: 1024 },
-    { key: 'medium', label: t('chat.thinking.medium', '中强度'), value: 4096 },
-    { key: 'high', label: t('chat.thinking.high', '高强度'), value: 8192 },
-    { key: 'xhigh', label: t('chat.thinking.xhigh', '超高强度'), value: 16384 },
+    { key: 'default', label: t('chat.thinking.default'), value: null },
+    { key: 'none', label: t('chat.thinking.none'), value: 0 },
+    { key: 'low', label: t('chat.thinking.low'), value: 1024 },
+    { key: 'medium', label: t('chat.thinking.medium'), value: 4096 },
+    { key: 'high', label: t('chat.thinking.high'), value: 8192 },
+    { key: 'xhigh', label: t('chat.thinking.xhigh'), value: 16384 },
   ]), [t]);
 
   const selectedThinkingOption = useMemo(
@@ -342,7 +342,7 @@ export function InputArea() {
       return (
         <div style={{ padding: '8px 0', minWidth: 180 }}>
           <div style={{ color: token.colorTextSecondary, fontSize: 12, marginBottom: 8 }}>
-            {t('chat.knowledge.empty', '请先添加知识库')}
+            {t('chat.knowledge.empty')}
           </div>
           <Button
             type="link"
@@ -353,7 +353,7 @@ export function InputArea() {
               setActivePage('knowledge');
             }}
           >
-            {t('chat.mcp.goConfig', '前往配置 →')}
+            {t('chat.mcp.goConfig')}
           </Button>
         </div>
       );
@@ -383,7 +383,7 @@ export function InputArea() {
       return (
         <div style={{ padding: '8px 0', minWidth: 180 }}>
           <div style={{ color: token.colorTextSecondary, fontSize: 12, marginBottom: 8 }}>
-            {t('chat.memory.empty', '请先添加记忆命名空间')}
+            {t('chat.memory.empty')}
           </div>
           <Button
             type="link"
@@ -394,7 +394,7 @@ export function InputArea() {
               setActivePage('memory');
             }}
           >
-            {t('chat.mcp.goConfig', '前往配置 →')}
+            {t('chat.mcp.goConfig')}
           </Button>
         </div>
       );
@@ -783,11 +783,11 @@ export function InputArea() {
     const onClearConversation = () => {
       if (!activeConversationId || streaming || messages.length === 0) return;
       modal.confirm({
-        title: t('chat.clearConversationConfirmTitle', '确认清空对话'),
-        content: t('chat.clearConversationConfirmContent', '将删除当前对话中的所有消息记录，此操作不可撤销。'),
+        title: t('chat.clearConversationConfirmTitle'),
+        content: t('chat.clearConversationConfirmContent'),
         okButtonProps: { danger: true },
-        okText: t('common.confirm', '确认'),
-        cancelText: t('common.cancel', '取消'),
+        okText: t('common.confirm'),
+        cancelText: t('common.cancel'),
         onOk: async () => {
           await clearAllMessages();
         },
@@ -897,7 +897,7 @@ export function InputArea() {
               className="inline-flex items-center px-2 py-0.5 text-xs"
               style={{ color: token.colorTextTertiary }}
             >
-              {t('chat.multiModel', '多模型同答')}:
+              {t('chat.multiModel')}:
             </span>
             {companionDisplayInfos.map((cm, idx) => (
               <span
@@ -936,7 +936,7 @@ export function InputArea() {
               onClick={clearAllCompanionModels}
             >
               <Trash2 size={11} />
-              {t('chat.clearAll', '清除')}
+              {t('chat.clearAll')}
             </span>
           </div>
         )}
@@ -971,7 +971,7 @@ export function InputArea() {
         <div className="flex items-center justify-between px-2 pb-2">
           <div className="flex items-center gap-0.5">
             {searchEnabled ? (
-              <Tooltip title={t('chat.search.title', '联网搜索')}>
+              <Tooltip title={t('chat.search.title')}>
                 <Button
                   type="text"
                   size="small"
@@ -991,7 +991,7 @@ export function InputArea() {
                 open={searchDropdownOpen}
                 onOpenChange={setSearchDropdownOpen}
               >
-                <Tooltip title={t('chat.search.title', '联网搜索')} open={searchDropdownOpen ? false : undefined}>
+                <Tooltip title={t('chat.search.title')} open={searchDropdownOpen ? false : undefined}>
                   <Button
                     type="text"
                     size="small"
@@ -1014,7 +1014,7 @@ export function InputArea() {
                 onOpenChange={setThinkingDropdownOpen}
               >
                 <Tooltip
-                  title={`${t('chat.thinkingIntensity', '思维强度')}: ${selectedThinkingOption.label}`}
+                  title={`${t('chat.thinkingIntensity')}: ${selectedThinkingOption.label}`}
                   open={thinkingDropdownOpen ? false : undefined}
                 >
                   <Button
@@ -1050,7 +1050,7 @@ export function InputArea() {
               open={mcpPopoverOpen}
               onOpenChange={setMcpPopoverOpen}
             >
-              <Tooltip title={t('chat.mcp.title', 'MCP 工具')} open={mcpPopoverOpen ? false : undefined}>
+              <Tooltip title={t('chat.mcp.title')} open={mcpPopoverOpen ? false : undefined}>
                 <Badge count={enabledMcpServerIds.filter((id) => mcpServers.some((s) => s.id === id && s.enabled)).length} size="small" offset={[-4, 4]} color={token.colorPrimary}>
                 <Button
                   type="text"
@@ -1069,7 +1069,7 @@ export function InputArea() {
               open={kbPopoverOpen}
               onOpenChange={setKbPopoverOpen}
             >
-              <Tooltip title={t('chat.knowledge.title', '知识库')} open={kbPopoverOpen ? false : undefined}>
+              <Tooltip title={t('chat.knowledge.title')} open={kbPopoverOpen ? false : undefined}>
                 <Badge count={enabledKnowledgeBaseIds.length} size="small" offset={[-4, 4]} color={token.colorPrimary}>
                 <Button
                   type="text"
@@ -1088,7 +1088,7 @@ export function InputArea() {
               open={memoryPopoverOpen}
               onOpenChange={setMemoryPopoverOpen}
             >
-              <Tooltip title={t('chat.memory.title', '记忆')} open={memoryPopoverOpen ? false : undefined}>
+              <Tooltip title={t('chat.memory.title')} open={memoryPopoverOpen ? false : undefined}>
                 <Badge count={enabledMemoryNamespaceIds.length} size="small" offset={[-4, 4]} color={token.colorPrimary}>
                 <Button
                   type="text"
@@ -1099,7 +1099,7 @@ export function InputArea() {
                 </Badge>
               </Tooltip>
             </Popover>
-            <Tooltip title={t('chat.multiModel', '多模型同答')}>
+            <Tooltip title={t('chat.multiModel')}>
               <Button
                 type="text"
                 size="small"
@@ -1117,8 +1117,8 @@ export function InputArea() {
                       ? <ZapOff size={14} />
                       : <Zap size={14} />,
                     label: activeConversation?.context_compression
-                      ? t('chat.disableAutoCompression', '关闭自动压缩')
-                      : t('chat.enableAutoCompression', '开启自动压缩'),
+                      ? t('chat.disableAutoCompression')
+                      : t('chat.enableAutoCompression'),
                     onClick: () => {
                       if (!activeConversationId || !activeConversation) return;
                       updateConversation(activeConversationId, { context_compression: !activeConversation.context_compression });
@@ -1127,15 +1127,15 @@ export function InputArea() {
                   {
                     key: 'manual',
                     icon: <Shrink size={14} />,
-                    label: t('chat.manualCompress', '手动压缩'),
+                    label: t('chat.manualCompress'),
                     disabled: !activeConversationId || streaming || compressing || messages.length === 0,
                     onClick: async () => {
                       if (!activeConversationId) return;
                       try {
                         await compressContext();
-                        messageApi.success(t('chat.compressSuccess', '上下文已压缩'));
+                        messageApi.success(t('chat.compressSuccess'));
                       } catch {
-                        messageApi.error(t('chat.compressFailed', '压缩失败'));
+                        messageApi.error(t('chat.compressFailed'));
                       }
                     },
                   },
@@ -1144,7 +1144,7 @@ export function InputArea() {
               trigger={['click']}
               placement="topLeft"
             >
-              <Tooltip title={t('chat.contextCompression', '上下文压缩')}>
+              <Tooltip title={t('chat.contextCompression')}>
                 <Button
                   type="text"
                   size="small"
@@ -1155,7 +1155,7 @@ export function InputArea() {
                 />
               </Tooltip>
             </Dropdown>
-            <Tooltip title={shortcutHint(t('chat.clearContext', '清空上下文'), 'clearContext')}>
+            <Tooltip title={shortcutHint(t('chat.clearContext'), 'clearContext')}>
               <Button
                 type="text"
                 size="small"
@@ -1164,7 +1164,7 @@ export function InputArea() {
                 disabled={!activeConversationId || streaming || messages.length === 0 || messages[messages.length - 1]?.content === '<!-- context-clear -->'}
               />
             </Tooltip>
-            <Tooltip title={shortcutHint(t('chat.clearConversation', '清空对话'), 'clearConversationMessages')}>
+            <Tooltip title={shortcutHint(t('chat.clearConversation'), 'clearConversationMessages')}>
               <Button
                 type="text"
                 size="small"
@@ -1172,11 +1172,11 @@ export function InputArea() {
                 onClick={() => {
                   if (!activeConversationId) return;
                   modal.confirm({
-                    title: t('chat.clearConversationConfirmTitle', '确认清空对话'),
-                    content: t('chat.clearConversationConfirmContent', '将删除当前对话中的所有消息记录，此操作不可撤销。'),
+                    title: t('chat.clearConversationConfirmTitle'),
+                    content: t('chat.clearConversationConfirmContent'),
                     okButtonProps: { danger: true },
-                    okText: t('common.confirm', '确认'),
-                    cancelText: t('common.cancel', '取消'),
+                    okText: t('common.confirm'),
+                    cancelText: t('common.cancel'),
                     onOk: async () => {
                       await clearAllMessages();
                     },
@@ -1185,7 +1185,7 @@ export function InputArea() {
                 disabled={!activeConversationId || streaming || messages.length === 0}
               />
             </Tooltip>
-            <Tooltip title={t('chat.conversationSettings', '对话设置')}>
+            <Tooltip title={t('chat.conversationSettings')}>
               <Button type="text" size="small" icon={<SlidersHorizontal size={14} />} onClick={() => setSettingsOpen(true)} />
             </Tooltip>
             {hasRealtimeVoice && (
@@ -1202,7 +1202,7 @@ export function InputArea() {
           <div className="flex items-center gap-2">
             {contextCount > 0 && (
               <span style={{ fontSize: 11, color: token.colorTextSecondary }}>
-                {contextCount} {t('chat.contextMessages', '条上下文')}
+                {contextCount} {t('chat.contextMessages')}
               </span>
             )}
             {contextTokenUsage && (() => {
@@ -1295,7 +1295,7 @@ export function InputArea() {
           >
             <Upload size={48} style={{ color: token.colorPrimary }} />
             <span style={{ fontSize: 16, fontWeight: 500, color: token.colorText }}>
-              {t('chat.dropToAttach', '拖放文件以添加附件')}
+              {t('chat.dropToAttach')}
             </span>
           </div>
         </div>

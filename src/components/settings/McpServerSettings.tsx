@@ -106,14 +106,14 @@ function McpServerList({
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
         {servers.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.mcpServers.empty', '暂无 MCP 服务')} />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.mcpServers.empty')} />
           </div>
         ) : (
           <>
             {builtinServers.length > 0 && (
               <>
                 <Typography.Text type="secondary" style={{ fontSize: 11, padding: '4px 12px', textTransform: 'uppercase' }}>
-                  {t('settings.mcpServers.builtin', '内置工具')}
+                  {t('settings.mcpServers.builtin')}
                 </Typography.Text>
                 {builtinServers.map(renderServerItem)}
               </>
@@ -124,7 +124,7 @@ function McpServerList({
             {customServers.length > 0 && (
               <>
                 <Typography.Text type="secondary" style={{ fontSize: 11, padding: '4px 12px', textTransform: 'uppercase' }}>
-                  {t('settings.mcpServers.custom', '自定义')}
+                  {t('settings.mcpServers.custom')}
                 </Typography.Text>
                 {customServers.map(renderServerItem)}
               </>
@@ -231,7 +231,7 @@ function McpServerDetail({
 
   const resetIconMenuItem: MenuProps['items'] = [
     { type: 'divider' as const },
-    { key: 'reset', icon: <Plug size={14} />, label: t('settings.mcpServers.resetIcon', '恢复默认'),
+    { key: 'reset', icon: <Plug size={14} />, label: t('settings.mcpServers.resetIcon'),
       onClick: async () => { await updateServer(server.id, { iconType: '', iconValue: '' }); } },
   ];
 
@@ -255,7 +255,7 @@ function McpServerDetail({
           )}
           <span style={{ fontWeight: 600, fontSize: 16 }}>{displayName}</span>
           {isBuiltin && (
-            <Tag color="blue" style={{ margin: 0 }}>{t('settings.mcpServers.builtin', '内置')}</Tag>
+            <Tag color="blue" style={{ margin: 0 }}>{t('settings.mcpServers.builtin')}</Tag>
           )}
         </div>
         {!isBuiltin && (
@@ -440,7 +440,7 @@ function McpServerDetail({
       <Divider />
       <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
         <Typography.Title level={5} style={{ margin: 0 }}>
-          {t('settings.mcpServers.tools', 'Tools')}
+          {t('settings.mcpServers.tools')}
           {tools.length > 0 && (
             <Tag style={{ marginLeft: 8, fontWeight: 400 }}>{tools.length}</Tag>
           )}
@@ -617,7 +617,7 @@ export default function McpServerSettings() {
           <div className="flex h-full items-center justify-center">
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={t('settings.mcpServers.selectOrAdd', '请选择或添加 MCP 服务')}
+              description={t('settings.mcpServers.selectOrAdd')}
             />
           </div>
         )}

@@ -46,7 +46,7 @@ export function ToolCallCard({
     if (input) {
       items.push({
         key: 'input',
-        label: t('chat.inspector.toolInput', 'Input'),
+        label: t('chat.inspector.toolInput'),
         children: (
           <pre
             style={{
@@ -70,7 +70,7 @@ export function ToolCallCard({
     if (output) {
       items.push({
         key: 'output',
-        label: t('chat.inspector.toolOutput', 'Output'),
+        label: t('chat.inspector.toolOutput'),
         children: (
           <pre
             style={{

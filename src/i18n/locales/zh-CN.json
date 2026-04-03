@@ -122,7 +122,9 @@
       "attachments": "附件",
       "session": "会话",
       "artifacts": "制品",
-      "toggle": "切换检查器"
+      "toggle": "切换检查器",
+      "toolInput": "输入参数",
+      "toolOutput": "执行结果"
     },
     "context": {
       "app": "应用",
@@ -138,7 +140,8 @@
     "artifacts": {
       "empty": "暂无制品",
       "title": "制品",
-      "extract": "提取为草稿"
+      "extract": "提取为草稿",
+      "comingSoon": "完整编辑功能即将推出"
     },
     "branch": {
       "compare": "分支对比",
@@ -194,7 +197,25 @@
     "branchCreated": "分支对话已创建",
     "branchTitlePlaceholder": "请输入对话名称",
     "branchIndependent": "分支到独立对话",
-    "branchChild": "分支到子级"
+    "branchChild": "分支到子级",
+    "clearAll": "清除",
+    "clearContext": "清空上下文",
+    "confirmDeleteMessage": "确定删除这条消息及其所有回复吗？",
+    "confirmDeleteVersion": "确定删除当前版本吗？",
+    "conversationSettings": "对话设置",
+    "deleteAll": "全删",
+    "deleteLastVersionHint": "这是最后一条 AI 回复，您可以选择仅删除回复或连同用户消息一起删除。",
+    "deleteThisOnly": "仅此条",
+    "generating": "生成中…",
+    "loadingConversation": "正在加载对话内容…",
+    "multiModel": {
+      "selectTitle": "选择同时回答的模型",
+      "selectedCount": "已选 {{count}} 个模型"
+    },
+    "pinnedModels": "置顶模型",
+    "scrollToBottom": "回到底部",
+    "searchModelOrProvider": "搜索模型或服务商",
+    "switchModel": "切换模型"
   },
   "gateway": {
     "title": "网关",
@@ -657,7 +678,8 @@
       "addChunkPlaceholder": "请输入分段内容...",
       "statusLabel": "状态",
       "docType": "类型",
-      "docTypeFile": "文件"
+      "docTypeFile": "文件",
+      "docTitle": "文档"
     },
     "memory": {
       "title": "记忆",
@@ -688,7 +710,26 @@
       "rebuildItemConfirm": "确定重新索引该记录？",
       "clearIndex": "清空索引",
       "clearIndexConfirm": "确定清空所有索引？此操作不可撤销。",
-      "clearSuccess": "索引已清空"
+      "clearSuccess": "索引已清空",
+      "changeEmbeddingTitle": "更换向量模型",
+      "changeEmbeddingWarning": "更换向量模型后，该命名空间下所有记忆条目将自动重新进行向量索引。此操作不可撤销，是否继续？",
+      "clearIcon": "清除图标",
+      "deleteNamespace": "删除命名空间",
+      "editItem": "编辑记忆",
+      "embeddingDimensions": "嵌入维度",
+      "embeddingDimensionsAuto": "自动",
+      "iconUrlPlaceholder": "输入图片链接",
+      "indexStatusLabel": "索引状态",
+      "namespaceSettings": "命名空间设置",
+      "noResults": "无匹配结果",
+      "reindexItem": "重新索引",
+      "retrievalThreshold": "检索阈值",
+      "retrievalTopK": "检索记录数",
+      "search": "搜索",
+      "searchPlaceholder": "检索记忆...",
+      "searchResults": "搜索结果",
+      "similarity": "相似度",
+      "updateSuccess": "更新成功"
     },
     "desktopIntegration": {
       "title": "桌面集成"
@@ -750,7 +791,22 @@
       "indexed": "已索引",
       "failed": "索引失败",
       "notConfigured": "未配置"
-    }
+    },
+    "addModel": "添加模型",
+    "closeSettings": "关闭设置",
+    "collapseAll": "收起所有",
+    "custom": "自定义",
+    "duplicateModelError": "模型标识已存在，请使用其他模型标识",
+    "expandAll": "展开所有",
+    "mcp": {
+      "builtin": "内置工具",
+      "custom": "自定义"
+    },
+    "minutes": "分钟",
+    "modelGroup": "模型分组",
+    "modelGroupAuto": "留空时将按模型标识自动生成分组",
+    "modelIdRequired": "请先填写模型标识",
+    "openSettings": "设置"
   },
   "backup": {
     "title": "备份中心",
@@ -819,7 +875,8 @@
       "fileName": "文件名",
       "device": "设备",
       "lastSync": "上次同步"
-    }
+    },
+    "backupSuccess": "备份成功"
   },
   "common": {
     "confirm": "确认",
@@ -862,7 +919,9 @@
     "name": "名称",
     "unlimited": "不限制",
     "zoomIn": "放大",
-    "zoomOut": "缩小"
+    "zoomOut": "缩小",
+    "ok": "确定",
+    "selectAll": "全选"
   },
   "image": {
     "loadError": "图片加载失败",
@@ -903,7 +962,8 @@
     "noModelSelected": "请选择模型",
     "keyValidationFailed": "密钥验证失败",
     "gatewayStartFailed": "网关启动失败",
-    "proxyTestFailed": "代理测试失败"
+    "proxyTestFailed": "代理测试失败",
+    "invalidFormat": "格式无效"
   },
   "desktop": {
     "title": "桌面集成",
@@ -993,5 +1053,18 @@
     "deleteSuccess": "文件已删除",
     "confirmYes": "确定",
     "confirmNo": "取消"
+  },
+  "titlebar": {
+    "giveStar": "给个 Star ⭐",
+    "lastBackup": "上次备份",
+    "lastLocal": "本地",
+    "localBackup": "本地备份",
+    "nextBackup": "下次自动备份",
+    "noBackupYet": "暂无备份记录",
+    "now": "即将执行",
+    "quickBackup": "快速备份",
+    "submitBug": "提交 BUG",
+    "submitFeature": "提交建议",
+    "webdavBackup": "WebDAV 备份"
   }
 }

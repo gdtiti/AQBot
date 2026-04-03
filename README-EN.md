@@ -1,4 +1,4 @@
-[简体中文](./README.md) | English
+[简体中文](./README.md) | [繁體中文](./README-ZH-TW.md) | **English** | [日本語](./README-JA.md) | [한국어](./README-KO.md) | [Français](./README-FR.md) | [Deutsch](./README-DE.md) | [Español](./README-ES.md) | [Русский](./README-RU.md) | [हिन्दी](./README-HI.md) | [العربية](./README-AR.md)
 
 [![AQBot](https://socialify.git.ci/AQBot-Desktop/AQBot/image?description=1&font=JetBrains+Mono&forks=1&issues=1&logo=https%3A%2F%2Fgithub.com%2FAQBot-Desktop%2FAQBot%2Fblob%2Fmain%2Fsrc%2Fassets%2Fimage%2Flogo.png%3Fraw%3Dtrue&name=1&owner=1&pattern=Floating+Cogs&pulls=1&stargazers=1&theme=Auto)](https://github.com/AQBot-Desktop/AQBot)
 
@@ -65,7 +65,7 @@
 ### Desktop Experience
 
 - **Theme Switching** — Dark/light themes that follow the system preference or can be set manually
-- **Interface Language** — Full support for Simplified Chinese and English, switchable at any time in settings
+- **Interface Language** — Full support for Simplified Chinese, Traditional Chinese, English, Japanese, Korean, French, German, Spanish, Russian, Hindi, and Arabic, switchable at any time in settings
 - **System Tray** — Minimize to system tray on window close without interrupting background services
 - **Always on Top** — Pin the main window to stay above all other windows
 - **Global Shortcuts** — Customizable global keyboard shortcuts to summon the main window at any time

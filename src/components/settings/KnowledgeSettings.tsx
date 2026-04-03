@@ -83,7 +83,7 @@ function SortableKnowledgeBaseItem({
   const menuItems: MenuProps['items'] = [
     {
       key: 'delete',
-      label: t('settings.knowledge.deleteKnowledgeBase', '删除知识库'),
+      label: t('settings.knowledge.deleteKnowledgeBase'),
       icon: <Trash2 size={14} />,
       danger: true,
       onClick: (e) => {
@@ -128,7 +128,7 @@ function SortableKnowledgeBaseItem({
         color={kb.embeddingProvider ? 'green' : 'default'}
         style={{ marginRight: 4, fontSize: 11 }}
       >
-        {kb.embeddingProvider ? t('settings.knowledge.vectorReady', '就绪') : t('settings.knowledge.vectorNotConfigured', '未配置')}
+        {kb.embeddingProvider ? t('settings.knowledge.vectorReady') : t('settings.knowledge.vectorNotConfigured')}
       </Tag>
       <Dropdown menu={{ items: menuItems }} trigger={['click']}>
         <Button
@@ -180,7 +180,7 @@ function KnowledgeBaseList({
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
         {bases.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.knowledge.empty', '暂无知识库')} />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.knowledge.empty')} />
           </div>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -350,7 +350,7 @@ function KnowledgeBaseDetail({
       const selected = await open({
         multiple: true,
         filters: [
-          { name: t('settings.knowledge.documentTypes', '文档文件'), extensions: ['pdf', 'txt', 'md', 'doc', 'docx', 'csv', 'json', 'html', 'htm'] },
+          { name: t('settings.knowledge.documentTypes'), extensions: ['pdf', 'txt', 'md', 'doc', 'docx', 'csv', 'json', 'html', 'htm'] },
         ],
       });
       if (!selected) return;
@@ -425,14 +425,14 @@ function KnowledgeBaseDetail({
       ellipsis: true,
     },
     {
-      title: t('settings.knowledge.size', '大小'),
+      title: t('settings.knowledge.size'),
       dataIndex: 'sizeBytes',
       key: 'sizeBytes',
       width: 90,
       render: (bytes: number) => <span style={{ fontSize: 12 }}>{formatBytes(bytes)}</span>,
     },
     {
-      title: t('settings.knowledge.docType', '类型'),
+      title: t('settings.knowledge.docType'),
       dataIndex: 'docType',
       key: 'docType',
       width: 80,
@@ -443,7 +443,7 @@ function KnowledgeBaseDetail({
       ),
     },
     {
-      title: t('settings.knowledge.statusLabel', '状态'),
+      title: t('settings.knowledge.statusLabel'),
       dataIndex: 'indexingStatus',
       key: 'indexingStatus',
       width: 100,
@@ -466,7 +466,7 @@ function KnowledgeBaseDetail({
       width: 120,
       render: (_: unknown, record: KnowledgeDocument) => (
         <div className="flex items-center gap-1">
-          <Tooltip title={t('settings.knowledge.viewChunks', '分段')}>
+          <Tooltip title={t('settings.knowledge.viewChunks')}>
             <Button
               size="small"
               type="text"
@@ -476,7 +476,7 @@ function KnowledgeBaseDetail({
             />
           </Tooltip>
           <Popconfirm
-            title={t('settings.knowledge.rebuildDocConfirm', '确定重建该文档的索引？')}
+            title={t('settings.knowledge.rebuildDocConfirm')}
             placement="bottom"
             onConfirm={async () => {
               if (rebuildingDocIds.has(record.id)) return;
@@ -490,7 +490,7 @@ function KnowledgeBaseDetail({
               }
             }}
           >
-            <Tooltip title={t('settings.knowledge.rebuildDocIndex', '重建索引')}>
+            <Tooltip title={t('settings.knowledge.rebuildDocIndex')}>
               <Button
                 size="small"
                 type="text"
@@ -514,14 +514,14 @@ function KnowledgeBaseDetail({
   // Chunks table columns
   const chunkColumns = [
     {
-      title: t('settings.knowledge.chunkIndex', '序号'),
+      title: t('settings.knowledge.chunkIndex'),
       dataIndex: 'chunk_index',
       key: 'chunk_index',
       width: 70,
       render: (idx: number) => <Tag style={{ fontSize: 11 }}>#{idx}</Tag>,
     },
     {
-      title: t('settings.knowledge.chunkContent', '内容'),
+      title: t('settings.knowledge.chunkContent'),
       dataIndex: 'content',
       key: 'content',
       ellipsis: { showTitle: false },
@@ -541,7 +541,7 @@ function KnowledgeBaseDetail({
       ),
     },
     {
-      title: t('settings.knowledge.statusLabel', '状态'),
+      title: t('settings.knowledge.statusLabel'),
       key: 'indexStatus',
       width: 100,
       render: (_: unknown, record: VectorSearchResult) => {
@@ -549,26 +549,26 @@ function KnowledgeBaseDetail({
           return (
             <Tag color="processing" style={{ fontSize: 11 }}>
               <Spin size="small" style={{ marginRight: 4 }} />
-              {t('settings.knowledge.indexStatusIndexing', '索引中')}
+              {t('settings.knowledge.indexStatusIndexing')}
             </Tag>
           );
         }
         if (record.has_embedding) {
           return (
             <Tag color="success" style={{ fontSize: 11 }}>
-              {t('settings.knowledge.indexStatusReady', '已索引')}
+              {t('settings.knowledge.indexStatusReady')}
             </Tag>
           );
         }
         return (
           <Tag color="default" style={{ fontSize: 11 }}>
-            {t('settings.knowledge.indexStatusPending', '未索引')}
+            {t('settings.knowledge.indexStatusPending')}
           </Tag>
         );
       },
     },
     {
-      title: t('settings.knowledge.chars', '字符'),
+      title: t('settings.knowledge.chars'),
       key: 'charCount',
       width: 80,
       render: (_: unknown, record: VectorSearchResult) => (
@@ -580,7 +580,7 @@ function KnowledgeBaseDetail({
       width: 120,
       render: (_: unknown, record: VectorSearchResult) => (
         <div className="flex items-center gap-1">
-          <Tooltip title={t('settings.knowledge.editChunk', '编辑')}>
+          <Tooltip title={t('settings.knowledge.editChunk')}>
             <Button
               size="small"
               type="text"
@@ -594,7 +594,7 @@ function KnowledgeBaseDetail({
             />
           </Tooltip>
           <Popconfirm
-            title={t('settings.knowledge.rebuildChunkConfirm', '确定重新索引该分段？')}
+            title={t('settings.knowledge.rebuildChunkConfirm')}
             placement="bottom"
             onConfirm={async () => {
               setReindexingChunkIds(prev => new Set(prev).add(record.id));
@@ -610,7 +610,7 @@ function KnowledgeBaseDetail({
               }
             }}
           >
-            <Tooltip title={t('settings.knowledge.rebuildDocIndex', '重建索引')}>
+            <Tooltip title={t('settings.knowledge.rebuildDocIndex')}>
               <Button
                 size="small"
                 type="text"
@@ -621,7 +621,7 @@ function KnowledgeBaseDetail({
             </Tooltip>
           </Popconfirm>
           <Popconfirm
-            title={t('settings.knowledge.deleteChunkConfirm', '确定删除此分段？')}
+            title={t('settings.knowledge.deleteChunkConfirm')}
             onConfirm={async () => {
               try {
                 await invoke('delete_knowledge_chunk', { baseId: base.id, chunkId: record.id });
@@ -658,9 +658,9 @@ function KnowledgeBaseDetail({
             color={base.embeddingProvider ? 'green' : 'default'}
             style={{ fontSize: 12 }}
           >
-            {base.embeddingProvider ? t('settings.knowledge.vectorReady', '就绪') : t('settings.knowledge.vectorNotConfigured', '未配置')}
+            {base.embeddingProvider ? t('settings.knowledge.vectorReady') : t('settings.knowledge.vectorNotConfigured')}
           </Tag>
-          <Tooltip title={t('settings.knowledge.knowledgeBaseSettings', '知识库设置')}>
+          <Tooltip title={t('settings.knowledge.knowledgeBaseSettings')}>
             <Button
               size="small"
               type="text"
@@ -687,7 +687,7 @@ function KnowledgeBaseDetail({
 
       {/* Settings Modal */}
       <Modal
-        title={t('settings.knowledge.knowledgeBaseSettings', '知识库设置')}
+        title={t('settings.knowledge.knowledgeBaseSettings')}
         open={settingsOpen}
         onOk={async () => {
           const providerChanged = settingsForm.embeddingProvider !== originalProvider;
@@ -739,11 +739,11 @@ function KnowledgeBaseDetail({
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex items-center justify-between">
-            <span>{t('settings.knowledge.embeddingDimensions', '嵌入维度')}</span>
+            <span>{t('settings.knowledge.embeddingDimensions')}</span>
             <InputNumber
               value={settingsForm.embeddingDimensions}
               onChange={(val) => setSettingsForm(s => ({ ...s, embeddingDimensions: val ?? undefined }))}
-              placeholder={t('settings.knowledge.embeddingDimensionsAuto', '自动')}
+              placeholder={t('settings.knowledge.embeddingDimensionsAuto')}
               min={1}
               max={65536}
               style={{ width: 280 }}
@@ -751,7 +751,7 @@ function KnowledgeBaseDetail({
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex items-center justify-between">
-            <span>{t('settings.knowledge.retrievalThreshold', '检索阈值')}</span>
+            <span>{t('settings.knowledge.retrievalThreshold')}</span>
             <InputNumber
               value={settingsForm.retrievalThreshold}
               onChange={(val) => setSettingsForm(s => ({ ...s, retrievalThreshold: val ?? 0.1 }))}
@@ -763,7 +763,7 @@ function KnowledgeBaseDetail({
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex items-center justify-between">
-            <span>{t('settings.knowledge.retrievalTopK', '检索记录数')}</span>
+            <span>{t('settings.knowledge.retrievalTopK')}</span>
             <InputNumber
               value={settingsForm.retrievalTopK}
               onChange={(val) => setSettingsForm(s => ({ ...s, retrievalTopK: val ?? 5 }))}
@@ -774,10 +774,10 @@ function KnowledgeBaseDetail({
           </div>
           <Divider style={{ margin: 0 }} />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {t('settings.knowledge.chunkingConfig', '分段配置')}
+            {t('settings.knowledge.chunkingConfig')}
           </Typography.Text>
           <div className="flex items-center justify-between">
-            <span>{t('settings.knowledge.chunkSize', '分段大小')}</span>
+            <span>{t('settings.knowledge.chunkSize')}</span>
             <InputNumber
               value={settingsForm.chunkSize}
               onChange={(val) => setSettingsForm(s => ({ ...s, chunkSize: val ?? undefined }))}
@@ -789,7 +789,7 @@ function KnowledgeBaseDetail({
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex items-center justify-between">
-            <span>{t('settings.knowledge.chunkOverlap', '重叠大小')}</span>
+            <span>{t('settings.knowledge.chunkOverlap')}</span>
             <InputNumber
               value={settingsForm.chunkOverlap}
               onChange={(val) => setSettingsForm(s => ({ ...s, chunkOverlap: val ?? undefined }))}
@@ -801,22 +801,22 @@ function KnowledgeBaseDetail({
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex items-center justify-between">
-            <span>{t('settings.knowledge.separator', '自定义分隔符')}</span>
+            <span>{t('settings.knowledge.separator')}</span>
             <Input
               value={settingsForm.separator}
               onChange={(e) => setSettingsForm(s => ({ ...s, separator: e.target.value || undefined }))}
-              placeholder={t('settings.knowledge.separatorPlaceholder', '留空使用默认策略')}
+              placeholder={t('settings.knowledge.separatorPlaceholder')}
               style={{ width: 280 }}
             />
           </div>
           <Divider style={{ margin: 0 }} />
           <div className="flex flex-col gap-1">
-            <span>{t('settings.knowledge.description', '描述')}</span>
+            <span>{t('settings.knowledge.description')}</span>
             <Input.TextArea
               value={settingsForm.description}
               onChange={(e) => setSettingsForm(s => ({ ...s, description: e.target.value }))}
               rows={3}
-              placeholder={t('settings.knowledge.descriptionPlaceholder', '可选的知识库描述')}
+              placeholder={t('settings.knowledge.descriptionPlaceholder')}
             />
           </div>
         </div>
@@ -824,7 +824,7 @@ function KnowledgeBaseDetail({
 
       {/* Embedding provider change confirmation */}
       <Modal
-        title={t('settings.knowledge.changeEmbeddingTitle', '更换向量模型')}
+        title={t('settings.knowledge.changeEmbeddingTitle')}
         open={providerConfirmOpen}
         onOk={async () => {
           await updateBase(base.id, {
@@ -859,7 +859,7 @@ function KnowledgeBaseDetail({
         okButtonProps={{ danger: true }}
         mask={{ enabled: true, blur: true }}
       >
-        <p>{t('settings.knowledge.changeEmbeddingWarning', '更换向量模型后，该知识库下所有文档将自动重新进行向量索引。此操作不可撤销，是否继续？')}</p>
+        <p>{t('settings.knowledge.changeEmbeddingWarning')}</p>
       </Modal>
 
       {/* Toolbar: add + rebuild on left, search + clear on right */}
@@ -869,11 +869,11 @@ function KnowledgeBaseDetail({
             <Button icon={<Plus size={14} />} onClick={handleAddDocuments} />
           </Tooltip>
           <Popconfirm
-            title={t('settings.knowledge.rebuildIndexConfirm', '确定重建索引？将重新生成所有分段的向量嵌入。')}
+            title={t('settings.knowledge.rebuildIndexConfirm')}
             placement="bottom"
             onConfirm={handleRebuildIndex}
           >
-            <Tooltip title={t('settings.knowledge.rebuildIndex', '重建索引')}>
+            <Tooltip title={t('settings.knowledge.rebuildIndex')}>
               <Button
                 icon={<Zap size={14} />}
                 loading={rebuildingIndex}
@@ -886,7 +886,7 @@ function KnowledgeBaseDetail({
           {base.embeddingProvider && (
             <>
               <Input
-                placeholder={t('settings.knowledge.searchPlaceholder', '检索知识库...')}
+                placeholder={t('settings.knowledge.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onPressEnter={handleSearch}
@@ -894,7 +894,7 @@ function KnowledgeBaseDetail({
                 allowClear
                 onClear={() => setSearchResults(null)}
               />
-              <Tooltip title={t('settings.knowledge.search', '搜索')}>
+              <Tooltip title={t('settings.knowledge.search')}>
                 <Button
                   icon={<Search size={14} />}
                   loading={searching}
@@ -904,18 +904,18 @@ function KnowledgeBaseDetail({
             </>
           )}
           <Popconfirm
-            title={t('settings.knowledge.clearIndexConfirm', '确定清空所有索引？此操作不可撤销。')}
+            title={t('settings.knowledge.clearIndexConfirm')}
             onConfirm={async () => {
               try {
                 await invoke('clear_knowledge_index', { baseId: base.id });
                 loadDocuments(base.id);
-                messageApi.success(t('settings.knowledge.clearSuccess', '索引已清空'));
+                messageApi.success(t('settings.knowledge.clearSuccess'));
               } catch (e) {
                 messageApi.error(String(e));
               }
             }}
           >
-            <Tooltip title={t('settings.knowledge.clearIndex', '清空索引')}>
+            <Tooltip title={t('settings.knowledge.clearIndex')}>
               <Button
                 icon={<Trash size={14} />}
                 danger
@@ -928,7 +928,7 @@ function KnowledgeBaseDetail({
 
       {/* Search Results */}
       <Modal
-        title={`${t('settings.knowledge.searchResults', '检索结果')} (${searchResults?.length || 0})`}
+        title={`${t('settings.knowledge.searchResults')} (${searchResults?.length || 0})`}
         open={searchResults !== null}
         onCancel={() => setSearchResults(null)}
         footer={null}
@@ -936,7 +936,7 @@ function KnowledgeBaseDetail({
         mask={{ enabled: true, blur: true }}
       >
         {searchResults && searchResults.length === 0 ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.knowledge.noResults', '未找到结果')} />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.knowledge.noResults')} />
         ) : (
           <Table
             dataSource={searchResults || []}
@@ -946,14 +946,14 @@ function KnowledgeBaseDetail({
             bordered
             columns={[
               {
-                title: t('settings.knowledge.chunkIndex', '序号'),
+                title: t('settings.knowledge.chunkIndex'),
                 dataIndex: 'chunk_index',
                 key: 'chunk_index',
                 width: 70,
                 render: (idx: number) => <Tag style={{ fontSize: 11 }}>#{idx}</Tag>,
               },
               {
-                title: t('settings.knowledge.docTitle', '文档'),
+                title: t('settings.knowledge.docTitle'),
                 dataIndex: 'document_id',
                 key: 'document_id',
                 width: 120,
@@ -964,7 +964,7 @@ function KnowledgeBaseDetail({
                 },
               },
               {
-                title: t('settings.knowledge.chunkContent', '内容'),
+                title: t('settings.knowledge.chunkContent'),
                 dataIndex: 'content',
                 key: 'content',
                 ellipsis: { showTitle: false },
@@ -984,7 +984,7 @@ function KnowledgeBaseDetail({
                 ),
               },
               {
-                title: t('settings.knowledge.score', '相似度'),
+                title: t('settings.knowledge.score'),
                 dataIndex: 'score',
                 key: 'score',
                 width: 90,
@@ -1011,7 +1011,7 @@ function KnowledgeBaseDetail({
 
       {/* Chunks Modal */}
       <Modal
-        title={`${t('settings.knowledge.viewChunks', '分段')} - ${chunksDocTitle}`}
+        title={`${t('settings.knowledge.viewChunks')} - ${chunksDocTitle}`}
         open={chunksModalOpen}
         onCancel={() => { setChunksModalOpen(false); setChunks([]); }}
         footer={null}
@@ -1025,7 +1025,7 @@ function KnowledgeBaseDetail({
         ) : chunks.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={t('settings.knowledge.noChunks', '暂无分段数据')}
+            description={t('settings.knowledge.noChunks')}
           />
         ) : (
           <>
@@ -1043,7 +1043,7 @@ function KnowledgeBaseDetail({
                   setAddChunkOpen(true);
                 }}
               >
-                {t('settings.knowledge.addChunk', '添加分段')}
+                {t('settings.knowledge.addChunk')}
               </Button>
             </div>
             <Table
@@ -1061,7 +1061,7 @@ function KnowledgeBaseDetail({
 
       {/* Chunk View/Edit Modal */}
       <Modal
-        title={chunkEditing ? t('settings.knowledge.editChunk', '编辑') : t('settings.knowledge.viewChunks', '分段')}
+        title={chunkEditing ? t('settings.knowledge.editChunk') : t('settings.knowledge.viewChunks')}
         open={chunkViewOpen}
         onCancel={() => { setChunkViewOpen(false); setChunkViewId(null); setChunkSaving(false); }}
         onOk={chunkEditing ? async () => {
@@ -1103,7 +1103,7 @@ function KnowledgeBaseDetail({
 
       {/* Add Chunk Modal */}
       <Modal
-        title={t('settings.knowledge.addChunk', '添加分段')}
+        title={t('settings.knowledge.addChunk')}
         open={addChunkOpen}
         onCancel={() => { setAddChunkOpen(false); setAddChunkContent(''); setAddChunkSaving(false); }}
         onOk={async () => {
@@ -1136,7 +1136,7 @@ function KnowledgeBaseDetail({
         <Input.TextArea
           value={addChunkContent}
           onChange={(e) => setAddChunkContent(e.target.value)}
-          placeholder={t('settings.knowledge.addChunkPlaceholder', '请输入分段内容...')}
+          placeholder={t('settings.knowledge.addChunkPlaceholder')}
           autoSize={{ minRows: 8, maxRows: 20 }}
           style={{ fontSize: 13 }}
         />
@@ -1210,7 +1210,7 @@ export default function KnowledgeSettings() {
           <div className="flex h-full items-center justify-center">
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={t('settings.knowledge.selectOrAdd', '请选择或添加知识库')}
+              description={t('settings.knowledge.selectOrAdd')}
             />
           </div>
         )}

@@ -78,7 +78,7 @@ export function WebSearchNode(props: NodeComponentProps<WebSearchNodeData>) {
           <Search size={16} style={{ color: token.colorPrimary }} />
         </span>
         <span style={{ color: token.colorTextSecondary, fontSize: 13 }}>
-          {t('chat.search.searching', '正在联网搜索...')}
+          {t('chat.search.searching')}
         </span>
       </div>
     );
@@ -101,7 +101,7 @@ export function WebSearchNode(props: NodeComponentProps<WebSearchNodeData>) {
         }}
       >
         <AlertCircle size={16} />
-        <span>{node.content || t('chat.search.error', '搜索失败')}</span>
+        <span>{node.content || t('chat.search.error')}</span>
       </div>
     );
   }

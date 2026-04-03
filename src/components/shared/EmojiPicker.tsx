@@ -69,7 +69,7 @@ export function EmojiPicker({ open, onClose, onEmojiSelect }: EmojiPickerProps) 
       open={open}
       onCancel={onClose}
       footer={null}
-      title={t('common.selectEmoji', '选择表情')}
+      title={t('common.selectEmoji')}
       width={400}
       centered
       destroyOnClose

@@ -26,8 +26,8 @@ import type { SearchProvider, CreateSearchProviderInput, SearchProviderType } fr
 function providerSelectOptions(t: (key: string, fallback?: string) => string) {
   return [
     { value: 'tavily', label: <span className="flex items-center gap-2"><Tavily.Color size={16} /> Tavily</span> },
-    { value: 'zhipu', label: <span className="flex items-center gap-2"><ProviderIcon provider="zhipu" size={16} type="color" /> {t('settings.searchProviders.zhipu', '智谱')}</span> },
-    { value: 'bocha', label: <span className="flex items-center gap-2"><img src="/icons/bocha.ico" alt="" style={{ width: 16, height: 16 }} /> {t('settings.searchProviders.bocha', '博查')}</span> },
+    { value: 'zhipu', label: <span className="flex items-center gap-2"><ProviderIcon provider="zhipu" size={16} type="color" /> {t('settings.searchProviders.zhipu')}</span> },
+    { value: 'bocha', label: <span className="flex items-center gap-2"><img src="/icons/bocha.ico" alt="" style={{ width: 16, height: 16 }} /> {t('settings.searchProviders.bocha')}</span> },
   ];
 }
 
@@ -60,7 +60,7 @@ function SearchProviderList({
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
         {providers.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.searchProviders.empty', '暂无搜索供应商')} />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('settings.searchProviders.empty')} />
           </div>
         ) : (
           providers.map((p) => {
@@ -157,12 +157,12 @@ function SearchProviderDetail({
     try {
       const result = await invoke<{ ok: boolean; latencyMs?: number; resultCount?: number; error?: string }>('test_search_provider', { id: provider.id });
       if (result.ok) {
-        message.success(`${t('settings.searchProviders.testSuccess', '连接成功')} (${result.latencyMs}ms, ${result.resultCount} ${t('settings.searchProviders.results', '条结果')})`);
+        message.success(`${t('settings.searchProviders.testSuccess')} (${result.latencyMs}ms, ${result.resultCount} ${t('settings.searchProviders.results')})`);
       } else {
-        message.error(result.error || t('settings.searchProviders.testFailed', '连接失败'));
+        message.error(result.error || t('settings.searchProviders.testFailed'));
       }
     } catch (err: any) {
-      message.error(err?.toString() || t('settings.searchProviders.testFailed', '连接失败'));
+      message.error(err?.toString() || t('settings.searchProviders.testFailed'));
     } finally {
       setTesting(false);
     }
@@ -184,7 +184,7 @@ function SearchProviderDetail({
             loading={testing}
             onClick={handleTestConnection}
           >
-            {t('settings.searchProviders.testConnection', '测试连接')}
+            {t('settings.searchProviders.testConnection')}
           </Button>
           <Popconfirm
             title={t('settings.searchProviders.deleteConfirm')}
@@ -236,7 +236,7 @@ function SearchProviderDetail({
           value={apiKeyInput}
           onChange={(e) => setApiKeyInput(e.target.value)}
           onBlur={handleApiKeyBlur}
-          placeholder={provider.hasApiKey ? t('settings.searchProviders.apiKeySet', '已设置，留空保持不变') : t('settings.searchProviders.apiKeyPlaceholder', '请输入 API Key')}
+          placeholder={provider.hasApiKey ? t('settings.searchProviders.apiKeySet') : t('settings.searchProviders.apiKeyPlaceholder')}
           style={{ width: 280 }}
         />
       </div>
@@ -343,7 +343,7 @@ export default function SearchProviderSettings() {
           <div className="flex h-full items-center justify-center">
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={t('settings.searchProviders.selectOrAdd', '请选择或添加搜索供应商')}
+              description={t('settings.searchProviders.selectOrAdd')}
             />
           </div>
         )}
@@ -376,9 +376,9 @@ export default function SearchProviderSettings() {
           <Form.Item
             name="api_key"
             label="API Key"
-            rules={[{ required: true, message: t('settings.searchProviders.apiKeyPlaceholder', '请输入 API Key') }]}
+            rules={[{ required: true, message: t('settings.searchProviders.apiKeyPlaceholder') }]}
           >
-            <Input.Password placeholder={t('settings.searchProviders.apiKeyPlaceholder', '请输入 API Key')} />
+            <Input.Password placeholder={t('settings.searchProviders.apiKeyPlaceholder')} />
           </Form.Item>
           <Form.Item name="result_limit" label={t('settings.searchProviders.resultLimit')} initialValue={10}>
             <InputNumber min={1} max={50} />

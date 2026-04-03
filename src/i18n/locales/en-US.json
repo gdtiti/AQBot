@@ -122,7 +122,9 @@
       "attachments": "Attachments",
       "session": "Session",
       "artifacts": "Artifacts",
-      "toggle": "Toggle Inspector"
+      "toggle": "Toggle Inspector",
+      "toolInput": "Input",
+      "toolOutput": "Output"
     },
     "context": {
       "app": "App",
@@ -138,7 +140,8 @@
     "artifacts": {
       "empty": "No artifacts yet",
       "title": "Artifacts",
-      "extract": "Extract as Draft"
+      "extract": "Extract as Draft",
+      "comingSoon": "Full edit coming in Phase 2.2"
     },
     "branch": {
       "compare": "Branch Compare",
@@ -194,7 +197,25 @@
     "branchCreated": "Branch conversation created",
     "branchTitlePlaceholder": "Enter conversation name",
     "branchIndependent": "Branch as independent",
-    "branchChild": "Branch as child"
+    "branchChild": "Branch as child",
+    "clearAll": "Clear all",
+    "clearContext": "Clear context",
+    "confirmDeleteMessage": "Delete this message and all its replies?",
+    "confirmDeleteVersion": "Delete this version?",
+    "conversationSettings": "Conversation settings",
+    "deleteAll": "Delete all",
+    "deleteLastVersionHint": "This is the last AI reply. You can delete only the reply or include the user message.",
+    "deleteThisOnly": "This one only",
+    "generating": "Generating…",
+    "loadingConversation": "Loading conversation…",
+    "multiModel": {
+      "selectTitle": "Select models to respond simultaneously",
+      "selectedCount": "{{count}} model(s) selected"
+    },
+    "pinnedModels": "Pinned models",
+    "scrollToBottom": "Scroll to bottom",
+    "searchModelOrProvider": "Search model or provider",
+    "switchModel": "Switch model"
   },
   "gateway": {
     "title": "Gateway",
@@ -657,7 +678,8 @@
       "addChunkPlaceholder": "Enter chunk content...",
       "statusLabel": "Status",
       "docType": "Type",
-      "docTypeFile": "File"
+      "docTypeFile": "File",
+      "docTitle": "Document"
     },
     "memory": {
       "title": "Memory",
@@ -688,7 +710,26 @@
       "rebuildItemConfirm": "Re-index this item?",
       "clearIndex": "Clear Index",
       "clearIndexConfirm": "Clear all indexes? This action cannot be undone.",
-      "clearSuccess": "Index cleared"
+      "clearSuccess": "Index cleared",
+      "changeEmbeddingTitle": "Change embedding model",
+      "changeEmbeddingWarning": "After changing the embedding model, all memory entries in this namespace will be automatically re-indexed. This cannot be undone. Continue?",
+      "clearIcon": "Clear icon",
+      "deleteNamespace": "Delete namespace",
+      "editItem": "Edit memory",
+      "embeddingDimensions": "Embedding dimensions",
+      "embeddingDimensionsAuto": "Auto",
+      "iconUrlPlaceholder": "Enter image URL",
+      "indexStatusLabel": "Index status",
+      "namespaceSettings": "Namespace settings",
+      "noResults": "No matching results",
+      "reindexItem": "Re-index",
+      "retrievalThreshold": "Retrieval threshold",
+      "retrievalTopK": "Top-K results",
+      "search": "Search",
+      "searchPlaceholder": "Search memories...",
+      "searchResults": "Search results",
+      "similarity": "Similarity",
+      "updateSuccess": "Updated successfully"
     },
     "desktopIntegration": {
       "title": "Desktop Integration"
@@ -750,7 +791,22 @@
       "indexed": "Indexed",
       "failed": "Failed",
       "notConfigured": "Not configured"
-    }
+    },
+    "addModel": "Add model",
+    "closeSettings": "Close settings",
+    "collapseAll": "Collapse all",
+    "custom": "Custom",
+    "duplicateModelError": "Model ID already exists, please use a different ID",
+    "expandAll": "Expand all",
+    "mcp": {
+      "builtin": "Built-in tools",
+      "custom": "Custom"
+    },
+    "minutes": "minutes",
+    "modelGroup": "Model group",
+    "modelGroupAuto": "Leave blank to auto-generate groups by model ID",
+    "modelIdRequired": "Please fill in the model ID first",
+    "openSettings": "Settings"
   },
   "backup": {
     "title": "Backup Center",
@@ -819,7 +875,8 @@
       "fileName": "File Name",
       "device": "Device",
       "lastSync": "Last sync"
-    }
+    },
+    "backupSuccess": "Backup successful"
   },
   "common": {
     "confirm": "Confirm",
@@ -862,7 +919,9 @@
     "name": "Name",
     "unlimited": "Unlimited",
     "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out"
+    "zoomOut": "Zoom out",
+    "ok": "OK",
+    "selectAll": "Select all"
   },
   "image": {
     "loadError": "Image failed to load",
@@ -903,7 +962,8 @@
     "noModelSelected": "Please select a model",
     "keyValidationFailed": "Key validation failed",
     "gatewayStartFailed": "Gateway start failed",
-    "proxyTestFailed": "Proxy test failed"
+    "proxyTestFailed": "Proxy test failed",
+    "invalidFormat": "Invalid format"
   },
   "desktop": {
     "title": "Desktop Integration",
@@ -993,5 +1053,18 @@
     "deleteSuccess": "File deleted",
     "confirmYes": "Yes",
     "confirmNo": "No"
+  },
+  "titlebar": {
+    "giveStar": "Give a Star ⭐",
+    "lastBackup": "Last backup",
+    "lastLocal": "Local",
+    "localBackup": "Local backup",
+    "nextBackup": "Next auto backup",
+    "noBackupYet": "No backup yet",
+    "now": "Upcoming",
+    "quickBackup": "Quick backup",
+    "submitBug": "Submit a bug report",
+    "submitFeature": "Submit a feature request",
+    "webdavBackup": "WebDAV backup"
   }
 }

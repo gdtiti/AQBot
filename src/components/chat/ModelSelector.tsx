@@ -388,7 +388,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
       {children ? (
         <span onClick={() => setOpen(true)}>{children}</span>
       ) : (
-        <Tooltip title={`${t('chat.switchModel', '切换模型')} (${formatShortcutForDisplay(getShortcutBinding(settings, 'toggleModelSelector'))})`} placement="bottom">
+        <Tooltip title={`${t('chat.switchModel')} (${formatShortcutForDisplay(getShortcutBinding(settings, 'toggleModelSelector'))})`} placement="bottom">
         <Tag
           onClick={() => setOpen(true)}
           style={{
@@ -422,17 +422,17 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
         footer={multiSelect ? (
           <div className="flex items-center justify-between" style={{ padding: '8px 12px' }}>
             <span style={{ fontSize: 12, color: token.colorTextSecondary }}>
-              {t('chat.multiModel.selectedCount', '已选 {{count}} 个模型').replace('{{count}}', String(multiSelectedKeys.size))}
+              {t('chat.multiModel.selectedCount').replace('{{count}}', String(multiSelectedKeys.size))}
             </span>
             <Button type="primary" size="small" onClick={handleMultiConfirm}>
-              {t('common.confirm', '确认')}
+              {t('common.confirm')}
             </Button>
           </div>
         ) : null}
         title={multiSelect ? (
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, paddingLeft: 4 }}>
             <LayoutGrid size={16} />
-            {t('chat.multiModel.selectTitle', '选择同时回答的模型')}
+            {t('chat.multiModel.selectTitle')}
           </span>
         ) : null}
         closable={false}
@@ -447,7 +447,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
         <div className="flex items-center gap-2" style={{ padding: '8px 8px 4px' }}>
           <Input
             prefix={<Search size={14} style={{ color: token.colorTextSecondary }} />}
-            placeholder={t('chat.searchModelOrProvider', '搜索模型或服务商')}
+            placeholder={t('chat.searchModelOrProvider')}
             variant="borderless"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -458,7 +458,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
               backgroundColor: token.colorFillTertiary,
             }}
           />
-          <Tooltip title={allGroupsExpanded ? t('common.collapseAll', '全部收起') : t('common.expandAll', '全部展开')}>
+          <Tooltip title={allGroupsExpanded ? t('common.collapseAll') : t('common.expandAll')}>
             <span
               style={{ cursor: 'pointer', color: token.colorTextSecondary, flexShrink: 0, display: 'flex', alignItems: 'center', padding: 4 }}
               onClick={toggleAllGroups}
@@ -492,7 +492,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
                     }}
                   >
                     <PinOff size={11} style={{ marginRight: 4 }} />
-                    <span>{t('chat.pinnedModels', '置顶模型')}</span>
+                    <span>{t('chat.pinnedModels')}</span>
                   </div>
                 );
               }

@@ -74,7 +74,7 @@ export function SettingsSidebar() {
         }}
       >
         <ArrowLeft size={16} />
-        <span style={{ fontSize: 14 }}>{t('common.back', '返回')}</span>
+        <span style={{ fontSize: 14 }}>{t('common.back')}</span>
         <span
           style={{
             fontSize: 11,

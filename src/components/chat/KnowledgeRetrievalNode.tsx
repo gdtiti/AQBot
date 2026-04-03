@@ -72,7 +72,7 @@ export function KnowledgeRetrievalNode(props: NodeComponentProps<KnowledgeRetrie
           <BookOpen size={16} style={{ color: token.colorPrimary }} />
         </span>
         <span style={{ color: token.colorTextSecondary, fontSize: 13 }}>
-          {t('chat.knowledgeRetrieval.searching', '正在检索知识库...')}
+          {t('chat.knowledgeRetrieval.searching')}
         </span>
       </div>
     );
@@ -95,7 +95,7 @@ export function KnowledgeRetrievalNode(props: NodeComponentProps<KnowledgeRetrie
         }}
       >
         <AlertCircle size={16} />
-        <span>{node.content || t('chat.knowledgeRetrieval.error', '知识库检索失败')}</span>
+        <span>{node.content || t('chat.knowledgeRetrieval.error')}</span>
       </div>
     );
   }

@@ -1,4 +1,4 @@
-简体中文 | [English](./README-EN.md)
+**简体中文** | [繁體中文](./README-ZH-TW.md) | [English](./README-EN.md) | [日本語](./README-JA.md) | [한국어](./README-KO.md) | [Français](./README-FR.md) | [Deutsch](./README-DE.md) | [Español](./README-ES.md) | [Русский](./README-RU.md) | [हिन्दी](./README-HI.md) | [العربية](./README-AR.md)
 
 [![AQBot](https://socialify.git.ci/AQBot-Desktop/AQBot/image?description=1&font=JetBrains+Mono&forks=1&issues=1&logo=https%3A%2F%2Fgithub.com%2FAQBot-Desktop%2FAQBot%2Fblob%2Fmain%2Fsrc%2Fassets%2Fimage%2Flogo.png%3Fraw%3Dtrue&name=1&owner=1&pattern=Floating+Cogs&pulls=1&stargazers=1&theme=Auto)](https://github.com/AQBot-Desktop/AQBot)
 
@@ -65,7 +65,7 @@
 ### 桌面体验
 
 - **主题切换** — 深色/浅色主题，可跟随系统或手动指定
-- **界面语言** — 完整支持简体中文与英文，可在设置中随时切换
+- **界面语言** — 完整支持简体中文、繁体中文、英文、日文、韩文、法文、德文、西班牙文、俄文、印地文与阿拉伯文，可在设置中随时切换
 - **系统托盘** — 关闭窗口时最小化到系统托盘，不中断后台服务
 - **窗口置顶** — 可将主窗口常驻最顶层
 - **全局快捷键** — 自定义全局快捷键，随时唤起主窗口

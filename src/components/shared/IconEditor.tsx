@@ -91,25 +91,25 @@ export function IconEditor({
     ...(showModelIcons ? [{
       key: 'model_icon',
       icon: <Grid2x2 size={14} />,
-      label: t('settings.chooseIcon', '图标库'),
+      label: t('settings.chooseIcon'),
       onClick: () => setShowIconPicker(true),
     }] : []),
     {
       key: 'emoji',
       icon: <Smile size={14} />,
-      label: t('userProfile.emoji', 'Emoji'),
+      label: t('userProfile.emoji'),
       onClick: () => { setShowEmojiPicker(true); setShowUrlInput(false); },
     },
     {
       key: 'url',
       icon: <Link size={14} />,
-      label: t('userProfile.imageUrl', '图片链接'),
+      label: t('userProfile.imageUrl'),
       onClick: () => { setShowUrlInput(true); setShowEmojiPicker(false); setUrlInput(iconType === 'url' ? (iconValue ?? '') : ''); },
     },
     {
       key: 'file',
       icon: <FileImage size={14} />,
-      label: t('userProfile.selectImage', '选择图片'),
+      label: t('userProfile.selectImage'),
       onClick: () => fileInputRef.current?.click(),
     },
     ...(showClear && iconType ? [
@@ -117,7 +117,7 @@ export function IconEditor({
       {
         key: 'clear',
         icon: <Trash2 size={14} />,
-        label: t('settings.memory.clearIcon', '清除图标'),
+        label: t('settings.memory.clearIcon'),
         danger: true as const,
         onClick: () => onChange(null, null),
       },
@@ -208,7 +208,7 @@ export function IconEditor({
       {showUrlInput && (
         <div className="flex items-center gap-2" style={{ marginTop: 8 }}>
           <Input
-            placeholder={t('settings.memory.iconUrlPlaceholder', '输入图片链接')}
+            placeholder={t('settings.memory.iconUrlPlaceholder')}
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             autoFocus
@@ -225,8 +225,8 @@ export function IconEditor({
               onChange('url', urlInput.trim());
             }
             setShowUrlInput(false);
-          }}>{t('common.ok', '确定')}</Button>
-          <Button size="small" onClick={() => setShowUrlInput(false)}>{t('common.cancel', '取消')}</Button>
+          }}>{t('common.ok')}</Button>
+          <Button size="small" onClick={() => setShowUrlInput(false)}>{t('common.cancel')}</Button>
         </div>
       )}
     </>

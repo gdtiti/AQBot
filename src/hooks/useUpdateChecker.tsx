@@ -18,7 +18,7 @@ export function useUpdateChecker() {
       const { check } = await import('@tauri-apps/plugin-updater');
       const update = await check();
       if (!update) {
-        if (!silent) message.success(t('settings.noUpdate', '当前已是最新版本'));
+        if (!silent) message.success(t('settings.noUpdate'));
         return false;
       }
 
@@ -53,7 +53,7 @@ export function useUpdateChecker() {
             </div>
           );
           const progressModal = modal.info({
-            title: t('settings.updating', '正在更新...'),
+            title: t('settings.updating'),
             content: renderContent(0, 'active'),
             closable: false,
             footer: null,
@@ -82,7 +82,7 @@ export function useUpdateChecker() {
           } catch (e) {
             progressModal.destroy();
             if (!cancelled) {
-              message.error(t('settings.updateFailed', '更新失败'));
+              message.error(t('settings.updateFailed'));
               console.error('Update install failed:', e);
             }
           }
@@ -90,7 +90,7 @@ export function useUpdateChecker() {
       });
       return true;
     } catch (e) {
-      if (!silent) message.error(t('settings.checkUpdateFailed', '检查更新失败，请稍后再试'));
+      if (!silent) message.error(t('settings.checkUpdateFailed'));
       console.error('Update check failed:', e);
       return false;
     }

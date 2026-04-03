@@ -22,8 +22,17 @@ const THEME_ICONS: Record<string, React.ReactNode> = {
 };
 
 const LANG_OPTIONS = [
-  { key: 'zh-CN', label: '中文', icon: '🇨🇳' },
+  { key: 'zh-CN', label: '简体中文', icon: '🇨🇳' },
+  { key: 'zh-TW', label: '繁體中文', icon: '🇭🇰' },
   { key: 'en-US', label: 'English', icon: '🇺🇸' },
+  { key: 'ja', label: '日本語', icon: '🇯🇵' },
+  { key: 'ko', label: '한국어', icon: '🇰🇷' },
+  { key: 'fr', label: 'Français', icon: '🇫🇷' },
+  { key: 'de', label: 'Deutsch', icon: '🇩🇪' },
+  { key: 'es', label: 'Español', icon: '🇪🇸' },
+  { key: 'ru', label: 'Русский', icon: '🇷🇺' },
+  { key: 'hi', label: 'हिन्दी', icon: '🇮🇳' },
+  { key: 'ar', label: 'العربية', icon: '🇸🇦' },
 ] as const;
 
 export function TitleBar() {
@@ -124,7 +133,7 @@ export function TitleBar() {
   const { backupSettings, loadBackupSettings } = useBackupStore();
 
   const fmtCountdown = (ms: number) => {
-    if (ms <= 0) return t('titlebar.now', '即将执行');
+    if (ms <= 0) return t('titlebar.now');
     const h = Math.floor(ms / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
     const s = Math.floor((ms % 60000) / 1000);
@@ -245,7 +254,7 @@ export function TitleBar() {
       } else {
         await invoke('webdav_backup');
       }
-      message.success(t('backup.backupSuccess', '备份成功'));
+      message.success(t('backup.backupSuccess'));
       setBackupPopoverOpen(false);
     } catch (e) {
       message.error(String(e));
@@ -259,18 +268,18 @@ export function TitleBar() {
     {
       key: 'feature',
       icon: <MessageSquarePlus size={14} />,
-      label: t('titlebar.submitFeature', '提交建议'),
+      label: t('titlebar.submitFeature'),
     },
     {
       key: 'bug',
       icon: <Bug size={14} />,
-      label: t('titlebar.submitBug', '提交 BUG'),
+      label: t('titlebar.submitBug'),
     },
     { type: 'divider' },
     {
       key: 'star',
       icon: <Star size={14} />,
-      label: t('titlebar.giveStar', '给个 Star ⭐'),
+      label: t('titlebar.giveStar'),
     },
   ];
   const handleGithubClick: MenuProps['onClick'] = ({ key }) => {
@@ -413,12 +422,12 @@ export function TitleBar() {
           content={
             <div style={{ width: 240 }}>
               <Typography.Text strong style={{ fontSize: 13 }}>
-                {t('titlebar.lastBackup', '上次备份')}
+                {t('titlebar.lastBackup')}
               </Typography.Text>
               <Space direction="vertical" size={2} style={{ width: '100%', marginTop: 4 }}>
                 {lastLocalBackup && (
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {t('titlebar.lastLocal', '本地')}: {lastLocalBackup}
+                    {t('titlebar.lastLocal')}: {lastLocalBackup}
                   </Typography.Text>
                 )}
                 {lastWebDavSync && (
@@ -428,7 +437,7 @@ export function TitleBar() {
                 )}
                 {!lastLocalBackup && !lastWebDavSync && (
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {t('titlebar.noBackupYet', '暂无备份记录')}
+                    {t('titlebar.noBackupYet')}
                   </Typography.Text>
                 )}
               </Space>
@@ -437,12 +446,12 @@ export function TitleBar() {
                 <>
                   <Divider style={{ margin: '6px 0' }} />
                   <Typography.Text strong style={{ fontSize: 13 }}>
-                    {t('titlebar.nextBackup', '下次自动备份')}
+                    {t('titlebar.nextBackup')}
                   </Typography.Text>
                   <Space direction="vertical" size={2} style={{ width: '100%', marginTop: 4 }}>
                     {popoverLocalCountdown && (
                       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                        {t('titlebar.lastLocal', '本地')}: {popoverLocalCountdown}
+                        {t('titlebar.lastLocal')}: {popoverLocalCountdown}
                       </Typography.Text>
                     )}
                     {popoverWebDavCountdown && (
@@ -473,7 +482,7 @@ export function TitleBar() {
                   }}
                 >
                   {backingUp === 'local' ? <Spin size="small" /> : <CloudUpload size={14} />}
-                  {t('titlebar.localBackup', '本地备份')}
+                  {t('titlebar.localBackup')}
                 </button>
                 <button
                   onClick={() => handleQuickBackup('webdav')}
@@ -492,13 +501,13 @@ export function TitleBar() {
                   }}
                 >
                   {backingUp === 'webdav' ? <Spin size="small" /> : <CloudUpload size={14} />}
-                  {t('titlebar.webdavBackup', 'WebDAV 备份')}
+                  {t('titlebar.webdavBackup')}
                 </button>
               </Space>
             </div>
           }
         >
-          <Tooltip title={t('titlebar.quickBackup', '快速备份')}>
+          <Tooltip title={t('titlebar.quickBackup')}>
             <button
               style={{
                 ...buttonBase,
@@ -533,7 +542,7 @@ export function TitleBar() {
 
         {/* Check Update */}
         {isTauri() && (
-          <Tooltip title={t('settings.checkUpdate', '检查更新')}>
+          <Tooltip title={t('settings.checkUpdate')}>
             <button
               onClick={handleCheckUpdate}
               disabled={checkingUpdate}
@@ -557,7 +566,7 @@ export function TitleBar() {
         </Tooltip>
 
         {/* Settings Toggle */}
-        <Tooltip title={`${isInSettings ? t('settings.closeSettings', '关闭设置') : t('settings.openSettings', '设置')} (${formatShortcutForDisplay(getShortcutBinding(settings, 'openSettings'))})`}>
+        <Tooltip title={`${isInSettings ? t('settings.closeSettings') : t('settings.openSettings')} (${formatShortcutForDisplay(getShortcutBinding(settings, 'openSettings'))})`}>
         <button
           onClick={(e) => {
             handleSettingsToggle();

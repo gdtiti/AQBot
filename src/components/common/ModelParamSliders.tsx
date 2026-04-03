@@ -163,8 +163,8 @@ export function ModelParamSliders({
             return (
               <ParamRow
                 key="temperature"
-                label={t('settings.temperature', '温度')}
-                tooltip={t('settings.temperatureTooltip', '较高的值会使输出更随机，较低的值会使输出更确定')}
+                label={t('settings.temperature')}
+                tooltip={t('settings.temperatureTooltip')}
                 value={values.temperature}
                 defaultValue={d.temperature}
                 min={0}
@@ -181,7 +181,7 @@ export function ModelParamSliders({
               <ParamRow
                 key="topP"
                 label="Top P"
-                tooltip={t('settings.topPTooltip', '控制采样范围，较低的值会限制模型只从最可能的词中选择')}
+                tooltip={t('settings.topPTooltip')}
                 value={values.topP}
                 defaultValue={d.topP}
                 min={0}
@@ -197,8 +197,8 @@ export function ModelParamSliders({
             return (
               <ParamRow
                 key="maxTokens"
-                label={t('settings.maxTokens', '最大 Tokens')}
-                tooltip={t('settings.maxTokensTooltip', '模型生成的最大 Token 数量')}
+                label={t('settings.maxTokens')}
+                tooltip={t('settings.maxTokensTooltip')}
                 value={values.maxTokens}
                 defaultValue={d.maxTokens}
                 min={256}
@@ -215,8 +215,8 @@ export function ModelParamSliders({
             return (
               <ParamRow
                 key="frequencyPenalty"
-                label={t('settings.frequencyPenalty', '频率惩罚')}
-                tooltip={t('settings.frequencyPenaltyTooltip', '对重复 token 施加惩罚，减少重复内容的生成')}
+                label={t('settings.frequencyPenalty')}
+                tooltip={t('settings.frequencyPenaltyTooltip')}
                 value={values.frequencyPenalty}
                 defaultValue={d.frequencyPenalty}
                 min={-2}

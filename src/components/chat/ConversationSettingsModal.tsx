@@ -110,7 +110,7 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
     {
       key: 'use_model',
       icon: <Bot size={14} />,
-      label: t('settings.useModelIcon', '使用模型图标'),
+      label: t('settings.useModelIcon'),
       onClick: () => { setIconType('model'); setIconValue(''); },
     },
   ];
@@ -132,7 +132,7 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
 
   return (
     <Modal
-      title={t('settings.conversationSettings', '对话设置')}
+      title={t('settings.conversationSettings')}
       open={open}
       mask={{ enabled: true, blur: true }}
       onCancel={onClose}
@@ -140,9 +140,9 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
       destroyOnHidden
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Button onClick={onClose}>{t('common.cancel', '取消')}</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button type="primary" onClick={handleSave} loading={saving}>
-            {t('common.save', '保存')}
+            {t('common.save')}
           </Button>
         </div>
       }
@@ -171,24 +171,24 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
 
         {/* Name */}
         <div style={{ marginBottom: 16 }}>
-          <div style={labelStyle}>{t('common.name', '名称')}</div>
+          <div style={labelStyle}>{t('common.name')}</div>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
 
         {/* System Prompt */}
         <div style={{ marginBottom: 16 }}>
-          <div style={labelStyle}>{t('settings.systemPromptLabel', '系统提示（角色设定）')}</div>
+          <div style={labelStyle}>{t('settings.systemPromptLabel')}</div>
           <Input.TextArea
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             rows={3}
-            placeholder={t('settings.systemPromptPlaceholder', '输入系统提示词...')}
+            placeholder={t('settings.systemPromptPlaceholder')}
           />
         </div>
 
         {/* Model Settings Card */}
         <Card
-          title={t('settings.modelSettings', '模型设置')}
+          title={t('settings.modelSettings')}
           size="small"
           extra={
             <Button
@@ -197,7 +197,7 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
               icon={<Undo2 size={14} />}
               onClick={handleReset}
             >
-              {t('common.reset', '重置')}
+              {t('common.reset')}
             </Button>
           }
         >
@@ -205,12 +205,12 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
           {/* Context Message Limit */}
           <div style={{ marginBottom: 20 }}>
             <div style={labelStyle}>
-              {t('settings.contextMessageLimit', '上下文的消息数量上限')}
-              <Tooltip title={t('settings.contextMessageLimitTooltip', '限制发送给模型的历史消息数量。设为 50 表示不限制。')}>
+              {t('settings.contextMessageLimit')}
+              <Tooltip title={t('settings.contextMessageLimitTooltip')}>
                 <Info size={14} style={{ color: token.colorTextSecondary, cursor: 'help' }} />
               </Tooltip>
               <span style={{ marginLeft: 'auto', color: token.colorTextSecondary, fontSize: 12 }}>
-                {contextLimit >= 50 ? t('common.unlimited', '不限制') : contextLimit}
+                {contextLimit >= 50 ? t('common.unlimited') : contextLimit}
               </span>
             </div>
             <div style={sliderRowStyle}>

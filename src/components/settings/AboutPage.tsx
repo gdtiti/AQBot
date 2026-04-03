@@ -113,14 +113,14 @@ export function AboutPage() {
         </div>
         <Divider style={{ margin: '4px 0' }} />
         <div style={rowStyle} className="flex items-center justify-between">
-          <span>{t('settings.updateCheckInterval', '自动检查更新间隔（分钟）')}</span>
+          <span>{t('settings.updateCheckInterval')}</span>
           <InputNumber
             min={1}
             max={1440}
             value={updateCheckInterval}
             onChange={(val) => val != null && saveSettings({ update_check_interval: val })}
             style={{ width: 100 }}
-            addonAfter={t('settings.minutes', '分钟')}
+            addonAfter={t('settings.minutes')}
           />
         </div>
         {isTauri() && (

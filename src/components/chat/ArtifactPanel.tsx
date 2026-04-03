@@ -34,7 +34,7 @@ export function ArtifactPanel({ artifact }: ArtifactPanelProps) {
         {artifact.content}
       </Typography.Paragraph>
       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        {t('chat.artifacts.comingSoon', 'Full edit coming in Phase 2.2')}
+        {t('chat.artifacts.comingSoon')}
       </Typography.Text>
     </Card>
   );

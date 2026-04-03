@@ -63,7 +63,7 @@ export function GlobalCopyMenu() {
     const text = selectedTextRef.current;
     if (text) {
       void navigator.clipboard.writeText(text);
-      message.success(t('common.copySuccess', '已复制到剪贴板'));
+      message.success(t('common.copySuccess'));
     }
     setMenuPos(null);
   }, [t]);
@@ -94,13 +94,13 @@ export function GlobalCopyMenu() {
 
   if (hasSelection) {
     items.push(
-      { key: 'copy', icon: <Copy size={14} />, label: t('common.copy', '复制'), onClick: handleCopy },
+      { key: 'copy', icon: <Copy size={14} />, label: t('common.copy'), onClick: handleCopy },
     );
     if (activeConversationId && inChatMessages) {
       items.push({
         key: 'fill',
         icon: <TextCursorInput size={14} />,
-        label: t('common.fillToInput', '填充到输入框'),
+        label: t('common.fillToInput'),
         onClick: handleFillInput,
       });
     }
@@ -110,7 +110,7 @@ export function GlobalCopyMenu() {
     items.push({
       key: 'devtools',
       icon: <Bug size={14} />,
-      label: t('common.openDevtools', '打开开发者工具'),
+      label: t('common.openDevtools'),
       onClick: handleOpenDevtools,
     });
   }

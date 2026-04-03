@@ -370,7 +370,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
       const existingIds = new Set((provider?.models ?? []).map((m) => m.model_id));
       const newModels = models.filter((m) => !existingIds.has(m.model_id));
       if (newModels.length === 0) {
-        message.info(t('settings.noNewModels', '没有发现新模型'));
+        message.info(t('settings.noNewModels'));
         return;
       }
       setPickerModels(newModels);
@@ -463,13 +463,13 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
     const manualGroupName = addModelGroupName.trim();
 
     if (!nextModelId) {
-      message.error(t('settings.modelIdRequired', '请先填写模型标识'));
+      message.error(t('settings.modelIdRequired'));
       return;
     }
 
     const duplicateExists = (provider?.models ?? []).some((model) => model.model_id === nextModelId);
     if (duplicateExists) {
-      message.error(t('settings.duplicateModelError', '模型标识已存在，请使用其他模型标识'));
+      message.error(t('settings.duplicateModelError'));
       return;
     }
 
@@ -673,7 +673,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
                   { label: 'OpenAI Responses', value: 'openai_responses' },
                   { label: 'Anthropic', value: 'anthropic' },
                   { label: 'Gemini', value: 'gemini' },
-                  { label: t('settings.custom', '自定义'), value: 'custom' },
+                  { label: t('settings.custom'), value: 'custom' },
                 ]}
                 popupMatchSelectWidth={false}
               />
@@ -859,7 +859,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
                   onClick={handleRefreshModels}
                 />
               </Tooltip>
-              <Tooltip title={t('settings.addModel', '添加模型')}>
+              <Tooltip title={t('settings.addModel')}>
                 <Button
                   type="text"
                   size="small"
@@ -901,7 +901,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
                 }}
               />
             </Tooltip>
-            <Tooltip title={modelListFullscreen ? t('settings.exitFullscreen', '退出全屏') : t('settings.fullscreen', '全屏')}>
+            <Tooltip title={modelListFullscreen ? t('settings.exitFullscreen') : t('settings.fullscreen')}>
               <Button
                 type="text"
                 size="small"
@@ -967,10 +967,10 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
                       <Tag style={{ fontSize: 11, lineHeight: '18px', padding: '0 6px', margin: 0 }}>{models.length}</Tag>
                       <div style={{ flex: 1 }} />
                       <Space size="small" onClick={(e) => e.stopPropagation()}>
-                        <Tooltip title={t('settings.addModelToGroup', '添加到当前分组')}>
+                        <Tooltip title={t('settings.addModelToGroup')}>
                           <Button size="small" type="text" icon={<Plus size={14} />} onClick={() => handleOpenAddModel(group)} />
                         </Tooltip>
-                        <Tooltip title={t('settings.testGroup', '检测当前分组')}>
+                        <Tooltip title={t('settings.testGroup')}>
                           <Button
                             size="small"
                             type="text"
@@ -1211,7 +1211,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
       </Modal>
 
       <Modal
-        title={t('settings.addModel', '添加模型')}
+        title={t('settings.addModel')}
         open={addModelModalOpen}
         mask={{ enabled: true, blur: true }}
         onCancel={() => {
@@ -1222,7 +1222,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
           setAddModelType('Chat');
         }}
         onOk={handleAddModel}
-        okText={t('settings.addModel', '添加模型')}
+        okText={t('settings.addModel')}
         cancelText={t('common.cancel')}
         destroyOnHidden
       >
@@ -1253,7 +1253,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
               placeholder="GPT 5.4 Think"
             />
           </Form.Item>
-          <Form.Item label={t('settings.modelGroup', '模型分组')}>
+          <Form.Item label={t('settings.modelGroup')}>
             <AutoComplete
               value={addModelGroupName}
               onChange={(val) => {
@@ -1261,7 +1261,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
                 setAddModelGroupName(val);
               }}
               options={modelGroupOptions}
-              placeholder={addModelId.trim() ? deriveModelGroupName(addModelId) : t('settings.modelGroupAuto', '留空时将按模型标识自动生成分组')}
+              placeholder={addModelId.trim() ? deriveModelGroupName(addModelId) : t('settings.modelGroupAuto')}
             />
           </Form.Item>
           <Form.Item label={t('settings.modelType.title')} style={{ marginBottom: 0 }}>
@@ -1342,7 +1342,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
 
             {/* Model Type */}
             <div>
-              <div className="font-medium mb-1.5" style={{ fontSize: 13 }}>{t('settings.modelType.title', '模型类型')}</div>
+              <div className="font-medium mb-1.5" style={{ fontSize: 13 }}>{t('settings.modelType.title')}</div>
               <div className="flex gap-2 flex-wrap">
                 {(Object.keys(MODEL_TYPE_CONFIG) as ModelType[]).map((type_) => (
                   <Tag
@@ -1445,15 +1445,15 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
 
                 {/* Switches — horizontal */}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: token.colorText }}>{t('settings.useMaxCompletionTokens', '使用 max_completion_tokens')}</span>
+                  <span className="text-sm" style={{ color: token.colorText }}>{t('settings.useMaxCompletionTokens')}</span>
                   <Switch size="small" checked={editUseMaxCompletionTokens} onChange={setEditUseMaxCompletionTokens} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: token.colorText }}>{t('settings.noSystemRole', '不支持 System 角色')}</span>
+                  <span className="text-sm" style={{ color: token.colorText }}>{t('settings.noSystemRole')}</span>
                   <Switch size="small" checked={editNoSystemRole} onChange={setEditNoSystemRole} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: token.colorText }}>{t('settings.forceMaxTokens', '强制 Max Tokens')}</span>
+                  <span className="text-sm" style={{ color: token.colorText }}>{t('settings.forceMaxTokens')}</span>
                   <Switch size="small" checked={editForceMaxTokens} onChange={setEditForceMaxTokens} />
                 </div>
               </div>
@@ -1518,12 +1518,12 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
 
       {/* Model picker modal */}
       <Modal
-        title={t('settings.selectModels', '选择要添加的模型')}
+        title={t('settings.selectModels')}
         open={pickerOpen}
         onCancel={() => setPickerOpen(false)}
         onOk={handlePickerConfirm}
-        okText={`${t('settings.addSelected', '添加选中')} (${pickerSelected.size})`}
-        cancelText={t('common.cancel', '取消')}
+        okText={`${t('settings.addSelected')} (${pickerSelected.size})`}
+        cancelText={t('common.cancel')}
         okButtonProps={{ disabled: pickerSelected.size === 0 }}
         width={560}
         styles={{ body: { padding: 0 } }}
@@ -1551,10 +1551,10 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
                   }}
                   style={{ whiteSpace: 'nowrap' }}
                 >
-                  {t('common.selectAll', '全选')} ({pickerSelected.size}/{pickerModels.length})
+                  {t('common.selectAll')} ({pickerSelected.size}/{pickerModels.length})
                 </Checkbox>
                 <Input
-                  placeholder={t('settings.searchModels', '搜索模型')}
+                  placeholder={t('settings.searchModels')}
                   prefix={<Search size={14} />}
                   value={pickerSearch}
                   onChange={(e) => setPickerSearch(e.target.value)}
@@ -1562,7 +1562,7 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
                   size="small"
                   style={{ flex: 1 }}
                 />
-                <Tooltip title={pickerCollapsed.size === 0 ? t('settings.collapseAll', '收起所有') : t('settings.expandAll', '展开所有')}>
+                <Tooltip title={pickerCollapsed.size === 0 ? t('settings.collapseAll') : t('settings.expandAll')}>
                   <Button
                     size="small"
                     type="text"

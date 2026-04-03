@@ -73,7 +73,7 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
           <Brain size={16} style={{ color: token.colorPrimary }} />
         </span>
         <span style={{ color: token.colorTextSecondary, fontSize: 13 }}>
-          {t('chat.memoryRetrieval.searching', '正在检索记忆...')}
+          {t('chat.memoryRetrieval.searching')}
         </span>
       </div>
     );
@@ -96,7 +96,7 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
         }}
       >
         <AlertCircle size={16} />
-        <span>{node.content || t('chat.memoryRetrieval.error', '记忆检索失败')}</span>
+        <span>{node.content || t('chat.memoryRetrieval.error')}</span>
       </div>
     );
   }
@@ -204,7 +204,7 @@ export function MemoryRetrievalNode(props: NodeComponentProps<MemoryRetrievalNod
                 >
                   <Database size={12} style={{ color: token.colorPrimary, flexShrink: 0 }} />
                   <span style={{ fontWeight: 500, color: token.colorText }}>
-                    {t('chat.memoryRetrieval.label', '记忆')}
+                    {t('chat.memoryRetrieval.label')}
                   </span>
                   {item.id && (
                     <span style={{ fontSize: 10, color: token.colorTextQuaternary }}>

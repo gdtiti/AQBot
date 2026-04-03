@@ -446,7 +446,7 @@ function ThinkingNode(props: NodeComponentProps<{
 
   return (
     <Think
-      title={isStreaming ? t('chat.thinkingInProgress', '思考中') : t('chat.thinkingComplete', '思考完成')}
+      title={isStreaming ? t('chat.thinkingInProgress') : t('chat.thinkingComplete')}
       blink={isStreaming}
       loading={isStreaming ? (
         <SyncOutlined style={{ fontSize: 12, animation: 'aqbot-think-spin 1s linear infinite' }} />
@@ -697,10 +697,10 @@ function ChatD2BlockNode({
         <div className="flex items-center gap-x-2">
           <div className="flex items-center gap-x-1 rounded-md p-0.5" style={toggleStyle}>
             <button type="button" className={`mode-btn px-2 py-1 text-xs rounded ${!showSource ? 'is-active' : ''}`} onClick={() => setShowSource(false)}>
-              {t('common.preview', '预览')}
+              {t('common.preview')}
             </button>
             <button type="button" className={`mode-btn px-2 py-1 text-xs rounded ${showSource ? 'is-active' : ''}`} onClick={() => setShowSource(true)}>
-              {t('common.source', '源码')}
+              {t('common.source')}
             </button>
           </div>
           <button type="button" className="d2-action-btn p-2 text-xs rounded-md transition-colors hover:bg-[var(--vscode-editor-selectionBackground)]" aria-label={copied ? 'Copied' : 'Copy'} onClick={() => void handleCopy()}>
@@ -727,7 +727,7 @@ function ChatD2BlockNode({
             ) : (
               <div className="flex items-center justify-center px-4 py-10" style={{ color: token.colorTextSecondary, gap: 8 }}>
                 <SyncOutlined spin />
-                <span className="text-sm">{canRenderPreview ? t('chat.renderingChart', '正在渲染图表…') : t('chat.chartAboutToRender', '图表即将渲染…')}</span>
+                <span className="text-sm">{canRenderPreview ? t('chat.renderingChart') : t('chat.chartAboutToRender')}</span>
               </div>
             )}
             {error ? <p className="d2-error px-4 pb-3 text-xs">{error}</p> : null}
@@ -851,7 +851,7 @@ const AssistantMarkdown = React.memo(function AssistantMarkdown({
           style={{ color: token.colorTextSecondary, gap: 8 }}
         >
           <SyncOutlined spin />
-          <span className="text-sm">{t('chat.loadingRenderContent', '正在加载渲染内容…')}</span>
+          <span className="text-sm">{t('chat.loadingRenderContent')}</span>
         </div>
       </div>
     );
@@ -1130,23 +1130,23 @@ function DeleteLastVersionPopover({
         <div style={{ maxWidth: 280 }}>
           <div style={{ marginBottom: 12, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <AlertCircle size={16} style={{ color: token.colorWarning, marginTop: 2, flexShrink: 0 }} />
-            <span>{t('chat.deleteLastVersionHint', '这是最后一条 AI 回复，您可以选择仅删除回复或连同用户消息一起删除。')}</span>
+            <span>{t('chat.deleteLastVersionHint')}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <Button size="small" onClick={() => setOpen(false)}>
-              {t('common.cancel', '取消')}
+              {t('common.cancel')}
             </Button>
             <Button size="small" onClick={handleDeleteThisOnly}>
-              {t('chat.deleteThisOnly', '仅此条')}
+              {t('chat.deleteThisOnly')}
             </Button>
             <Button size="small" danger type="primary" onClick={handleDeleteAll}>
-              {t('chat.deleteAll', '全删')}
+              {t('chat.deleteAll')}
             </Button>
           </div>
         </div>
       }
     >
-      <Tooltip title={t('chat.delete', '删除')}>
+      <Tooltip title={t('chat.delete')}>
         <span className="aqbot-action-item" style={{ color: token.colorError }}>
           <Trash2 size={14} />
         </span>
@@ -1281,7 +1281,7 @@ function AssistantFooter({
                   onSelect={handleModelSelect}
                   overrideCurrentModel={currentModelOverride}
                 >
-                  <Tooltip title={t('chat.switchModel', '切换模型')}>
+                  <Tooltip title={t('chat.switchModel')}>
                     <span className="aqbot-action-item" style={{ color: token.colorTextSecondary }}>
                       <ArrowLeftRight size={14} />
                     </span>
@@ -1297,7 +1297,7 @@ function AssistantFooter({
                     items: [
                       {
                         key: 'independent',
-                        label: t('chat.branchIndependent', '分支到独立对话'),
+                        label: t('chat.branchIndependent'),
                         onClick: () => {
                           setBranchAsChild(false);
                           setBranchTitle(currentConvTitle);
@@ -1306,7 +1306,7 @@ function AssistantFooter({
                       },
                       {
                         key: 'child',
-                        label: t('chat.branchChild', '分支到子级'),
+                        label: t('chat.branchChild'),
                         onClick: () => {
                           setBranchAsChild(true);
                           setBranchTitle(currentConvTitle);
@@ -1318,7 +1318,7 @@ function AssistantFooter({
                   trigger={['click']}
                   placement="bottom"
                 >
-                  <Tooltip title={t('chat.branchConversation', '分支对话')}>
+                  <Tooltip title={t('chat.branchConversation')}>
                     <span className="aqbot-action-item" style={{ color: token.colorTextSecondary }}>
                       <GitBranch size={14} />
                     </span>
@@ -1347,7 +1347,7 @@ function AssistantFooter({
                 // Multiple versions — standard Popconfirm
                 return (
                   <Popconfirm
-                    title={t('chat.confirmDeleteVersion', '确定删除当前版本吗？')}
+                    title={t('chat.confirmDeleteVersion')}
                     onConfirm={async () => {
                       try {
                         const remaining = allVersions.filter((v) => v.id !== msg.id);
@@ -1363,10 +1363,10 @@ function AssistantFooter({
                         messageApi.error(String(e));
                       }
                     }}
-                    okText={t('common.confirm', '确定')}
-                    cancelText={t('common.cancel', '取消')}
+                    okText={t('common.confirm')}
+                    cancelText={t('common.cancel')}
                   >
-                    <Tooltip title={t('chat.delete', '删除')}>
+                    <Tooltip title={t('chat.delete')}>
                       <span className="aqbot-action-item" style={{ color: token.colorError }}>
                         <Trash2 size={14} />
                       </span>
@@ -1382,33 +1382,33 @@ function AssistantFooter({
       <ModelTags msg={msg} conversationId={conversationId} allVersions={allVersions} getModelDisplayInfo={getModelDisplayInfo} />
       <Modal
         open={branchModalOpen}
-        title={t('chat.branchConversation', '分支对话')}
+        title={t('chat.branchConversation')}
         onCancel={() => setBranchModalOpen(false)}
         onOk={async () => {
           try {
             const title = branchTitle.trim() || currentConvTitle;
             await branchConversation(conversationId, msg.id, branchAsChild, title);
-            messageApi.success(t('chat.branchCreated', '分支对话已创建'));
+            messageApi.success(t('chat.branchCreated'));
             setBranchModalOpen(false);
           } catch (e) {
             messageApi.error(String(e));
           }
         }}
-        okText={t('common.confirm', '确定')}
-        cancelText={t('common.cancel', '取消')}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
         width={400}
         destroyOnClose
       >
         <Input
           value={branchTitle}
           onChange={(e) => setBranchTitle(e.target.value)}
-          placeholder={t('chat.branchTitlePlaceholder', '请输入对话名称')}
+          placeholder={t('chat.branchTitlePlaceholder')}
           autoFocus
           onPressEnter={async () => {
             try {
               const title = branchTitle.trim() || currentConvTitle;
               await branchConversation(conversationId, msg.id, branchAsChild, title);
-              messageApi.success(t('chat.branchCreated', '分支对话已创建'));
+              messageApi.success(t('chat.branchCreated'));
               setBranchModalOpen(false);
             } catch (e) {
               messageApi.error(String(e));
@@ -2016,7 +2016,7 @@ export function ChatView() {
               key: 'delete',
               actionRender: () => (
                 <Popconfirm
-                  title={t('chat.confirmDeleteMessage', '确定删除这条消息及其所有回复吗？')}
+                  title={t('chat.confirmDeleteMessage')}
                   onConfirm={async () => {
                     if (msg && activeConversationId) {
                       try {
@@ -2026,10 +2026,10 @@ export function ChatView() {
                       }
                     }
                   }}
-                  okText={t('common.confirm', '确定')}
-                  cancelText={t('common.cancel', '取消')}
+                  okText={t('common.confirm')}
+                  cancelText={t('common.cancel')}
                 >
-                  <Tooltip title={t('chat.delete', '删除')}>
+                  <Tooltip title={t('chat.delete')}>
                     <span className="aqbot-action-item" style={{ color: token.colorError }}>
                       <Trash2 size={14} />
                     </span>
@@ -2102,7 +2102,7 @@ export function ChatView() {
               )}
               {msg?.status === 'partial' && !isStreaming && !(multiModelParentId && msg.parent_message_id === multiModelParentId) && (
                 <Tag color="warning" style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '16px', border: 'none' }}>
-                  {t('chat.partial', '主动停止')}
+                  {t('chat.partial')}
                 </Tag>
               )}
             </div>
@@ -2118,7 +2118,7 @@ export function ChatView() {
                 alignItems: 'center',
                 color: token.colorPrimary,
               }}
-              aria-label={t('chat.generating', '生成中…')}
+              aria-label={t('chat.generating')}
             >
               <span className="aqbot-streaming-dots" aria-hidden="true">
                 <span />
@@ -2142,7 +2142,7 @@ export function ChatView() {
             alignItems: 'center',
             color: token.colorPrimary,
           }}
-          aria-label={t('chat.generating', '生成中…')}
+          aria-label={t('chat.generating')}
         >
           <span className="aqbot-streaming-dots" aria-hidden="true">
             <span />
@@ -2174,7 +2174,7 @@ export function ChatView() {
               userSelect: 'none',
             }}
           >
-            <Scissors size={14} style={{ marginRight: 4 }} /> {t('chat.contextCleared', '上下文已从此处重置')}
+            <Scissors size={14} style={{ marginRight: 4 }} /> {t('chat.contextCleared')}
             <X
               size={14}
               style={{ marginLeft: 6, cursor: 'pointer' }}
@@ -2218,14 +2218,14 @@ export function ChatView() {
                 const convId = activeConversationId;
                 if (!convId) return;
                 const summary = await getCompressionSummary(convId);
-                setSummaryModalText(summary?.summary_text ?? t('chat.noSummary', '暂无摘要'));
+                setSummaryModalText(summary?.summary_text ?? t('chat.noSummary'));
                 setSummaryModalOpen(true);
               }}
             >
-              <Zap size={14} /> {t('chat.contextCompressed', '上下文已压缩')}
+              <Zap size={14} /> {t('chat.contextCompressed')}
             </span>
             <Popconfirm
-              title={t('chat.deleteCompressionConfirm', '确定删除压缩摘要？')}
+              title={t('chat.deleteCompressionConfirm')}
               onConfirm={async () => {
                 try {
                   await deleteCompression();
@@ -2233,8 +2233,8 @@ export function ChatView() {
                   // error already logged in store
                 }
               }}
-              okText={t('common.confirm', '确定')}
-              cancelText={t('common.cancel', '取消')}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
             >
               <X
                 size={14}
@@ -2268,7 +2268,7 @@ export function ChatView() {
               userSelect: 'none',
             }}
           >
-            <Spin size="small" style={{ marginRight: 6 }} /> {t('chat.compressing', '正在压缩中...')}
+            <Spin size="small" style={{ marginRight: 6 }} /> {t('chat.compressing')}
           </span>
           <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${token.colorPrimaryBorder}` }} />
         </div>
@@ -2454,7 +2454,7 @@ export function ChatView() {
             >
               <SyncOutlined spin style={{ fontSize: 20, color: token.colorPrimary }} />
               <Typography.Text type="secondary">
-                {t('chat.loadingConversation', '正在加载对话内容…')}
+                {t('chat.loadingConversation')}
               </Typography.Text>
             </div>
           ) : (
@@ -2502,13 +2502,13 @@ export function ChatView() {
               boxShadow: token.boxShadowSecondary,
             }}
           >
-            {t('chat.scrollToBottom', '回到底部')}
+            {t('chat.scrollToBottom')}
           </Button>
         )}
         <InputArea />
       </div>
       <Modal
-        title={t('chat.compressionSummary', '压缩摘要')}
+        title={t('chat.compressionSummary')}
         open={summaryModalOpen}
         onCancel={() => setSummaryModalOpen(false)}
         footer={null}

@@ -35,10 +35,16 @@ async function fileToAttachmentInput(file: File): Promise<AttachmentInput> {
   });
 }
 
+// In-memory draft cache: persists input text per-conversation across component unmounts
+const _draftCache = new Map<string, string>();
+
 export function InputArea() {
   const { t } = useTranslation();
   const { token } = theme.useToken();
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(() => {
+    const convId = useConversationStore.getState().activeConversationId;
+    return convId ? _draftCache.get(convId) || '' : '';
+  });
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [voiceCallVisible, setVoiceCallVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -46,6 +52,11 @@ export function InputArea() {
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const prevConvIdRef = useRef<string | null>(
+    useConversationStore.getState().activeConversationId ?? null
+  );
 
   // Multi-model companion state
   const [companionModels, setCompanionModels] = useState<Array<{ providerId: string; modelId: string }>>([]);
@@ -143,6 +154,28 @@ export function InputArea() {
   useEffect(() => {
     if (memoryNamespaces.length === 0) loadMemoryNamespaces();
   }, [memoryNamespaces.length, loadMemoryNamespaces]);
+
+  // Draft persistence: save old draft & restore new when conversation changes
+  useEffect(() => {
+    const prev = prevConvIdRef.current;
+    if (prev && prev !== activeConversationId) {
+      const draft = valueRef.current;
+      if (draft) _draftCache.set(prev, draft);
+      else _draftCache.delete(prev);
+    }
+    setValue(activeConversationId ? _draftCache.get(activeConversationId) || '' : '');
+    prevConvIdRef.current = activeConversationId ?? null;
+  }, [activeConversationId]);
+
+  // Save draft on unmount (navigating away from chat page)
+  useEffect(() => {
+    return () => {
+      const convId = prevConvIdRef.current;
+      if (convId && valueRef.current) {
+        _draftCache.set(convId, valueRef.current);
+      }
+    };
+  }, []);
 
   // Persist companion models per conversation in localStorage
   const companionStorageKey = activeConversationId ? `aqbot:companion-models:${activeConversationId}` : null;

@@ -77,6 +77,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
   const [search, setSearch] = useState('');
   const [pinnedModels, setPinnedModels] = useState<string[]>(loadPinnedModels);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const listParentRef = useRef<HTMLDivElement>(null);
   const setActivePage = useUIStore((s) => s.setActivePage);
@@ -312,6 +313,47 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
     }
   }, [search, virtualizer]);
 
+  // Indices of selectable (model/pinned-model) rows for keyboard navigation
+  const selectableIndices = useMemo(
+    () => flatRows.reduce<number[]>((acc, row, i) => {
+      if (row.type === 'model' || row.type === 'pinned-model') acc.push(i);
+      return acc;
+    }, []),
+    [flatRows],
+  );
+
+  // Reset activeIndex when search or flatRows change
+  useEffect(() => {
+    setActiveIndex(selectableIndices.length > 0 ? selectableIndices[0] : -1);
+  }, [search, selectableIndices]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (selectableIndices.length === 0) return;
+      const curPos = selectableIndices.indexOf(activeIndex);
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = curPos < selectableIndices.length - 1 ? selectableIndices[curPos + 1] : selectableIndices[0];
+        setActiveIndex(next);
+        virtualizer.scrollToIndex(next, { align: 'auto' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = curPos > 0 ? selectableIndices[curPos - 1] : selectableIndices[selectableIndices.length - 1];
+        setActiveIndex(prev);
+        virtualizer.scrollToIndex(prev, { align: 'auto' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIndex >= 0 && activeIndex < flatRows.length) {
+          const row = flatRows[activeIndex];
+          if (row.type === 'model') handleSelect(row.providerId, row.model.model_id);
+          else if (row.type === 'pinned-model') handleSelect(row.pid, row.mid);
+        }
+      }
+    },
+    [selectableIndices, activeIndex, flatRows, virtualizer, handleSelect],
+  );
+
   const renderModelItem = (
     providerId: string,
     modelId: string,
@@ -320,10 +362,11 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
     isPinned: boolean,
     showProviderTag: boolean,
     model?: Model,
+    isKeyboardActive?: boolean,
   ) => {
     const key = `${providerId}::${modelId}`;
     const isActive = multiSelect ? multiSelectedKeys.has(key) : currentValue === key;
-    const isHovered = hoveredKey === key;
+    const isHovered = hoveredKey === key || isKeyboardActive;
     const visibleCaps = model ? getVisibleModelCapabilities(model) : [];
     return (
       <div
@@ -336,7 +379,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
           transition: 'background-color 0.15s',
         }}
         onClick={() => handleSelect(providerId, modelId)}
-        onMouseEnter={() => setHoveredKey(key)}
+        onMouseEnter={() => { setHoveredKey(key); setActiveIndex(-1); }}
         onMouseLeave={() => setHoveredKey(null)}
       >
         {multiSelect && (
@@ -451,6 +494,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
             variant="borderless"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
             autoFocus
             style={{
               flex: 1,
@@ -508,7 +552,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    {renderModelItem(row.pid, row.mid, row.name, row.providerName, true, true, row.model)}
+                    {renderModelItem(row.pid, row.mid, row.name, row.providerName, true, true, row.model, virtualRow.index === activeIndex)}
                   </div>
                 );
               }
@@ -582,7 +626,7 @@ export function ModelSelector({ style, onSelect, overrideCurrentModel, children,
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                 >
-                  {renderModelItem(row.providerId, row.model.model_id, row.model.name, row.providerName, isPinned, false, row.model)}
+                  {renderModelItem(row.providerId, row.model.model_id, row.model.name, row.providerName, isPinned, false, row.model, virtualRow.index === activeIndex)}
                 </div>
               );
             })}

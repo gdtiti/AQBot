@@ -397,6 +397,13 @@ pub fn run() {
             });
 
             if let Some(main_window) = app.get_webview_window("main") {
+                // On Windows, hide native decorations so the custom TitleBar is
+                // the only title bar.  macOS keeps its Overlay style (traffic lights).
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = main_window.set_decorations(false);
+                }
+
                 if let Some(saved_state) = window_state::load_window_state(&app_dir) {
                     let restored_state = if let Ok(Some(monitor)) = main_window.current_monitor() {
                         let monitor_size = monitor

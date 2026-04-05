@@ -1,13 +1,24 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { Dropdown, Tooltip, App, theme, Popover, Divider, Typography, Space, Spin } from 'antd';
 import type { MenuProps } from 'antd';
-import { Settings, XCircle, Sun, Moon, Monitor, Globe, Pin, PinOff, RotateCcw, CloudUpload, Github, Star, MessageSquarePlus, Bug, ArrowDownCircle } from 'lucide-react';
+import { Settings, XCircle, Sun, Moon, Monitor, Globe, Pin, PinOff, RotateCcw, CloudUpload, Github, Star, MessageSquarePlus, Bug, ArrowDownCircle, Minus, X, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore, useSettingsStore } from '@/stores';
 import { useBackupStore } from '@/stores/backupStore';
 import { isTauri, invoke } from '@/lib/invoke';
 import { getShortcutBinding, formatShortcutForDisplay } from '@/lib/shortcuts';
 import { useUpdateChecker } from '@/hooks/useUpdateChecker';
+import appLogo from '@/assets/image/logo.png';
+
+const IS_WINDOWS = navigator.userAgent.includes('Windows');
+
+/** Standard Windows "restore down" icon: two overlapping rectangles */
+const RestoreIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2">
+    <rect x="3" y="5" width="8" height="7" rx="0.5" />
+    <path d="M5 5V3.5a.5.5 0 0 1 .5-.5H12a.5.5 0 0 1 .5.5V10a.5.5 0 0 1-.5.5h-1.5" />
+  </svg>
+);
 
 const THEME_OPTIONS = [
   { key: 'system', icon: <Monitor size={14} />, labelKey: 'settings.themeSystem' },
@@ -116,6 +127,38 @@ export function TitleBar() {
       },
     });
   }, [modal, t]);
+
+  // Windows window controls
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  useEffect(() => {
+    if (!IS_WINDOWS || !isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      const win = getCurrentWindow();
+      setIsMaximized(await win.isMaximized());
+      unlisten = await win.onResized(async () => {
+        setIsMaximized(await win.isMaximized());
+      });
+    })();
+    return () => { unlisten?.(); };
+  }, []);
+
+  const handleWindowMinimize = useCallback(async () => {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    await getCurrentWindow().minimize();
+  }, []);
+
+  const handleWindowMaximize = useCallback(async () => {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    await getCurrentWindow().toggleMaximize();
+  }, []);
+
+  const handleWindowClose = useCallback(async () => {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    await getCurrentWindow().close();
+  }, []);
 
   // Quick Backup state
   const [backupPopoverOpen, setBackupPopoverOpen] = useState(false);
@@ -357,14 +400,23 @@ export function TitleBar() {
         height: 36,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-end',
-        paddingLeft: 72,
-        paddingRight: 12,
+        justifyContent: 'space-between',
+        paddingLeft: IS_WINDOWS ? 12 : 72,
+        paddingRight: IS_WINDOWS ? 0 : 12,
         backgroundColor: 'transparent',
         flexShrink: 0,
         borderBottom: `1px solid ${token.colorBorderSecondary}`,
       }}
     >
+      {/* Left: App icon + name (Windows only) */}
+      {IS_WINDOWS ? (
+        <div className="title-bar-nodrag" style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 8 }}>
+          <img src={appLogo} alt="AQBot" style={{ width: 18, height: 18 }} draggable={false} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: token.colorTextBase, userSelect: 'none' }}>AQBot</span>
+        </div>
+      ) : <div />}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
       <div className="title-bar-nodrag" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         {/* Pin Toggle */}
         <Tooltip title={t('desktop.alwaysOnTop')}>
@@ -606,6 +658,74 @@ export function TitleBar() {
           {isInSettings ? <XCircle size={14} /> : <Settings size={14} />}
         </button>
         </Tooltip>
+      </div>
+
+      {/* Windows window controls */}
+      {IS_WINDOWS && isTauri() && (
+        <div className="title-bar-nodrag" style={{ display: 'flex', alignItems: 'center', marginLeft: 4 }}>
+          {/* Minimize */}
+          <button
+            onClick={handleWindowMinimize}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 46,
+              height: 36,
+              border: 'none',
+              background: 'transparent',
+              color: token.colorTextSecondary,
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = token.colorFillSecondary; e.currentTarget.style.color = token.colorTextBase; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = token.colorTextSecondary; }}
+          >
+            <Minus size={16} />
+          </button>
+          {/* Maximize / Restore */}
+          <button
+            onClick={handleWindowMaximize}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 46,
+              height: 36,
+              border: 'none',
+              background: 'transparent',
+              color: token.colorTextSecondary,
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = token.colorFillSecondary; e.currentTarget.style.color = token.colorTextBase; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = token.colorTextSecondary; }}
+          >
+            {isMaximized ? <RestoreIcon /> : <Square size={14} />}
+          </button>
+          {/* Close */}
+          <button
+            onClick={handleWindowClose}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 46,
+              height: 36,
+              border: 'none',
+              background: 'transparent',
+              color: token.colorTextSecondary,
+              cursor: 'pointer',
+              outline: 'none',
+              borderRadius: 0,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e81123'; e.currentTarget.style.color = '#ffffff'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = token.colorTextSecondary; }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
       </div>
     </div>
   );

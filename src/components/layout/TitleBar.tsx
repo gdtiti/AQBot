@@ -355,14 +355,35 @@ export function TitleBar() {
     }
   }, []);
 
+  const dragTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleDragMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.closest('button')) return;
     const mod = tauriWindowRef.current;
     if (!mod) return;
-
     e.preventDefault();
-    mod.getCurrentWindow().startDragging();
+
+    if (IS_WINDOWS) {
+      // Delay startDragging slightly so double-click can be detected.
+      // If a second mousedown arrives within the threshold,
+      // the onDoubleClick handler fires and cancels the pending drag.
+      if (dragTimerRef.current) clearTimeout(dragTimerRef.current);
+      dragTimerRef.current = setTimeout(() => {
+        mod.getCurrentWindow().startDragging();
+      }, 200);
+    } else {
+      mod.getCurrentWindow().startDragging();
+    }
+  }, []);
+
+  const handleTitleBarDoubleClick = useCallback(() => {
+    if (!IS_WINDOWS) return;
+    if (dragTimerRef.current) {
+      clearTimeout(dragTimerRef.current);
+      dragTimerRef.current = null;
+    }
+    invoke('toggle_maximize_window');
   }, []);
 
   const buttonBase: React.CSSProperties = {
@@ -392,8 +413,9 @@ export function TitleBar() {
   return (
     <div
       className="title-bar-drag"
-      data-tauri-drag-region
+      {...(!IS_WINDOWS ? { 'data-tauri-drag-region': true } : {})}
       onMouseDown={handleDragMouseDown}
+      onDoubleClick={IS_WINDOWS ? handleTitleBarDoubleClick : undefined}
       style={{
         height: 36,
         display: 'flex',

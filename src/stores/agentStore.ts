@@ -106,7 +106,6 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   approveToolUse: async (conversationId, toolUseId, decision) => {
     try {
-      console.log(`[agentStore] approveToolUse: conversationId=${conversationId}, toolUseId=${toolUseId}, decision=${decision}`);
       await invoke('agent_approve', {
         conversationId,
         toolUseId,
@@ -119,7 +118,6 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   handleToolUse: (event) => {
-    console.log(`[agentStore] handleToolUse: ${event.toolName} (${event.toolUseId}), assistantMessageId=${event.assistantMessageId}`);
     set((s) => ({
       toolCalls: {
         ...s.toolCalls,
@@ -135,7 +133,6 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   handleToolStart: (event) => {
-    console.log(`[agentStore] handleToolStart: ${event.toolName} (${event.toolUseId}), assistantMessageId=${event.assistantMessageId}`);
     set((s) => {
       const existing = s.toolCalls[event.toolUseId];
       return {
@@ -155,11 +152,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   handleToolResult: (event) => {
-    console.log('[agentStore] handleToolResult:', event.toolUseId, 'isError:', event.isError, 'toolName:', event.toolName, 'hasContent:', !!event.content);
     set((s) => {
       const existing = s.toolCalls[event.toolUseId];
       const newStatus = event.isError ? 'failed' : 'success';
-      console.log('[agentStore] handleToolResult set:', event.toolUseId, 'existing:', !!existing, 'newStatus:', newStatus);
       return {
         toolCalls: {
           ...s.toolCalls,
@@ -324,7 +319,6 @@ export function setupAgentEventListeners(): () => void {
 
   unlisteners.push(
     listen<ToolResultEvent>('agent-tool-result', (event) => {
-      console.log('[agentStore] agent-tool-result received:', event.payload);
       store.handleToolResult(event.payload);
     }),
   );

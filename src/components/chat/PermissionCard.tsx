@@ -28,7 +28,6 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleApprove = async (decision: string) => {
-    console.log(`[PermissionCard] handleApprove clicked: decision=${decision}, toolUseId=${toolUseId}, conversationId=${conversationId}`);
     setLoading(decision);
     try {
       await approveToolUse(conversationId, toolUseId, decision);

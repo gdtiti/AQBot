@@ -1,7 +1,7 @@
 {
   "name": "aqbot",
   "private": true,
-  "version": "0.0.20",
+  "version": "0.0.21",
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@10.32.1",
   "type": "module",

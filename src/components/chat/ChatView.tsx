@@ -1896,7 +1896,13 @@ export function ChatView() {
 
   // Scroll callback for ChatMinimap — finds bubble DOM element by message ID
   const minimapScrollTo = useCallback((messageId: string) => {
-    const scrollBox = scrollBoxRef.current;
+    // scrollBoxRef may not be populated yet on first load; fall back to DOM query
+    let scrollBox = scrollBoxRef.current;
+    if (!scrollBox) {
+      scrollBox = (bubbleListRef.current?.scrollBoxNativeElement as HTMLElement)
+        ?? document.querySelector<HTMLElement>('.ant-bubble-list-scroll-box');
+      if (scrollBox) scrollBoxRef.current = scrollBox;
+    }
     if (!scrollBox) return;
     const marker = scrollBox.querySelector(`[data-aqbot-msg="${messageId}"]`);
     if (!marker) return;
@@ -3079,7 +3085,13 @@ export function ChatView() {
               autoScroll
               onScroll={handleBubbleListScroll}
               role={roles}
-              style={{ height: '100%', padding: '16px 24px', overflowX: 'hidden' }}
+              style={{
+                height: '100%',
+                padding: settings.chat_minimap_enabled && settings.chat_minimap_style === 'sticky'
+                  ? '50px 24px 16px 24px'
+                  : '16px 24px',
+                overflowX: 'hidden',
+              }}
             />
             <ChatScrollIndicator />
             <MinimapScrollProvider scrollTo={minimapScrollTo} scrollBoxRef={scrollBoxRef}>

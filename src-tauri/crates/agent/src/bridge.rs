@@ -94,21 +94,11 @@ impl LLMProvider for AQBotProviderBridge {
                             accumulated_text.push_str(text);
 
                             // Emit streaming text delta via SDK channel
+                            // (agent.rs will forward to frontend as agent-stream-text)
                             if let Some(ref tx) = stream_tx {
                                 let _ = tx.try_send(SDKMessage::TextDelta {
                                     text: text.clone(),
                                 });
-                            }
-
-                            // Emit streaming text chunk to frontend
-                            if let Some(app) = &self.app {
-                                let _ = app.emit(
-                                    "agent-stream-text",
-                                    serde_json::json!({
-                                        "conversationId": self.conversation_id,
-                                        "text": text,
-                                    }),
-                                );
                             }
                         }
                     }
@@ -118,6 +108,7 @@ impl LLMProvider for AQBotProviderBridge {
                             accumulated_thinking.push_str(thinking);
 
                             // Emit streaming thinking delta via SDK channel
+                            // (agent.rs will forward to frontend as agent-stream-thinking)
                             if let Some(ref tx) = stream_tx {
                                 let _ = tx.try_send(SDKMessage::ThinkingDelta {
                                     thinking: thinking.clone(),

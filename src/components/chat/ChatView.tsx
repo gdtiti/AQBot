@@ -1773,6 +1773,7 @@ export function ChatView() {
   const regenerateTitle = useConversationStore((s) => s.regenerateTitle);
   const loadOlderMessages = useConversationStore((s) => s.loadOlderMessages);
   const regenerateMessage = useConversationStore((s) => s.regenerateMessage);
+  const deleteMessage = useConversationStore((s) => s.deleteMessage);
   const deleteMessageGroup = useConversationStore((s) => s.deleteMessageGroup);
   const switchMessageVersion = useConversationStore((s) => s.switchMessageVersion);
   const updateMessageContent = useConversationStore((s) => s.updateMessageContent);
@@ -2156,11 +2157,14 @@ export function ChatView() {
   const multiModelResponseParents = useMemo(() => {
     const modelsByParent = new Map<string, Set<string>>();
     for (const msg of messages) {
-      if (msg.role === 'assistant' && msg.parent_message_id && msg.model_id) {
+      if (msg.role === 'assistant' && msg.parent_message_id) {
         if (!modelsByParent.has(msg.parent_message_id)) {
           modelsByParent.set(msg.parent_message_id, new Set());
         }
-        modelsByParent.get(msg.parent_message_id)!.add(msg.model_id);
+        // Use model_id if available; fall back to a per-message key so that
+        // error messages (which may lack model_id) are still counted as
+        // distinct model responses and don't break multi-model detection.
+        modelsByParent.get(msg.parent_message_id)!.add(msg.model_id || `__no_model_${msg.id}`);
       }
     }
     const result = new Set<string>();
@@ -2589,6 +2593,11 @@ export function ChatView() {
                 mode={effectiveDisplayMode as 'side-by-side' | 'stacked'}
                 conversationId={activeConversationId}
                 onSwitchVersion={(pid, mid) => switchMessageVersion(activeConversationId, pid, mid)}
+                onDeleteVersion={(mid) => deleteMessage(mid)}
+                onCopyContent={(content) => {
+                  const text = stripAqbotTags(content);
+                  navigator.clipboard.writeText(text).catch(() => {});
+                }}
                 streamingMessageId={streamingMessageId}
                 multiModelDoneMessageIds={multiModelDoneMessageIds}
                 getModelDisplayInfo={getModelDisplayInfo}
@@ -2748,7 +2757,7 @@ export function ChatView() {
         </div>
       ) : null,
     };
-  }, [activeConversation, activeConversationId, activeMessages, agentPendingPermissions, agentToolCalls, aiContentNodesById, assistantByParentId, codeBlockDarkTheme, codeBlockThemes, displayModeOverrides, formatTime, getBubbleVariant, getModelDisplayInfo, handleDisplayModeOverride, handleMultiModelDetected, isDarkMode, messageById, messages, multiModelDoneMessageIds, multiModelParentId, multiModelResponseParents, renderConvIconForChat, settings, streaming, streamingMessageId, switchMessageVersion, t, token.colorPrimary, token.colorTextDescription]);
+  }, [activeConversation, activeConversationId, activeMessages, agentPendingPermissions, agentToolCalls, aiContentNodesById, assistantByParentId, codeBlockDarkTheme, codeBlockThemes, deleteMessage, displayModeOverrides, formatTime, getBubbleVariant, getModelDisplayInfo, handleDisplayModeOverride, handleMultiModelDetected, isDarkMode, messageById, messages, multiModelDoneMessageIds, multiModelParentId, multiModelResponseParents, renderConvIconForChat, settings, streaming, streamingMessageId, switchMessageVersion, t, token.colorPrimary, token.colorTextDescription]);
 
   const contextClearRole = useCallback((bubbleData: BubbleItemType) => {
     const msgId = String(bubbleData.content ?? '');

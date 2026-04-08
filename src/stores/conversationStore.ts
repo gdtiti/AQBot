@@ -2458,17 +2458,35 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
       await invoke('switch_message_version', { conversationId, parentMessageId, messageId });
 
-      // Normal path: fetch from DB
+      // Normal path: fetch all versions from DB and keep them all in store
+      // with correct is_active flags. This preserves multi-model detection
+      // (multiModelResponseParents) which needs multiple versions visible.
       const versions = await get().listMessageVersions(conversationId, parentMessageId);
-      const newActive = versions.find((v) => v.id === messageId);
-      if (newActive) {
-        set((s) => ({
-          messages: s.messages.map((m) =>
-            m.parent_message_id === parentMessageId && m.role === 'assistant'
-              ? { ...newActive, is_active: true }
-              : m
-          ),
-        }));
+      if (versions.length > 0) {
+        set((s) => {
+          const versionMap = new Map(versions.map(v => [v.id, v]));
+          const existingIds = new Set(
+            s.messages
+              .filter(m => m.parent_message_id === parentMessageId && m.role === 'assistant')
+              .map(m => m.id),
+          );
+          // Update existing versions in-place
+          const updatedMessages = s.messages.map((m) => {
+            if (m.parent_message_id !== parentMessageId || m.role !== 'assistant') return m;
+            const dbVersion = versionMap.get(m.id);
+            if (dbVersion) {
+              return { ...dbVersion, is_active: m.id === messageId };
+            }
+            return { ...m, is_active: m.id === messageId };
+          });
+          // Add any DB versions not already in store
+          for (const v of versions) {
+            if (!existingIds.has(v.id)) {
+              updatedMessages.push({ ...v, is_active: v.id === messageId });
+            }
+          }
+          return { messages: updatedMessages };
+        });
       }
     } catch (e) {
       set({ error: String(e) });

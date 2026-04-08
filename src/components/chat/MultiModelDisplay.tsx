@@ -1,6 +1,6 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { Tag, Tooltip, Typography, theme } from 'antd';
-import { Check, Columns2, LayoutList, Rows3 } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Popconfirm, Tag, Tooltip, Typography, theme } from 'antd';
+import { Check, Columns2, Copy, LayoutList, Rows3, Trash2 } from 'lucide-react';
 import { ModelIcon } from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
 import { OverlayScrollbars } from 'overlayscrollbars';
@@ -8,12 +8,36 @@ import type { Message } from '@/types';
 
 export type MultiModelDisplayMode = 'tabs' | 'side-by-side' | 'stacked';
 
+/** Error boundary to prevent white-screen crashes in multi-model display */
+class MultiModelErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback ?? (
+        <Alert type="warning" message="Multi-model display error" showIcon />
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export interface MultiModelDisplayProps {
   versions: Message[];
   activeMessageId: string;
   mode: 'side-by-side' | 'stacked';
   conversationId: string;
   onSwitchVersion: (parentMessageId: string, messageId: string) => void;
+  onDeleteVersion?: (messageId: string) => void;
+  onCopyContent?: (content: string) => void;
   renderContent: (msg: Message, isVersionStreaming: boolean) => React.ReactNode;
   getModelDisplayInfo: (
     modelId?: string | null,
@@ -32,12 +56,55 @@ export const MultiModelDisplay = React.memo(function MultiModelDisplay({
   activeMessageId,
   mode,
   onSwitchVersion,
+  onDeleteVersion,
+  onCopyContent,
   renderContent,
   getModelDisplayInfo,
   streamingMessageId,
 }: MultiModelDisplayProps) {
   const { token } = theme.useToken();
   const { t } = useTranslation();
+
+  // Safety: if versions is empty or invalid, render nothing
+  if (!versions || versions.length === 0) return null;
+
+  return (
+    <MultiModelErrorBoundary>
+      <MultiModelDisplayInner
+        versions={versions}
+        activeMessageId={activeMessageId}
+        mode={mode}
+        onSwitchVersion={onSwitchVersion}
+        onDeleteVersion={onDeleteVersion}
+        onCopyContent={onCopyContent}
+        renderContent={renderContent}
+        getModelDisplayInfo={getModelDisplayInfo}
+        streamingMessageId={streamingMessageId}
+        token={token}
+        t={t}
+      />
+    </MultiModelErrorBoundary>
+  );
+});
+
+interface MultiModelDisplayInnerProps extends Omit<MultiModelDisplayProps, 'multiModelDoneMessageIds' | 'conversationId'> {
+  token: ReturnType<typeof theme.useToken>['token'];
+  t: ReturnType<typeof useTranslation>['t'];
+}
+
+function MultiModelDisplayInner({
+  versions,
+  activeMessageId,
+  mode,
+  onSwitchVersion,
+  onDeleteVersion,
+  onCopyContent,
+  renderContent,
+  getModelDisplayInfo,
+  streamingMessageId,
+  token,
+  t,
+}: MultiModelDisplayInnerProps) {
   const latestByModel = useMemo(() => {
     const modelMap = new Map<string, Message>();
     for (const v of versions) {
@@ -51,17 +118,16 @@ export const MultiModelDisplay = React.memo(function MultiModelDisplay({
   }, [versions]);
 
   const parentMessageId = versions[0]?.parent_message_id;
+  // Track copy feedback: show checkmark for 1.5s after copy
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   if (latestByModel.length <= 1) {
-    // Single model — render normally (shouldn't happen, but safety fallback)
     const msg = latestByModel[0];
     if (!msg) return null;
     return <>{renderContent(msg, msg.id === streamingMessageId)}</>;
   }
 
   // For side-by-side mode, force the .ant-bubble ancestor to take full width
-  // so overflow-x: scroll works. Without this, the bubble auto-sizes to content
-  // width, which grows with the flex cards — preventing any overflow/scrollbar.
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -69,7 +135,6 @@ export const MultiModelDisplay = React.memo(function MultiModelDisplay({
     const el = scrollRef.current;
     if (!el) return;
 
-    // Walk up the DOM and force width constraints on bubble ancestors
     const modified: Array<{ el: HTMLElement; prev: string }> = [];
     let cur: HTMLElement | null = el;
     while (cur) {
@@ -201,8 +266,36 @@ export const MultiModelDisplay = React.memo(function MultiModelDisplay({
                   </span>
                 )}
               </div>
-              {/* Use as context button */}
-              <Tooltip title={t('chat.multiModelUseAsContext')}>
+              {/* Card action buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                {/* Copy button with feedback */}
+                {onCopyContent && (
+                  <CardActionButton
+                    token={token}
+                    onClick={() => {
+                      onCopyContent(vMsg.content);
+                      setCopiedId(vMsg.id);
+                      setTimeout(() => setCopiedId((prev) => prev === vMsg.id ? null : prev), 3000);
+                    }}
+                    forceColor={copiedId === vMsg.id ? token.colorSuccess : undefined}
+                  >
+                    {copiedId === vMsg.id ? <Check size={13} /> : <Copy size={13} />}
+                  </CardActionButton>
+                )}
+                {/* Delete button with confirmation */}
+                {onDeleteVersion && latestByModel.length > 1 && (
+                  <Popconfirm
+                    title={t('chat.deleteConfirm')}
+                    onConfirm={() => onDeleteVersion(vMsg.id)}
+                    okText={t('common.confirm')}
+                    cancelText={t('common.cancel')}
+                  >
+                    <CardActionButton token={token}>
+                      <Trash2 size={13} />
+                    </CardActionButton>
+                  </Popconfirm>
+                )}
+                {/* Use as context button */}
                 <div
                   onClick={() => {
                     if (!isActive && parentMessageId) {
@@ -225,7 +318,7 @@ export const MultiModelDisplay = React.memo(function MultiModelDisplay({
                 >
                   <Check size={14} />
                 </div>
-              </Tooltip>
+              </div>
             </div>
             {/* Card content — key includes mode to force re-mount on layout switch */}
             <div key={`content-${mode}`} style={{ padding: '12px' }}>
@@ -234,6 +327,36 @@ export const MultiModelDisplay = React.memo(function MultiModelDisplay({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Small icon button with hover effect for card header actions */
+const CardActionButton = React.forwardRef<
+  HTMLDivElement,
+  { token: ReturnType<typeof theme.useToken>['token']; onClick?: () => void; forceColor?: string; children: React.ReactNode }
+>(function CardActionButton({ token, onClick, forceColor, children }, ref) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      ref={ref}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 24,
+        height: 24,
+        borderRadius: token.borderRadiusSM,
+        cursor: 'pointer',
+        color: forceColor ?? (hovered ? token.colorText : token.colorTextQuaternary),
+        backgroundColor: hovered ? token.colorFillSecondary : 'transparent',
+        transition: 'all 0.2s',
+      }}
+    >
+      {children}
     </div>
   );
 });

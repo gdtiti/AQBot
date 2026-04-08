@@ -7,10 +7,16 @@ import { execSync } from 'child_process';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 
-const version = process.argv[2];
+const args = process.argv.slice(2);
+const flags = new Set(args.filter(a => a.startsWith('--')));
+const positional = args.filter(a => !a.startsWith('--'));
+const autoPush = flags.has('--push');
+
+const version = positional[0];
 if (!version) {
-  console.error('用法: pnpm bump <version>');
+  console.error('用法: pnpm bump [--push] <version>');
   console.error('示例: pnpm bump 0.0.11');
+  console.error('      pnpm bump --push 0.0.11  (自动 push commit 和 tag)');
   process.exit(1);
 }
 
@@ -40,4 +46,11 @@ execSync(`git add package.json src-tauri/tauri.conf.json`, { cwd: root, stdio: '
 execSync(`git commit -m "chore(version): bump version to ${tag}"`, { cwd: root, stdio: 'inherit' });
 execSync(`git tag ${tag}`, { cwd: root, stdio: 'inherit' });
 console.log(`\n🏷️  已创建 commit 和 tag: ${tag}`);
-console.log(`📌 执行 git push && git push --tags 即可触发 release`);
+
+if (autoPush) {
+  execSync('git push', { cwd: root, stdio: 'inherit' });
+  execSync('git push --tags', { cwd: root, stdio: 'inherit' });
+  console.log(`\n🚀 已推送 commit 和 tag: ${tag}`);
+} else {
+  console.log(`📌 执行 git push && git push --tags 即可触发 release`);
+}

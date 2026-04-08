@@ -406,6 +406,7 @@
     "multiModelDisplayModeTabs": "Onglets",
     "multiModelDisplayModeSideBySide": "Côte à côte",
     "multiModelDisplayModeStacked": "Empilé",
+    "codeTheme": "Thème de code",
     "proxyType": "Type de proxy",
     "proxyAddress": "Adresse du proxy",
     "proxyPort": "Port du proxy",

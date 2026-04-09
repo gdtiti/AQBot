@@ -46,7 +46,14 @@ export const CodeBlockPreviewModal: React.FC<Props> = ({ payload, open, onClose 
 </html>`;
   }, [payload, token.colorBgElevated, token.colorText]);
 
-  const title = payload?.artifactTitle || t('common.preview');
+  const title = (() => {
+    const raw = payload?.artifactTitle;
+    if (!raw) return t('common.preview');
+    const type = payload?.artifactType;
+    if (type === 'text/html') return `HTML ${t('common.preview')}`;
+    if (type === 'image/svg+xml') return `SVG ${t('common.preview')}`;
+    return raw;
+  })();
 
   return (
     <Modal

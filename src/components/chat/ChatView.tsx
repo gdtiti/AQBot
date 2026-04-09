@@ -237,6 +237,7 @@ function getChatCodeThemes(selectedDarkTheme?: string, selectedLightTheme?: stri
 }
 
 let _codeBlockPreviewHandler: ((payload: CodeBlockPreviewPayload) => void) | null = null;
+let _mermaidOpenModalHandler: ((svgString: string | null) => void) | null = null;
 
 function getChatCodeBlockProps(darkTheme: string, lightTheme: string) {
   return {
@@ -261,6 +262,12 @@ const CHAT_MERMAID_PROPS = {
   renderZoomControls: (ctx: MermaidBlockActionContext) => (
     <MermaidZoomControls ctx={ctx} />
   ),
+  onOpenModal: (ev: { preventDefault: () => void; svgString?: string | null }) => {
+    if (_mermaidOpenModalHandler) {
+      ev.preventDefault();
+      _mermaidOpenModalHandler(ev.svgString ?? null);
+    }
+  },
 };
 
 const CHAT_INFOGRAPHIC_PROPS = {
@@ -1862,6 +1869,8 @@ export function ChatView() {
   const [summaryModalText, setSummaryModalText] = useState('');
   const [previewPayload, setPreviewPayload] = useState<CodeBlockPreviewPayload | null>(null);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [mermaidPreviewSvg, setMermaidPreviewSvg] = useState<string | null>(null);
+  const [mermaidPreviewOpen, setMermaidPreviewOpen] = useState(false);
   const createConversation = useConversationStore((s) => s.createConversation);
   const providers = useProviderStore((s) => s.providers);
   const settings = useSettingsStore((s) => s.settings);
@@ -1893,6 +1902,15 @@ export function ChatView() {
       setPreviewModalOpen(true);
     };
     return () => { _codeBlockPreviewHandler = null; };
+  }, []);
+
+  // Register module-level preview handler for mermaid
+  useEffect(() => {
+    _mermaidOpenModalHandler = (svgString: string | null) => {
+      setMermaidPreviewSvg(svgString);
+      setMermaidPreviewOpen(true);
+    };
+    return () => { _mermaidOpenModalHandler = null; };
   }, []);
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
@@ -3316,6 +3334,23 @@ export function ChatView() {
         open={previewModalOpen}
         onClose={() => setPreviewModalOpen(false)}
       />
+      <Modal
+        title={`Mermaid ${t('common.preview')}`}
+        open={mermaidPreviewOpen}
+        onCancel={() => { setMermaidPreviewOpen(false); setMermaidPreviewSvg(null); }}
+        footer={null}
+        width="80vw"
+        style={{ top: 32 }}
+        styles={{ body: { height: 'calc(80vh - 55px)', overflow: 'auto', padding: 16 } }}
+        destroyOnClose
+      >
+        {mermaidPreviewSvg && (
+          <div
+            style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
+            dangerouslySetInnerHTML={{ __html: mermaidPreviewSvg }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

@@ -408,6 +408,8 @@
     "multiModelDisplayModeSideBySide": "Бок о бок",
     "multiModelDisplayModeStacked": "Стопкой",
     "codeTheme": "Тема кода",
+    "codeThemeLight": "Тема кода (светлая)",
+    "codeThemeDark": "Тема кода (тёмная)",
     "proxyType": "Тип прокси",
     "proxyAddress": "Адрес прокси",
     "proxyPort": "Порт прокси",

@@ -1,9 +1,10 @@
 import { Card, ColorPicker, Divider, Select, Segmented, Slider } from 'antd';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSettingsStore } from '@/stores';
 import { invoke, isTauri } from '@/lib/invoke';
+import { SHIKI_LIGHT_THEMES, SHIKI_DARK_THEMES, formatThemeName } from '@/constants/codeThemes';
 
 export function DisplaySettings() {
   const { t } = useTranslation();
@@ -17,6 +18,15 @@ export function DisplaySettings() {
   }, []);
 
   const rowStyle = { padding: '4px 0' };
+
+  const lightThemeOptions = useMemo(
+    () => SHIKI_LIGHT_THEMES.map((id) => ({ label: formatThemeName(id), value: id })),
+    [],
+  );
+  const darkThemeOptions = useMemo(
+    () => SHIKI_DARK_THEMES.map((id) => ({ label: formatThemeName(id), value: id })),
+    [],
+  );
 
   return (
     <div className="p-6 pb-12">
@@ -123,8 +133,29 @@ export function DisplaySettings() {
           />
         </div>
         <Divider style={{ margin: '4px 0' }} />
+        <div style={rowStyle} className="flex items-center justify-between">
+          <span>{t('settings.codeThemeLight')}</span>
+          <Select
+            showSearch
+            value={settings.code_theme_light || 'github-light'}
+            onChange={(val) => saveSettings({ code_theme_light: val })}
+            style={{ width: 200 }}
+            options={lightThemeOptions}
+          />
+        </div>
+        <Divider style={{ margin: '4px 0' }} />
+        <div style={rowStyle} className="flex items-center justify-between">
+          <span>{t('settings.codeThemeDark')}</span>
+          <Select
+            showSearch
+            value={settings.code_theme || 'poimandres'}
+            onChange={(val) => saveSettings({ code_theme: val })}
+            style={{ width: 200 }}
+            options={darkThemeOptions}
+          />
+        </div>
+        <Divider style={{ margin: '4px 0' }} />
         <div style={{ padding: '4px 0' }}>
-          <span>{t('settings.borderRadius')}</span>
           <Slider
             min={0}
             max={20}

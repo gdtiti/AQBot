@@ -408,6 +408,8 @@
     "multiModelDisplayModeSideBySide": "横並び",
     "multiModelDisplayModeStacked": "縦積み",
     "codeTheme": "コードテーマ",
+    "codeThemeLight": "コードテーマ（ライト）",
+    "codeThemeDark": "コードテーマ（ダーク）",
     "proxyType": "プロキシタイプ",
     "proxyAddress": "プロキシアドレス",
     "proxyPort": "プロキシポート",

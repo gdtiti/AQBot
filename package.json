@@ -51,7 +51,7 @@
     "react-i18next": "^16.5.8",
     "stream-markdown": "^0.0.15",
     "stream-markdown-parser": "link:../markstream-vue/packages/markdown-parser",
-    "stream-monaco": "^0.0.22",
+    "stream-monaco": "link:../stream-monaco",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

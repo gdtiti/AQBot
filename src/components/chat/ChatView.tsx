@@ -43,14 +43,15 @@ import PermissionCard from './PermissionCard';
 import AskUserCard from './AskUserCard';
 
 import { invoke } from '@/lib/invoke';
+import { registerHighlight } from 'stream-markdown';
 import { useResolvedAvatarSrc } from '@/hooks/useResolvedAvatarSrc';
 import type { Message, Attachment, ConversationStats } from '@/types';
 
 // ── markstream-react custom thinking component ──────────────────────────
 
 const THINKING_LOADING_MARKER = '<!--aqbot-thinking-loading-->';
-const LIGHT_CODE_BLOCK_THEME = 'github-light';
-const DEFAULT_DARK_CODE_BLOCK_THEME = 'github-dark';
+const DEFAULT_LIGHT_CODE_BLOCK_THEME = 'github-light';
+const DEFAULT_DARK_CODE_BLOCK_THEME = 'poimandres';
 const DANGEROUS_D2_STYLE_PATTERNS = [
   /javascript:/i,
   /expression\s*\(/i,
@@ -218,26 +219,29 @@ type CustomNodeAttrs =
   | null
   | undefined;
 
-function getChatCodeThemes(selectedDarkTheme?: string) {
-  const rawTheme = selectedDarkTheme?.trim();
-  const normalizedTheme = rawTheme === 'vs-code' || rawTheme === 'vscode'
-    ? 'dark-plus'
-    : rawTheme === 'one-dark'
-      ? 'one-dark-pro'
-      : rawTheme;
-  const darkTheme = normalizedTheme || DEFAULT_DARK_CODE_BLOCK_THEME;
+function normalizeCodeTheme(raw?: string) {
+  const t = raw?.trim();
+  if (t === 'vs-code' || t === 'vscode') return 'dark-plus';
+  if (t === 'one-dark') return 'one-dark-pro';
+  return t || undefined;
+}
+
+function getChatCodeThemes(selectedDarkTheme?: string, selectedLightTheme?: string) {
+  const darkTheme = normalizeCodeTheme(selectedDarkTheme) || DEFAULT_DARK_CODE_BLOCK_THEME;
+  const lightTheme = normalizeCodeTheme(selectedLightTheme) || DEFAULT_LIGHT_CODE_BLOCK_THEME;
   return {
     darkTheme,
-    themes: Array.from(new Set([LIGHT_CODE_BLOCK_THEME, darkTheme])),
+    lightTheme,
+    themes: Array.from(new Set([lightTheme, darkTheme])),
   };
 }
 
 let _codeBlockPreviewHandler: ((payload: CodeBlockPreviewPayload) => void) | null = null;
 
-function getChatCodeBlockProps(darkTheme: string) {
+function getChatCodeBlockProps(darkTheme: string, lightTheme: string) {
   return {
     darkTheme,
-    lightTheme: LIGHT_CODE_BLOCK_THEME,
+    lightTheme,
     renderHeaderActions: (ctx: CodeBlockActionContext) => (
       <CodeBlockHeaderActions ctx={ctx} />
     ),
@@ -435,6 +439,7 @@ function ThinkNode(props: NodeComponentProps<{
 }>) {
   const { t } = useTranslation();
   const selectedDarkCodeTheme = useSettingsStore((s) => s.settings.code_theme);
+  const selectedLightCodeTheme = useSettingsStore((s) => s.settings.code_theme_light);
   const codeFontFamily = useSettingsStore((s) => s.settings.code_font_family);
   const { node, ctx } = props;
   const thinkingNodesCacheRef = useRef<Map<string, ChatMarkdownNode[]>>(new Map());
@@ -481,19 +486,19 @@ function ThinkNode(props: NodeComponentProps<{
     }
     return parsed;
   }, [thinkingContent]);
-  const { darkTheme, themes } = useMemo(
-    () => getChatCodeThemes(selectedDarkCodeTheme),
-    [selectedDarkCodeTheme],
+  const { darkTheme, lightTheme, themes } = useMemo(
+    () => getChatCodeThemes(selectedDarkCodeTheme, selectedLightCodeTheme),
+    [selectedDarkCodeTheme, selectedLightCodeTheme],
   );
   const codeBlockProps = useMemo(
-    () => getChatCodeBlockProps(darkTheme),
-    [darkTheme],
+    () => getChatCodeBlockProps(darkTheme, lightTheme),
+    [darkTheme, lightTheme],
   );
   const codeBlockMonacoOptions = useMemo(
     () => codeFontFamily ? { fontFamily: codeFontFamily } : undefined,
     [codeFontFamily],
   );
-  const rendererKey = `${ctx?.customId ?? 'default'}:${ctx?.isDark ? 'dark' : 'light'}:${darkTheme}`;
+  const rendererKey = `${ctx?.customId ?? 'default'}:${ctx?.isDark ? 'dark' : 'light'}:${darkTheme}:${lightTheme}`;
 
   return (
     <Think
@@ -514,7 +519,7 @@ function ThinkNode(props: NodeComponentProps<{
         final={!isStreaming}
         typewriter={false}
         themes={themes}
-        codeBlockLightTheme={LIGHT_CODE_BLOCK_THEME}
+        codeBlockLightTheme={lightTheme}
         codeBlockDarkTheme={darkTheme}
         codeBlockProps={codeBlockProps}
         codeBlockMonacoOptions={codeBlockMonacoOptions}
@@ -551,6 +556,7 @@ function ChatD2BlockNode({
   const [svgMarkup, setSvgMarkup] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [canRenderPreview, setCanRenderPreview] = useState(false);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   useEffect(() => {
     setCanRenderPreview(false);
@@ -722,7 +728,7 @@ function ChatD2BlockNode({
     borderBottomColor: token.colorBorderSecondary,
   }), [isDark, token.colorBgContainer, token.colorBorderSecondary, token.colorFillAlter, token.colorText]);
 
-  const d2BtnStyle: React.CSSProperties = useMemo(() => ({
+  const getD2BtnStyle = useCallback((idx: number): React.CSSProperties => ({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -730,12 +736,12 @@ function ChatD2BlockNode({
     height: 28,
     borderRadius: token.borderRadiusSM,
     border: 'none',
-    background: 'transparent',
-    color: token.colorTextSecondary,
+    background: hoveredIdx === idx ? (token.colorFillSecondary || 'rgba(255,255,255,0.1)') : 'transparent',
+    color: hoveredIdx === idx ? token.colorText : token.colorTextSecondary,
     cursor: 'pointer',
     padding: 0,
     transition: 'color 0.2s, background 0.2s',
-  }), [token.borderRadiusSM, token.colorTextSecondary]);
+  }), [hoveredIdx, token]);
 
   const previewStyle = useMemo(() => ({
     background: isDark ? token.colorBgContainer : token.colorBgElevated,
@@ -757,7 +763,8 @@ function ChatD2BlockNode({
           />
           {/* Collapse */}
           <Tooltip title={isCollapsed ? t('common.expand') : t('common.collapse')} mouseEnterDelay={0.4}>
-            <button type="button" style={d2BtnStyle} onClick={() => setIsCollapsed(v => !v)}>
+            <button type="button" style={getD2BtnStyle(0)} onClick={() => setIsCollapsed(v => !v)}
+              onMouseEnter={() => setHoveredIdx(0)} onMouseLeave={() => setHoveredIdx(null)}>
               <ChevronRight
                 size={14}
                 style={{
@@ -769,14 +776,16 @@ function ChatD2BlockNode({
           </Tooltip>
           {/* Copy */}
           <Tooltip title={d2Copied ? t('common.copied') : t('common.copy')} mouseEnterDelay={0.4}>
-            <button type="button" style={d2BtnStyle} onClick={() => void copyD2(node.code)}>
+            <button type="button" style={getD2BtnStyle(1)} onClick={() => void copyD2(node.code)}
+              onMouseEnter={() => setHoveredIdx(1)} onMouseLeave={() => setHoveredIdx(null)}>
               {d2Copied ? <Check size={14} style={{ color: token.colorSuccess }} /> : <Copy size={14} />}
             </button>
           </Tooltip>
           {/* Export */}
           {svgMarkup ? (
             <Tooltip title={t('common.export')} mouseEnterDelay={0.4}>
-              <button type="button" style={d2BtnStyle} onClick={handleExport}>
+              <button type="button" style={getD2BtnStyle(2)} onClick={handleExport}
+                onMouseEnter={() => setHoveredIdx(2)} onMouseLeave={() => setHoveredIdx(null)}>
                 <Download size={14} />
               </button>
             </Tooltip>
@@ -994,6 +1003,7 @@ const AssistantMarkdown = React.memo(function AssistantMarkdown({
   isDarkMode,
   isStreaming,
   codeBlockDarkTheme,
+  codeBlockLightTheme,
   codeBlockThemes,
   codeFontFamily,
 }: {
@@ -1002,6 +1012,7 @@ const AssistantMarkdown = React.memo(function AssistantMarkdown({
   isDarkMode: boolean;
   isStreaming: boolean;
   codeBlockDarkTheme: string;
+  codeBlockLightTheme: string;
   codeBlockThemes: string[];
   codeFontFamily?: string;
 }) {
@@ -1009,8 +1020,8 @@ const AssistantMarkdown = React.memo(function AssistantMarkdown({
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const codeBlockProps = useMemo(
-    () => getChatCodeBlockProps(codeBlockDarkTheme),
-    [codeBlockDarkTheme],
+    () => getChatCodeBlockProps(codeBlockDarkTheme, codeBlockLightTheme),
+    [codeBlockDarkTheme, codeBlockLightTheme],
   );
   const codeBlockMonacoOptions = useMemo(
     () => codeFontFamily ? { fontFamily: codeFontFamily } : undefined,
@@ -1022,7 +1033,7 @@ const AssistantMarkdown = React.memo(function AssistantMarkdown({
     [content, nodes],
   );
   const [readyToRenderHeavyNodes, setReadyToRenderHeavyNodes] = useState(!hasDeferredHeavyNodes);
-  const rendererKey = `${isDarkMode ? 'dark' : 'light'}:${codeBlockDarkTheme}`;
+  const rendererKey = `${isDarkMode ? 'dark' : 'light'}:${codeBlockDarkTheme}:${codeBlockLightTheme}`;
 
   useEffect(() => {
     if (!hasDeferredHeavyNodes) {
@@ -1111,7 +1122,7 @@ const AssistantMarkdown = React.memo(function AssistantMarkdown({
         final={!isStreaming}
         typewriter={isStreaming}
         themes={codeBlockThemes}
-        codeBlockLightTheme={LIGHT_CODE_BLOCK_THEME}
+        codeBlockLightTheme={codeBlockLightTheme}
         codeBlockDarkTheme={codeBlockDarkTheme}
         codeBlockProps={codeBlockProps}
         codeBlockMonacoOptions={codeBlockMonacoOptions}
@@ -1129,7 +1140,7 @@ const AssistantMarkdown = React.memo(function AssistantMarkdown({
         final={!isStreaming}
         typewriter={isStreaming}
         themes={codeBlockThemes}
-        codeBlockLightTheme={LIGHT_CODE_BLOCK_THEME}
+        codeBlockLightTheme={codeBlockLightTheme}
         codeBlockDarkTheme={codeBlockDarkTheme}
         codeBlockProps={codeBlockProps}
         codeBlockMonacoOptions={codeBlockMonacoOptions}
@@ -1145,6 +1156,7 @@ const AssistantMarkdown = React.memo(function AssistantMarkdown({
   && prev.isDarkMode === next.isDarkMode
   && prev.isStreaming === next.isStreaming
   && prev.codeBlockDarkTheme === next.codeBlockDarkTheme
+  && prev.codeBlockLightTheme === next.codeBlockLightTheme
   && prev.codeBlockThemes === next.codeBlockThemes
   && prev.codeFontFamily === next.codeFontFamily
 ));
@@ -1858,10 +1870,21 @@ export function ChatView() {
   const resolvedAvatarSrc = useResolvedAvatarSrc(profile.avatarType, profile.avatarValue);
   const isDarkMode = useResolvedDarkMode(settings.theme_mode);
   const { copy: copyMessage, isCopiedFor: isUserMsgCopied } = useCopyToClipboard();
-  const { darkTheme: codeBlockDarkTheme, themes: codeBlockThemes } = useMemo(
-    () => getChatCodeThemes(settings.code_theme),
-    [settings.code_theme],
+  const { darkTheme: codeBlockDarkTheme, lightTheme: codeBlockLightTheme, themes: codeBlockThemes } = useMemo(
+    () => getChatCodeThemes(settings.code_theme, settings.code_theme_light),
+    [settings.code_theme, settings.code_theme_light],
   );
+  const bubbleListThemeKey = `bubble-list:${isDarkMode ? 'dark' : 'light'}:${settings.code_theme ?? ''}:${settings.code_theme_light ?? ''}`;
+
+  // Pre-load Shiki themes into the singleton highlighter when theme settings change
+  useEffect(() => {
+    console.log('[AQBot Theme Debug] themes changed:', { codeBlockDarkTheme, codeBlockLightTheme, codeBlockThemes, isDarkMode });
+    if (codeBlockThemes.length > 0) {
+      registerHighlight({ themes: codeBlockThemes as any }).catch((err) => {
+        console.error('[AQBot Theme Debug] registerHighlight failed:', err);
+      });
+    }
+  }, [codeBlockThemes, codeBlockDarkTheme, codeBlockLightTheme, isDarkMode]);
 
   // Register module-level preview handler for code blocks
   useEffect(() => {
@@ -2682,6 +2705,7 @@ export function ChatView() {
                     isDarkMode={isDarkMode}
                     isStreaming={isVersionStreaming}
                     codeBlockDarkTheme={codeBlockDarkTheme}
+                    codeBlockLightTheme={codeBlockLightTheme}
                     codeBlockThemes={codeBlockThemes}
                     codeFontFamily={settings.code_font_family || undefined}
                   />
@@ -2738,6 +2762,7 @@ export function ChatView() {
               isDarkMode={isDarkMode}
               isStreaming={isStreaming}
               codeBlockDarkTheme={codeBlockDarkTheme}
+              codeBlockLightTheme={codeBlockLightTheme}
               codeBlockThemes={codeBlockThemes}
               codeFontFamily={settings.code_font_family || undefined}
             />
@@ -2848,7 +2873,7 @@ export function ChatView() {
         </div>
       ) : null,
     };
-  }, [activeConversation, activeConversationId, activeMessages, agentPendingPermissions, agentToolCalls, aiContentNodesById, assistantByParentId, codeBlockDarkTheme, codeBlockThemes, deleteMessage, displayModeOverrides, formatTime, getBubbleVariant, getModelDisplayInfo, handleDisplayModeOverride, handleMultiModelDetected, isDarkMode, messageById, messages, multiModelDoneMessageIds, multiModelParentId, multiModelResponseParents, renderConvIconForChat, settings, streaming, streamingMessageId, switchMessageVersion, t, token.colorPrimary, token.colorTextDescription]);
+  }, [activeConversation, activeConversationId, activeMessages, agentPendingPermissions, agentToolCalls, aiContentNodesById, assistantByParentId, codeBlockDarkTheme, codeBlockLightTheme, codeBlockThemes, deleteMessage, displayModeOverrides, formatTime, getBubbleVariant, getModelDisplayInfo, handleDisplayModeOverride, handleMultiModelDetected, isDarkMode, messageById, messages, multiModelDoneMessageIds, multiModelParentId, multiModelResponseParents, renderConvIconForChat, settings, streaming, streamingMessageId, switchMessageVersion, t, token.colorPrimary, token.colorTextDescription]);
 
   const contextClearRole = useCallback((bubbleData: BubbleItemType) => {
     const msgId = String(bubbleData.content ?? '');
@@ -3180,6 +3205,7 @@ export function ChatView() {
         ) : (
           <>
             <Bubble.List
+              key={bubbleListThemeKey}
               ref={bubbleListRef}
               items={finalBubbleItems}
               autoScroll
@@ -3253,7 +3279,7 @@ export function ChatView() {
             customId="summary"
             final
             themes={codeBlockThemes}
-            codeBlockLightTheme={LIGHT_CODE_BLOCK_THEME}
+            codeBlockLightTheme={codeBlockLightTheme}
             codeBlockDarkTheme={codeBlockDarkTheme}
           />
         </div>

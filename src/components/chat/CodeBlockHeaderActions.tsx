@@ -1,8 +1,12 @@
-import React from 'react';
-import { Tooltip, theme } from 'antd';
-import { Copy, Check, ChevronRight, Maximize2, Minimize2, Minus, Plus, RotateCcw, Eye } from 'lucide-react';
+import React, { useMemo, useCallback, useState } from 'react';
+import { Dropdown, Tooltip, theme } from 'antd';
+import { Copy, Check, ChevronRight, Maximize2, Minimize2, Minus, Plus, RotateCcw, Eye, Palette } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { CodeBlockActionContext } from 'markstream-react';
+import type { MenuProps } from 'antd';
+import { useSettingsStore } from '@/stores';
+import { useResolvedDarkMode } from '@/hooks/useResolvedDarkMode';
+import { SHIKI_LIGHT_THEMES, SHIKI_DARK_THEMES, formatThemeName } from '@/constants/codeThemes';
 
 interface Props {
   ctx: CodeBlockActionContext;
@@ -11,8 +15,34 @@ interface Props {
 export const CodeBlockHeaderActions: React.FC<Props> = ({ ctx }) => {
   const { t } = useTranslation();
   const { token } = theme.useToken();
+  const settings = useSettingsStore((s) => s.settings);
+  const saveSettings = useSettingsStore((s) => s.saveSettings);
+  const isDark = useResolvedDarkMode(settings.theme_mode);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  const btnStyle: React.CSSProperties = {
+  const currentTheme = isDark ? (settings.code_theme || 'poimandres') : (settings.code_theme_light || 'github-light');
+  const themeList = isDark ? SHIKI_DARK_THEMES : SHIKI_LIGHT_THEMES;
+  const settingsKey = isDark ? 'code_theme' : 'code_theme_light';
+
+  const themeMenuItems: MenuProps['items'] = useMemo(() =>
+    themeList.map((id) => ({
+      key: id,
+      label: (
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {id === currentTheme && <Check size={12} style={{ color: token.colorPrimary, flexShrink: 0 }} />}
+          <span style={{ marginLeft: id === currentTheme ? 0 : 18 }}>{formatThemeName(id)}</span>
+        </span>
+      ),
+    })),
+    [themeList, currentTheme, token.colorPrimary],
+  );
+
+  const handleThemeSelect = useCallback<NonNullable<MenuProps['onClick']>>(
+    ({ key }) => { saveSettings({ [settingsKey]: key }); },
+    [saveSettings, settingsKey],
+  );
+
+  const getBtnStyle = useCallback((idx: number, disabled?: boolean): React.CSSProperties => ({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -21,18 +51,12 @@ export const CodeBlockHeaderActions: React.FC<Props> = ({ ctx }) => {
     padding: 0,
     border: 'none',
     borderRadius: token.borderRadiusSM,
-    background: 'transparent',
-    color: 'inherit',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-    opacity: 0.7,
-  };
-
-  const disabledStyle: React.CSSProperties = {
-    ...btnStyle,
-    opacity: 0.3,
-    cursor: 'not-allowed',
-  };
+    background: !disabled && hoveredIdx === idx ? (token.colorFillSecondary || 'rgba(255,255,255,0.1)') : 'transparent',
+    color: !disabled && hoveredIdx === idx ? token.colorText : 'inherit',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    transition: 'color 0.2s, background 0.2s',
+    opacity: disabled ? 0.3 : (hoveredIdx === idx ? 1 : 0.7),
+  }), [hoveredIdx, token]);
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -41,8 +65,9 @@ export const CodeBlockHeaderActions: React.FC<Props> = ({ ctx }) => {
         <button
           type="button"
           className="code-action-btn"
-          style={btnStyle}
+          style={getBtnStyle(0)}
           onClick={ctx.toggleCollapse}
+          onMouseEnter={() => setHoveredIdx(0)} onMouseLeave={() => setHoveredIdx(null)}
         >
           <ChevronRight
             size={14}
@@ -59,9 +84,10 @@ export const CodeBlockHeaderActions: React.FC<Props> = ({ ctx }) => {
         <button
           type="button"
           className="code-action-btn"
-          style={ctx.fontSize <= 10 ? disabledStyle : btnStyle}
+          style={getBtnStyle(1, ctx.fontSize <= 10)}
           disabled={ctx.fontSize <= 10}
           onClick={ctx.decreaseFontSize}
+          onMouseEnter={() => setHoveredIdx(1)} onMouseLeave={() => setHoveredIdx(null)}
         >
           <Minus size={14} />
         </button>
@@ -72,9 +98,10 @@ export const CodeBlockHeaderActions: React.FC<Props> = ({ ctx }) => {
         <button
           type="button"
           className="code-action-btn"
-          style={ctx.fontSize === ctx.defaultFontSize ? disabledStyle : btnStyle}
+          style={getBtnStyle(2, ctx.fontSize === ctx.defaultFontSize)}
           disabled={ctx.fontSize === ctx.defaultFontSize}
           onClick={ctx.resetFontSize}
+          onMouseEnter={() => setHoveredIdx(2)} onMouseLeave={() => setHoveredIdx(null)}
         >
           <RotateCcw size={14} />
         </button>
@@ -85,9 +112,10 @@ export const CodeBlockHeaderActions: React.FC<Props> = ({ ctx }) => {
         <button
           type="button"
           className="code-action-btn"
-          style={ctx.fontSize >= 36 ? disabledStyle : btnStyle}
+          style={getBtnStyle(3, ctx.fontSize >= 36)}
           disabled={ctx.fontSize >= 36}
           onClick={ctx.increaseFontSize}
+          onMouseEnter={() => setHoveredIdx(3)} onMouseLeave={() => setHoveredIdx(null)}
         >
           <Plus size={14} />
         </button>
@@ -98,8 +126,9 @@ export const CodeBlockHeaderActions: React.FC<Props> = ({ ctx }) => {
         <button
           type="button"
           className="code-action-btn"
-          style={btnStyle}
+          style={getBtnStyle(4)}
           onClick={() => ctx.copy()}
+          onMouseEnter={() => setHoveredIdx(4)} onMouseLeave={() => setHoveredIdx(null)}
         >
           {ctx.copied
             ? <Check size={14} style={{ color: token.colorSuccess }} />
@@ -113,12 +142,31 @@ export const CodeBlockHeaderActions: React.FC<Props> = ({ ctx }) => {
         <button
           type="button"
           className="code-action-btn"
-          style={btnStyle}
+          style={getBtnStyle(5)}
           onClick={ctx.toggleExpand}
+          onMouseEnter={() => setHoveredIdx(5)} onMouseLeave={() => setHoveredIdx(null)}
         >
           {ctx.expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
       </Tooltip>
+
+      {/* Theme Picker */}
+      <Dropdown
+        menu={{ items: themeMenuItems, onClick: handleThemeSelect, style: { maxHeight: 320, overflowY: 'auto' } }}
+        trigger={['click']}
+        placement="bottomRight"
+      >
+        <Tooltip title={t('settings.codeTheme', { defaultValue: 'Code Theme' })} mouseEnterDelay={0.4}>
+          <button
+            type="button"
+            className="code-action-btn"
+            style={getBtnStyle(6)}
+            onMouseEnter={() => setHoveredIdx(6)} onMouseLeave={() => setHoveredIdx(null)}
+          >
+            <Palette size={14} />
+          </button>
+        </Tooltip>
+      </Dropdown>
 
       {/* Preview (only for HTML/SVG) */}
       {ctx.isPreviewable && (
@@ -126,8 +174,9 @@ export const CodeBlockHeaderActions: React.FC<Props> = ({ ctx }) => {
           <button
             type="button"
             className="code-action-btn"
-            style={btnStyle}
+            style={getBtnStyle(7)}
             onClick={ctx.previewCode}
+            onMouseEnter={() => setHoveredIdx(7)} onMouseLeave={() => setHoveredIdx(null)}
           >
             <Eye size={14} />
           </button>

@@ -45,6 +45,7 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "stream-monaco": path.resolve(__dirname, "../stream-monaco"),
     },
   },
   clearScreen: false,

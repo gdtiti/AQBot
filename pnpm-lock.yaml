@@ -117,8 +117,8 @@ importers:
         specifier: link:../markstream-vue/packages/markdown-parser
         version: link:../markstream-vue/packages/markdown-parser
       stream-monaco:
-        specifier: ^0.0.22
-        version: 0.0.22(monaco-editor@0.52.2)
+        specifier: link:../stream-monaco
+        version: link:../stream-monaco
       zustand:
         specifier: ^5.0.12
         version: 5.0.12(@types/react@19.2.14)(immer@11.1.4)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
@@ -1458,9 +1458,6 @@ packages:
   '@shikijs/langs@3.23.0':
     resolution: {integrity: sha512-2Ep4W3Re5aB1/62RSYQInK9mM3HsLeB91cHqznAJMuylqjzNVAVCMnNWRHFtcNHXsoNRayP9z1qj4Sq3nMqYXg==}
 
-  '@shikijs/monaco@3.23.0':
-    resolution: {integrity: sha512-OCApTdAGTHMFUXSYwGztW6EnlxXsWNrpnGf+uO+AznE+khC6V1/8QjuJESIcvZUIq9iAp4ZCNYosZKSVj1Hctg==}
-
   '@shikijs/themes@3.23.0':
     resolution: {integrity: sha512-5qySYa1ZgAT18HR/ypENL9cUSGOeI2x+4IvYJu4JgVJdizn6kG4ia5Q1jDEOi7gTbN4RbuYtmHh0W3eccOrjMA==}
 
@@ -1959,9 +1956,6 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  alien-signals@2.0.8:
-    resolution: {integrity: sha512-844G1VLkk0Pe2SJjY0J8vp8ADI73IM4KliNu2OGlYzWpO28NexEUvjHTcFjFX3VXoiUtwTbHxLNI9ImkcoBqzA==}
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -3619,12 +3613,6 @@ packages:
     resolution: {integrity: sha512-1WlzjZUb9W5BWZYMKCr2/exPVh5P7HIhHzkcYZczkXm0upiuN4zEddwjdckL+WSQWGGlv9bboXCqcTYCEgqexw==}
     peerDependencies:
       shiki: '>=3.13.0'
-
-  stream-monaco@0.0.22:
-    resolution: {integrity: sha512-uYPdwnxnNhZ6OstQcaOavTnLjn5N+ADw+/XLc1AdHzoHS/oqZOpbInH3u2Np9YMfECIvDQMW1anO04V9AVwDgA==}
-    hasBin: true
-    peerDependencies:
-      monaco-editor: ^0.52.2
 
   string-convert@0.2.1:
     resolution: {integrity: sha512-u/1tdPl4yQnPBjnVrmdLo9gtuLvELKsAoRapekWggdiQNvvvum+jYF329d84NAa660KQw7pB2n36KrIKVoXa3A==}
@@ -5393,12 +5381,6 @@ snapshots:
     dependencies:
       '@shikijs/types': 3.23.0
 
-  '@shikijs/monaco@3.23.0':
-    dependencies:
-      '@shikijs/core': 3.23.0
-      '@shikijs/types': 3.23.0
-      '@shikijs/vscode-textmate': 10.0.2
-
   '@shikijs/themes@3.23.0':
     dependencies:
       '@shikijs/types': 3.23.0
@@ -5907,8 +5889,6 @@ snapshots:
       resize-observer-polyfill: 1.5.1
       screenfull: 5.2.0
       tslib: 2.8.1
-
-  alien-signals@2.0.8: {}
 
   ansi-regex@5.0.1: {}
 
@@ -8142,13 +8122,6 @@ snapshots:
       - react
       - solid-js
       - vue
-
-  stream-monaco@0.0.22(monaco-editor@0.52.2):
-    dependencies:
-      '@shikijs/monaco': 3.23.0
-      alien-signals: 2.0.8
-      monaco-editor: 0.52.2
-      shiki: 3.23.0
 
   string-convert@0.2.1: {}
 

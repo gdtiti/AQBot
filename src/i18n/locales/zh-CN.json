@@ -408,6 +408,8 @@
     "multiModelDisplayModeSideBySide": "并排对比",
     "multiModelDisplayModeStacked": "上下堆叠",
     "codeTheme": "代码主题",
+    "codeThemeLight": "代码主题（亮色）",
+    "codeThemeDark": "代码主题（暗色）",
     "proxyType": "代理类型",
     "proxyAddress": "代理地址",
     "proxyPort": "代理端口",

@@ -336,6 +336,7 @@ export interface AppSettings {
   code_font_family: string;
   bubble_style: string;
   code_theme: string;
+  code_theme_light: string;
   default_provider_id: string | null;
   default_model_id: string | null;
   default_temperature: number | null;

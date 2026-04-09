@@ -408,6 +408,8 @@
     "multiModelDisplayModeSideBySide": "나란히 비교",
     "multiModelDisplayModeStacked": "위아래 쌓기",
     "codeTheme": "코드 테마",
+    "codeThemeLight": "코드 테마 (라이트)",
+    "codeThemeDark": "코드 테마 (다크)",
     "proxyType": "프록시 유형",
     "proxyAddress": "프록시 주소",
     "proxyPort": "프록시 포트",

@@ -408,6 +408,8 @@
     "multiModelDisplayModeSideBySide": "جنبًا إلى جنب",
     "multiModelDisplayModeStacked": "مكدس",
     "codeTheme": "سمة الكود",
+    "codeThemeLight": "سمة الكود (فاتح)",
+    "codeThemeDark": "سمة الكود (داكن)",
     "proxyType": "نوع الوكيل",
     "proxyAddress": "عنوان الوكيل",
     "proxyPort": "منفذ الوكيل",

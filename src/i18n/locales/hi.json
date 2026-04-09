@@ -408,6 +408,8 @@
     "multiModelDisplayModeSideBySide": "साथ-साथ",
     "multiModelDisplayModeStacked": "एक के ऊपर एक",
     "codeTheme": "कोड थीम",
+    "codeThemeLight": "कोड थीम (लाइट)",
+    "codeThemeDark": "कोड थीम (डार्क)",
     "proxyType": "प्रॉक्सी प्रकार",
     "proxyAddress": "प्रॉक्सी पता",
     "proxyPort": "प्रॉक्सी पोर्ट",

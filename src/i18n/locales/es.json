@@ -408,6 +408,8 @@
     "multiModelDisplayModeSideBySide": "Lado a lado",
     "multiModelDisplayModeStacked": "Apilado",
     "codeTheme": "Tema de código",
+    "codeThemeLight": "Tema de código (claro)",
+    "codeThemeDark": "Tema de código (oscuro)",
     "proxyType": "Tipo de proxy",
     "proxyAddress": "Dirección del proxy",
     "proxyPort": "Puerto del proxy",

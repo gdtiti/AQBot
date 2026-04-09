@@ -46,6 +46,7 @@ export default defineConfig(async () => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "stream-monaco": path.resolve(__dirname, "../stream-monaco"),
+      "stream-markdown-parser": path.resolve(__dirname, "../markstream-vue/packages/markdown-parser"),
     },
   },
   clearScreen: false,

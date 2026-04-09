@@ -5,17 +5,28 @@ use tauri::State;
 
 #[tauri::command]
 pub async fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, String> {
-    aqbot_core::repo::settings::get_settings(&state.sea_db)
+    let mut settings = aqbot_core::repo::settings::get_settings(&state.sea_db)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    settings.backup_dir = aqbot_core::path_vars::decode_path_opt(&settings.backup_dir);
+    settings.gateway_ssl_cert_path =
+        aqbot_core::path_vars::decode_path_opt(&settings.gateway_ssl_cert_path);
+    settings.gateway_ssl_key_path =
+        aqbot_core::path_vars::decode_path_opt(&settings.gateway_ssl_key_path);
+    Ok(settings)
 }
 
 #[tauri::command]
 pub async fn save_settings(
     app: AppHandle,
     state: State<'_, AppState>,
-    settings: AppSettings,
+    mut settings: AppSettings,
 ) -> Result<(), String> {
+    settings.backup_dir = aqbot_core::path_vars::encode_path_opt(&settings.backup_dir);
+    settings.gateway_ssl_cert_path =
+        aqbot_core::path_vars::encode_path_opt(&settings.gateway_ssl_cert_path);
+    settings.gateway_ssl_key_path =
+        aqbot_core::path_vars::encode_path_opt(&settings.gateway_ssl_key_path);
     aqbot_core::repo::settings::save_settings(&state.sea_db, &settings)
         .await
         .map_err(|e| e.to_string())?;

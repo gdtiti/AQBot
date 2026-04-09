@@ -115,8 +115,9 @@ pub async fn webdav_restore(
         .await
         .map_err(|e| e.to_string())?;
 
+    let decoded_backup_dir = aqbot_core::path_vars::decode_path_opt(&settings.backup_dir);
     let backup_dir =
-        backup::resolve_backup_dir(settings.backup_dir.as_deref(), &state.app_data_dir);
+        backup::resolve_backup_dir(decoded_backup_dir.as_deref(), &state.app_data_dir);
     backup::ensure_backup_dir(&backup_dir).map_err(|e| e.to_string())?;
 
     let mut cleanup = RestoreCleanup::default();
@@ -317,7 +318,8 @@ async fn do_webdav_backup_once(
         .map_err(|e| e.to_string())?;
 
     // 2. Create local SQLite snapshot via VACUUM INTO
-    let backup_dir = backup::resolve_backup_dir(settings.backup_dir.as_deref(), app_data_dir);
+    let decoded_backup_dir = aqbot_core::path_vars::decode_path_opt(&settings.backup_dir);
+    let backup_dir = backup::resolve_backup_dir(decoded_backup_dir.as_deref(), app_data_dir);
     backup::ensure_backup_dir(&backup_dir).map_err(|e| e.to_string())?;
 
     let temp_id = std::time::SystemTime::now()

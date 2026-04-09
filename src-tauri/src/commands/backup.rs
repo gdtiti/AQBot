@@ -23,8 +23,9 @@ pub async fn create_backup(
     let settings = get_settings(&state.sea_db)
         .await
         .map_err(|e| e.to_string())?;
+    let decoded_backup_dir = aqbot_core::path_vars::decode_path_opt(&settings.backup_dir);
     let backup_dir =
-        backup::resolve_backup_dir(settings.backup_dir.as_deref(), &state.app_data_dir);
+        backup::resolve_backup_dir(decoded_backup_dir.as_deref(), &state.app_data_dir);
     backup::create_backup(&state.sea_db, &format, &backup_dir)
         .await
         .map_err(|e| e.to_string())
@@ -85,14 +86,14 @@ pub async fn get_backup_settings(state: State<'_, AppState>) -> Result<AutoBacku
     let settings = get_settings(&state.sea_db)
         .await
         .map_err(|e| e.to_string())?;
+    let decoded_backup_dir = aqbot_core::path_vars::decode_path_opt(&settings.backup_dir);
     let default_dir = backup::resolve_backup_dir(None, &state.app_data_dir);
     Ok(AutoBackupSettings {
         enabled: settings.auto_backup_enabled,
         interval_hours: settings.auto_backup_interval_hours,
         max_count: settings.auto_backup_max_count,
         backup_dir: Some(
-            settings
-                .backup_dir
+            decoded_backup_dir
                 .unwrap_or_else(|| default_dir.to_string_lossy().to_string()),
         ),
     })
@@ -109,7 +110,7 @@ pub async fn update_backup_settings(
     settings.auto_backup_enabled = backup_settings.enabled;
     settings.auto_backup_interval_hours = backup_settings.interval_hours;
     settings.auto_backup_max_count = backup_settings.max_count;
-    settings.backup_dir = backup_settings.backup_dir.clone();
+    settings.backup_dir = aqbot_core::path_vars::encode_path_opt(&backup_settings.backup_dir);
 
     aqbot_core::repo::settings::save_settings(&state.sea_db, &settings)
         .await
@@ -176,7 +177,10 @@ async fn restart_auto_backup(
         loop {
             // Read current settings to get backup_dir
             let backup_dir = match get_settings(&db).await {
-                Ok(s) => backup::resolve_backup_dir(s.backup_dir.as_deref(), &app_dir),
+                Ok(s) => {
+                    let decoded = aqbot_core::path_vars::decode_path_opt(&s.backup_dir);
+                    backup::resolve_backup_dir(decoded.as_deref(), &app_dir)
+                }
                 Err(_) => backup::resolve_backup_dir(None, &app_dir),
             };
 

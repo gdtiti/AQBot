@@ -58,8 +58,8 @@ async fn load_gateway_runtime_settings(state: &AppState) -> Result<GatewayRuntim
         port: settings.gateway_port,
         ssl_port: settings.gateway_ssl_port,
         ssl_enabled: settings.gateway_ssl_enabled,
-        ssl_cert_path: settings.gateway_ssl_cert_path,
-        ssl_key_path: settings.gateway_ssl_key_path,
+        ssl_cert_path: aqbot_core::path_vars::decode_path_opt(&settings.gateway_ssl_cert_path),
+        ssl_key_path: aqbot_core::path_vars::decode_path_opt(&settings.gateway_ssl_key_path),
         force_ssl: settings.gateway_force_ssl,
     })
 }

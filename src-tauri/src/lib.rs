@@ -478,7 +478,7 @@ pub fn run() {
                 tauri::async_runtime::spawn(async move {
                     if let Ok(settings) = aqbot_core::repo::settings::get_settings(&db).await {
                         if settings.auto_backup_enabled && settings.auto_backup_interval_hours > 0 {
-                            let backup_dir_setting = settings.backup_dir.clone();
+                            let backup_dir_setting = aqbot_core::path_vars::decode_path_opt(&settings.backup_dir);
                             let interval = settings.auto_backup_interval_hours;
                             let max_count = settings.auto_backup_max_count;
                             let interval_secs = interval as u64 * 3600;

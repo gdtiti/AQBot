@@ -713,46 +713,35 @@ export function InputArea() {
   const handleModeSwitch = useCallback(async (mode: 'chat' | 'agent') => {
     if (!activeConversation) return;
 
+    await updateConversation(activeConversation.id, { mode });
+
     if (mode === 'agent') {
-      modal.confirm({
-        title: t('agent.betaWarningTitle', '🤖 Agent 模式（Beta）'),
-        content: t('agent.betaWarningContent', 'Agent 模式目前为 Beta 测试版，功能可能不稳定。Agent 可以执行代码、读写文件等操作，请确保了解相关风险。'),
-        okText: t('common.confirm', '确认'),
-        cancelText: t('common.cancel', '取消'),
-        onOk: async () => {
-          await updateConversation(activeConversation.id, { mode });
-          // Clear multi-model companion models — not applicable in agent mode
-          if (companionModels.length > 0) {
-            setCompanionModels([]);
-            if (companionStorageKey) localStorage.removeItem(companionStorageKey);
-          }
-          try {
-            // Init agent session
-            const session = await invoke<{ cwd: string | null }>('agent_update_session', {
-              conversationId: activeConversation.id,
-            });
-            // Auto-create workspace if no CWD set
-            if (!session.cwd) {
-              const workspacePath = await invoke<string>('agent_ensure_workspace', {
-                conversationId: activeConversation.id,
-              });
-              await invoke('agent_update_session', {
-                conversationId: activeConversation.id,
-                cwd: workspacePath,
-              });
-              setAgentCwd(workspacePath);
-            } else {
-              setAgentCwd(session.cwd);
-            }
-          } catch (e) {
-            console.warn('Failed to init agent session:', e);
-          }
-        },
-      });
-    } else {
-      await updateConversation(activeConversation.id, { mode });
+      // Clear multi-model companion models — not applicable in agent mode
+      if (companionModels.length > 0) {
+        setCompanionModels([]);
+        if (companionStorageKey) localStorage.removeItem(companionStorageKey);
+      }
+      try {
+        const session = await invoke<{ cwd: string | null }>('agent_update_session', {
+          conversationId: activeConversation.id,
+        });
+        if (!session.cwd) {
+          const workspacePath = await invoke<string>('agent_ensure_workspace', {
+            conversationId: activeConversation.id,
+          });
+          await invoke('agent_update_session', {
+            conversationId: activeConversation.id,
+            cwd: workspacePath,
+          });
+          setAgentCwd(workspacePath);
+        } else {
+          setAgentCwd(session.cwd);
+        }
+      } catch (e) {
+        console.warn('Failed to init agent session:', e);
+      }
     }
-  }, [activeConversation, updateConversation, companionModels, companionStorageKey, modal, t]);
+  }, [activeConversation, updateConversation, companionModels, companionStorageKey]);
 
   const handleSend = useCallback(async () => {
     const trimmed = value.trim();

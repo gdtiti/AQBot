@@ -239,6 +239,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   respondAskUser: async (askId, answer) => {
     try {
       await invoke('agent_respond_ask', { askId, answer });
+      // Brief delay so user sees the loading/submitted feedback
+      await new Promise((r) => setTimeout(r, 500));
       get().handleAskUserResolved(askId);
     } catch (e) {
       console.error('[agentStore] respondAskUser failed:', e);

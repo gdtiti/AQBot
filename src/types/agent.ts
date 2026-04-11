@@ -54,6 +54,7 @@ export interface AskUserEvent {
   assistantMessageId: string;
   askId: string;
   question: string;
+  options?: string[];
 }
 
 export interface AgentDoneEvent {

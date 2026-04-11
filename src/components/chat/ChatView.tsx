@@ -2808,6 +2808,7 @@ export function ChatView() {
                 askId={ask.askId}
                 conversationId={ask.conversationId}
                 question={ask.question}
+                options={ask.options}
               />
             ))}
             {/* Show loading dots when agent is streaming but footer dots are NOT showing (no text content yet) */}

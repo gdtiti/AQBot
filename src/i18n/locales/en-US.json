@@ -1162,6 +1162,8 @@
   },
   "agent": {
     "askUserPlaceholder": "Type your answer...",
-    "askUserSubmit": "Submit"
+    "askUserSupplementPlaceholder": "Additional input (optional)...",
+    "askUserSubmit": "Submit",
+    "askUserSubmitted": "Submitted"
   }
 }

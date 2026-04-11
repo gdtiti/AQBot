@@ -129,6 +129,7 @@ struct AgentAskUserPayload {
     assistant_message_id: String,
     ask_id: String,
     question: String,
+    options: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -531,8 +532,9 @@ pub async fn agent_query(
     let conv_id_for_ask = conversation_id.clone();
     let assistant_id_for_ask = assistant_id_for_task.clone();
 
-    let ask_fn: open_agent_sdk::tools::askuser::AskUserFn = Arc::new(move |question: &str| {
-        let question = question.to_string();
+    let ask_fn: open_agent_sdk::tools::askuser::AskUserFn = Arc::new(move |request: open_agent_sdk::tools::askuser::AskUserRequest| {
+        let question = request.question;
+        let options = request.options;
         let ask_senders = ask_senders.clone();
         let app = app_for_ask.clone();
         let conv_id = conv_id_for_ask.clone();
@@ -554,6 +556,7 @@ pub async fn agent_query(
                         .unwrap_or_default(),
                     ask_id: ask_id.clone(),
                     question,
+                    options,
                 },
             );
 

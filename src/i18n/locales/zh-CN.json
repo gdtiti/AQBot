@@ -1162,6 +1162,8 @@
   },
   "agent": {
     "askUserPlaceholder": "输入您的回答...",
-    "askUserSubmit": "提交"
+    "askUserSupplementPlaceholder": "补充说明（可选）...",
+    "askUserSubmit": "提交",
+    "askUserSubmitted": "已提交"
   }
 }

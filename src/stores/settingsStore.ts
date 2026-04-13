@@ -82,6 +82,15 @@ const DEFAULT_SETTINGS: AppSettings = {
   chat_minimap_enabled: false,
   chat_minimap_style: 'faq',
   multi_model_display_mode: 'tabs',
+  // WebDAV sync settings — must be present so stale saves never omit them
+  webdav_host: null,
+  webdav_username: null,
+  webdav_path: null,
+  webdav_accept_invalid_certs: false,
+  webdav_sync_enabled: false,
+  webdav_sync_interval_minutes: 60,
+  webdav_max_remote_backups: 10,
+  webdav_include_documents: false,
 };
 
 export interface GlobalShortcutDiagnostic {
@@ -104,6 +113,8 @@ export interface GlobalShortcutStatus {
 interface SettingsState {
   settings: AppSettings;
   loading: boolean;
+  /** Set once after the first successful fetchSettings; guards saveSettings from writing stale data. */
+  _loaded: boolean;
   error: string | null;
   globalShortcutStatus: GlobalShortcutStatus;
   fetchSettings: () => Promise<void>;
@@ -113,7 +124,8 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: DEFAULT_SETTINGS,
-  loading: false,
+  loading: true,
+  _loaded: false,
   error: null,
   globalShortcutStatus: {
     enabled: false,
@@ -126,13 +138,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ loading: true });
     try {
       const fetched = await invoke<Partial<AppSettings>>('get_settings');
-      set({ settings: { ...DEFAULT_SETTINGS, ...fetched }, loading: false, error: null });
+      set({ settings: { ...DEFAULT_SETTINGS, ...fetched }, loading: false, _loaded: true, error: null });
     } catch (e) {
-      set({ error: String(e), loading: false });
+      set({ error: String(e), loading: false, _loaded: true });
     }
   },
 
   saveSettings: async (partial) => {
+    if (!get()._loaded) {
+      console.warn('[settingsStore] saveSettings skipped: settings not loaded yet');
+      return;
+    }
     const merged = { ...get().settings, ...partial };
     set({ settings: merged, error: null });
     try {

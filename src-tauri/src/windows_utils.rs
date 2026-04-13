@@ -96,7 +96,7 @@ fn read_registry_string(
     let wide_sub_key = to_wide(sub_key);
     let wide_value = to_wide(value_name);
 
-    let mut hkey: HKEY = 0;
+    let mut hkey: HKEY = std::ptr::null_mut();
     let status =
         unsafe { RegOpenKeyExW(root, wide_sub_key.as_ptr(), 0, KEY_READ, &mut hkey) };
     if status != 0 {

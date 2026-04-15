@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use std::os::unix::fs::PermissionsExt;
 
 use std::path::PathBuf;
-use tauri::{LogicalSize, Size};
+use tauri::{LogicalPosition, LogicalSize, Position, Size};
 
 pub struct AppState {
     pub sea_db: DatabaseConnection,
@@ -488,7 +488,18 @@ pub fn run() {
                         restored_state.width,
                         restored_state.height,
                     )));
-                    let _ = main_window.center();
+
+                    if let (Some(x), Some(y)) = (restored_state.x, restored_state.y) {
+                        let _ = main_window.set_position(Position::Logical(LogicalPosition::new(x, y)));
+                    } else {
+                        let _ = main_window.center();
+                    }
+
+                    if restored_state.fullscreen {
+                        let _ = main_window.set_fullscreen(true);
+                    } else if restored_state.maximized {
+                        let _ = main_window.maximize();
+                    }
                 }
             }
 
@@ -604,33 +615,55 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if window.label() == "main" {
-                if matches!(event, tauri::WindowEvent::Resized(_)) {
-                    let app = window.app_handle();
-                    let state = app.state::<AppState>();
-                    if let Ok(size) = window.inner_size() {
+                match event {
+                    tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
+                        let app = window.app_handle();
+                        let state = app.state::<AppState>();
+                        let maximized = window.is_maximized().unwrap_or(false);
+                        let fullscreen = window.is_fullscreen().unwrap_or(false);
                         let scale_factor = window.scale_factor().unwrap_or(1.0);
-                        let _ = window_state::save_window_state(
-                            &state.app_data_dir,
-                            window_state::logical_window_state_from_physical(
-                                size.width,
-                                size.height,
-                                scale_factor,
-                            ),
-                        );
-                    }
-                }
 
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    let app = window.app_handle();
-                    let state = app.state::<AppState>();
-                    if state.close_to_tray.load(Ordering::Relaxed) {
-                        let _ = window.hide();
-                        api.prevent_close();
-                    } else {
-                        // Ask frontend for confirmation before quitting
-                        api.prevent_close();
-                        let _ = app.emit("app-close-requested", ());
+                        // Load previous state to preserve non-maximized geometry
+                        let prev = window_state::load_window_state(&state.app_data_dir);
+
+                        if maximized || fullscreen {
+                            // Only flip flags; keep the last normal geometry
+                            if let Some(mut prev) = prev {
+                                prev.maximized = maximized;
+                                prev.fullscreen = fullscreen;
+                                let _ = window_state::save_window_state(&state.app_data_dir, prev);
+                            }
+                        } else if let (Ok(size), Ok(pos)) = (window.inner_size(), window.outer_position()) {
+                            let logical_w = size.width as f64 / scale_factor;
+                            let logical_h = size.height as f64 / scale_factor;
+                            let logical_x = pos.x as f64 / scale_factor;
+                            let logical_y = pos.y as f64 / scale_factor;
+                            let _ = window_state::save_window_state(
+                                &state.app_data_dir,
+                                window_state::PersistedWindowState {
+                                    width: logical_w,
+                                    height: logical_h,
+                                    maximized: false,
+                                    fullscreen: false,
+                                    x: Some(logical_x),
+                                    y: Some(logical_y),
+                                },
+                            );
+                        }
                     }
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
+                        let app = window.app_handle();
+                        let state = app.state::<AppState>();
+                        if state.close_to_tray.load(Ordering::Relaxed) {
+                            let _ = window.hide();
+                            api.prevent_close();
+                        } else {
+                            // Ask frontend for confirmation before quitting
+                            api.prevent_close();
+                            let _ = app.emit("app-close-requested", ());
+                        }
+                    }
+                    _ => {}
                 }
             }
         })

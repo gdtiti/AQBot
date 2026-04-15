@@ -5,6 +5,14 @@ use std::path::{Path, PathBuf};
 pub struct PersistedWindowState {
     pub width: f64,
     pub height: f64,
+    #[serde(default)]
+    pub maximized: bool,
+    #[serde(default)]
+    pub fullscreen: bool,
+    #[serde(default)]
+    pub x: Option<f64>,
+    #[serde(default)]
+    pub y: Option<f64>,
 }
 
 pub fn window_state_path(aqbot_home: &Path) -> PathBuf {
@@ -24,17 +32,6 @@ pub fn save_window_state(aqbot_home: &Path, state: PersistedWindowState) -> io::
     std::fs::write(window_state_path(aqbot_home), json)
 }
 
-pub fn logical_window_state_from_physical(
-    physical_width: u32,
-    physical_height: u32,
-    scale_factor: f64,
-) -> PersistedWindowState {
-    PersistedWindowState {
-        width: physical_width as f64 / scale_factor,
-        height: physical_height as f64 / scale_factor,
-    }
-}
-
 pub fn clamp_window_state_to_monitor(
     state: PersistedWindowState,
     monitor_width: f64,
@@ -45,14 +42,17 @@ pub fn clamp_window_state_to_monitor(
     PersistedWindowState {
         width: state.width.clamp(640.0, max_width),
         height: state.height.clamp(480.0, max_height),
+        maximized: state.maximized,
+        fullscreen: state.fullscreen,
+        x: state.x.map(|v| v.clamp(0.0, monitor_width - 100.0)),
+        y: state.y.map(|v| v.clamp(0.0, monitor_height - 100.0)),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        clamp_window_state_to_monitor, load_window_state, logical_window_state_from_physical,
-        save_window_state, PersistedWindowState,
+        clamp_window_state_to_monitor, load_window_state, save_window_state, PersistedWindowState,
     };
 
     #[test]
@@ -69,6 +69,10 @@ mod tests {
         let state = PersistedWindowState {
             width: 1440.0,
             height: 960.0,
+            maximized: true,
+            fullscreen: false,
+            x: Some(100.0),
+            y: Some(50.0),
         };
 
         save_window_state(&test_dir, state).expect("failed to save window state");
@@ -80,15 +84,29 @@ mod tests {
     }
 
     #[test]
-    fn converts_physical_pixels_to_logical_window_size() {
-        let logical = logical_window_state_from_physical(3024, 1964, 2.0);
-        assert_eq!(
-            logical,
-            PersistedWindowState {
-                width: 1512.0,
-                height: 982.0,
-            }
-        );
+    fn loads_legacy_state_without_new_fields() {
+        let test_dir = std::env::temp_dir().join(format!(
+            "aqbot-window-state-legacy-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before unix epoch")
+                .as_nanos()
+        ));
+
+        std::fs::create_dir_all(&test_dir).expect("failed to create temp dir");
+        let legacy_json = r#"{"width":1440.0,"height":960.0}"#;
+        std::fs::write(test_dir.join("window-state.json"), legacy_json)
+            .expect("failed to write legacy json");
+
+        let restored = load_window_state(&test_dir).expect("failed to load legacy state");
+        assert_eq!(restored.width, 1440.0);
+        assert_eq!(restored.height, 960.0);
+        assert!(!restored.maximized);
+        assert!(!restored.fullscreen);
+        assert!(restored.x.is_none());
+        assert!(restored.y.is_none());
+
+        let _ = std::fs::remove_dir_all(&test_dir);
     }
 
     #[test]
@@ -97,6 +115,10 @@ mod tests {
             PersistedWindowState {
                 width: 2200.0,
                 height: 1600.0,
+                maximized: false,
+                fullscreen: false,
+                x: Some(2000.0),
+                y: Some(1500.0),
             },
             1512.0,
             982.0,
@@ -104,5 +126,9 @@ mod tests {
 
         assert!((clamped.width - 1360.8).abs() < f64::EPSILON);
         assert!((clamped.height - 883.8).abs() < 1e-9);
+        // x clamped to monitor_width - 100
+        assert!((clamped.x.unwrap() - 1412.0).abs() < f64::EPSILON);
+        // y clamped to monitor_height - 100
+        assert!((clamped.y.unwrap() - 882.0).abs() < f64::EPSILON);
     }
 }

@@ -326,6 +326,22 @@ html[data-theme="dark"] .markstream-react .thematic-break {
   border-top-color: var(--hr-border-color, var(--border-color));
 }
 
+/* Chat markdown runs inside a Tauri WebView where `content-visibility:auto`
+ * can leave freshly completed assistant content unpainted until the next
+ * scroll/repaint. Keep chat message renderers painted in this shell only. */
+.aqbot-chat-markdown > .markdown-renderer,
+.aqbot-chat-markdown .code-block-container {
+  content-visibility: visible;
+  contain-intrinsic-size: auto;
+}
+
+/* Let AQBot own chat bottom-lock behavior instead of browser scroll anchoring.
+ * Async math / diagram rendering can otherwise move the viewport without any
+ * user input and trick the chat into thinking the user scrolled away. */
+[data-message-area] .ant-bubble-list-scroll-box {
+  overflow-anchor: none;
+}
+
 html[data-theme="dark"] .markstream-react .footnote-node {
   border-left-color: var(--border-color);
   color: var(--color-text-secondary);

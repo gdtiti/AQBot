@@ -11,3 +11,10 @@ export function getStreamingLoadingState(
     footerLoading: isStreaming && hasContent,
   };
 }
+
+export function shouldRenderAssistantMarkdownFromContent(
+  isStreaming: boolean,
+  streamedInCurrentSession: boolean,
+): boolean {
+  return isStreaming || streamedInCurrentSession;
+}

@@ -33,11 +33,17 @@ import { KnowledgeRetrievalNode } from './KnowledgeRetrievalNode';
 import { McpContainerNode } from './McpContainerNode';
 import {
   getDistanceToHistoryTop,
+  hasScrollLayoutMetricsChanged,
+  shouldIgnoreScrollDepartureFromBottom,
   shouldKeepAutoScroll,
+  shouldStickToBottomOnLayoutChange,
   shouldShowScrollToBottom,
 } from './chatScroll';
 import { formatTokenCount, formatSpeed, formatDuration } from '../gateway/tokenFormat';
-import { getStreamingLoadingState } from './chatStreaming';
+import {
+  getStreamingLoadingState,
+  shouldRenderAssistantMarkdownFromContent,
+} from './chatStreaming';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { buildAssistantDisplayContent, shouldHideAssistantBubble } from './toolCallDisplay';
 import { ChatScrollIndicator } from './ChatScrollIndicator';
@@ -1103,63 +1109,67 @@ const AssistantMarkdown = React.memo(function AssistantMarkdown({
 
   if (hasDeferredHeavyNodes && !readyToRenderHeavyNodes) {
     return (
-      <div
-        ref={containerRef}
-        className="my-4 rounded-lg border"
-        style={{
-          borderColor: token.colorBorderSecondary,
-          background: isDarkMode ? token.colorBgContainer : token.colorBgElevated,
-        }}
-      >
+      <div className="aqbot-chat-markdown">
         <div
-          className="flex items-center justify-center px-4 py-10"
-          style={{ color: token.colorTextSecondary, gap: 8 }}
+          ref={containerRef}
+          className="my-4 rounded-lg border"
+          style={{
+            borderColor: token.colorBorderSecondary,
+            background: isDarkMode ? token.colorBgContainer : token.colorBgElevated,
+          }}
         >
-          <SyncOutlined spin />
-          <span className="text-sm">{t('chat.loadingRenderContent')}</span>
+          <div
+            className="flex items-center justify-center px-4 py-10"
+            style={{ color: token.colorTextSecondary, gap: 8 }}
+          >
+            <SyncOutlined spin />
+            <span className="text-sm">{t('chat.loadingRenderContent')}</span>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    nodes ? (
-      <NodeRenderer
-        key={rendererKey}
-        nodes={nodes}
-        isDark={isDarkMode}
-        customId="chat"
-        customHtmlTags={CHAT_CUSTOM_HTML_TAGS}
-        final={!isStreaming}
-        typewriter={isStreaming}
-        themes={codeBlockThemes}
-        codeBlockLightTheme={codeBlockLightTheme}
-        codeBlockDarkTheme={codeBlockDarkTheme}
-        codeBlockProps={codeBlockProps}
-        codeBlockMonacoOptions={codeBlockMonacoOptions}
-        mermaidProps={CHAT_MERMAID_PROPS}
-        infographicProps={CHAT_INFOGRAPHIC_PROPS}
-        {...CHAT_RENDER_BATCH_PROPS}
-      />
-    ) : (
-      <NodeRenderer
-        key={rendererKey}
-        content={content}
-        isDark={isDarkMode}
-        customId="chat"
-        customHtmlTags={CHAT_CUSTOM_HTML_TAGS}
-        final={!isStreaming}
-        typewriter={isStreaming}
-        themes={codeBlockThemes}
-        codeBlockLightTheme={codeBlockLightTheme}
-        codeBlockDarkTheme={codeBlockDarkTheme}
-        codeBlockProps={codeBlockProps}
-        codeBlockMonacoOptions={codeBlockMonacoOptions}
-        mermaidProps={CHAT_MERMAID_PROPS}
-        infographicProps={CHAT_INFOGRAPHIC_PROPS}
-        {...CHAT_RENDER_BATCH_PROPS}
-      />
-    )
+    <div className="aqbot-chat-markdown">
+      {nodes ? (
+        <NodeRenderer
+          key={rendererKey}
+          nodes={nodes}
+          isDark={isDarkMode}
+          customId="chat"
+          customHtmlTags={CHAT_CUSTOM_HTML_TAGS}
+          final={!isStreaming}
+          typewriter={isStreaming}
+          themes={codeBlockThemes}
+          codeBlockLightTheme={codeBlockLightTheme}
+          codeBlockDarkTheme={codeBlockDarkTheme}
+          codeBlockProps={codeBlockProps}
+          codeBlockMonacoOptions={codeBlockMonacoOptions}
+          mermaidProps={CHAT_MERMAID_PROPS}
+          infographicProps={CHAT_INFOGRAPHIC_PROPS}
+          {...CHAT_RENDER_BATCH_PROPS}
+        />
+      ) : (
+        <NodeRenderer
+          key={rendererKey}
+          content={content}
+          isDark={isDarkMode}
+          customId="chat"
+          customHtmlTags={CHAT_CUSTOM_HTML_TAGS}
+          final={!isStreaming}
+          typewriter={isStreaming}
+          themes={codeBlockThemes}
+          codeBlockLightTheme={codeBlockLightTheme}
+          codeBlockDarkTheme={codeBlockDarkTheme}
+          codeBlockProps={codeBlockProps}
+          codeBlockMonacoOptions={codeBlockMonacoOptions}
+          mermaidProps={CHAT_MERMAID_PROPS}
+          infographicProps={CHAT_INFOGRAPHIC_PROPS}
+          {...CHAT_RENDER_BATCH_PROPS}
+        />
+      )}
+    </div>
   );
 }, (prev, next) => (
   prev.content === next.content
@@ -2029,12 +2039,47 @@ export function ChatView() {
   const messageAreaRef = useRef<HTMLDivElement>(null);
   const bubbleListRef = useRef<BubbleListRef | null>(null);
   const scrollBoxRef = useRef<HTMLElement | null>(null);
+  const scrollContentRef = useRef<HTMLElement | null>(null);
   const pendingScrollConversationIdRef = useRef<string | null>(activeConversationId ?? null);
+  const stickToBottomRef = useRef(stickToBottom);
+  const scrollLayoutMetricsRef = useRef({ scrollHeight: 0, clientHeight: 0 });
+  const lastUserScrollIntentAtRef = useRef(0);
+  const contentRendererMessageIdsRef = useRef<Set<string>>(new Set());
+
+  const markUserScrollIntent = useCallback(() => {
+    lastUserScrollIntentAtRef.current = Date.now();
+  }, []);
 
   // Keep scrollBoxRef in sync with bubbleListRef
   useEffect(() => {
     scrollBoxRef.current = (bubbleListRef.current?.scrollBoxNativeElement as HTMLElement) ?? null;
+    scrollContentRef.current = (scrollBoxRef.current?.firstElementChild as HTMLElement | null) ?? null;
   });
+
+  useEffect(() => {
+    stickToBottomRef.current = stickToBottom;
+  }, [stickToBottom]);
+
+  useEffect(() => {
+    const scrollBox = scrollBoxRef.current;
+    if (!scrollBox) return;
+
+    const handleUserIntent = () => {
+      markUserScrollIntent();
+    };
+
+    scrollBox.addEventListener('wheel', handleUserIntent, { passive: true });
+    scrollBox.addEventListener('touchstart', handleUserIntent, { passive: true });
+    scrollBox.addEventListener('touchmove', handleUserIntent, { passive: true });
+    scrollBox.addEventListener('pointerdown', handleUserIntent, { passive: true });
+
+    return () => {
+      scrollBox.removeEventListener('wheel', handleUserIntent);
+      scrollBox.removeEventListener('touchstart', handleUserIntent);
+      scrollBox.removeEventListener('touchmove', handleUserIntent);
+      scrollBox.removeEventListener('pointerdown', handleUserIntent);
+    };
+  }, [activeConversationId, bubbleListThemeKey, markUserScrollIntent, messages.length]);
 
   // Scroll callback for ChatMinimap — finds bubble DOM element by message ID
   const minimapScrollTo = useCallback((messageId: string) => {
@@ -2069,7 +2114,16 @@ export function ChatView() {
     pendingScrollConversationIdRef.current = activeConversationId ?? null;
     setShowScrollToBottom(false);
     setStickToBottom(true);
+    scrollLayoutMetricsRef.current = { scrollHeight: 0, clientHeight: 0 };
+    contentRendererMessageIdsRef.current.clear();
   }, [activeConversationId]);
+
+  useEffect(() => {
+    if (!streaming || !streamingMessageId) {
+      return;
+    }
+    contentRendererMessageIdsRef.current.add(streamingMessageId);
+  }, [streaming, streamingMessageId]);
 
   const syncScrollToBottomVisibility = useCallback(() => {
     const target = scrollBoxRef.current;
@@ -2167,7 +2221,17 @@ export function ChatView() {
       false,
       1,
     );
-    if (keepAutoScroll !== stickToBottom) {
+    const hadRecentUserScrollIntent = Date.now() - lastUserScrollIntentAtRef.current < 250;
+    if (shouldIgnoreScrollDepartureFromBottom(
+      keepAutoScroll,
+      stickToBottomRef.current,
+      hadRecentUserScrollIntent,
+    )) {
+      bubbleListRef.current?.scrollTo({ top: 'bottom', behavior: 'auto' });
+      setShowScrollToBottom(false);
+      return;
+    }
+    if (keepAutoScroll !== stickToBottomRef.current) {
       setStickToBottom(keepAutoScroll);
     }
     if (!hasOlderMessages || loading || loadingOlder) return;
@@ -2179,13 +2243,69 @@ export function ChatView() {
     );
     if (distanceToHistoryTop > 24) return;
     void handleLoadOlderMessages();
-  }, [handleLoadOlderMessages, hasOlderMessages, loading, loadingOlder, stickToBottom]);
+  }, [handleLoadOlderMessages, hasOlderMessages, loading, loadingOlder]);
 
   const handleScrollToBottom = useCallback(() => {
     bubbleListRef.current?.scrollTo({ top: 'bottom', behavior: 'smooth' });
     setShowScrollToBottom(false);
     setStickToBottom(true);
   }, []);
+
+  useEffect(() => {
+    const scrollBox = scrollBoxRef.current;
+    const scrollContent = scrollContentRef.current;
+    if (!scrollBox || !scrollContent || typeof ResizeObserver === 'undefined') return;
+
+    scrollLayoutMetricsRef.current = {
+      scrollHeight: scrollBox.scrollHeight,
+      clientHeight: scrollBox.clientHeight,
+    };
+
+    let frameId = 0;
+
+    const handleLayoutResize = () => {
+      frameId = 0;
+      const target = scrollBoxRef.current;
+      if (!target) return;
+
+      const nextMetrics = {
+        scrollHeight: target.scrollHeight,
+        clientHeight: target.clientHeight,
+      };
+      const previousMetrics = scrollLayoutMetricsRef.current;
+
+      if (!hasScrollLayoutMetricsChanged(previousMetrics, nextMetrics)) {
+        return;
+      }
+
+      scrollLayoutMetricsRef.current = nextMetrics;
+
+      if (shouldStickToBottomOnLayoutChange(previousMetrics, nextMetrics, stickToBottomRef.current)) {
+        bubbleListRef.current?.scrollTo({ top: 'bottom', behavior: 'auto' });
+        setShowScrollToBottom(false);
+        return;
+      }
+
+      syncScrollToBottomVisibility();
+    };
+
+    const observer = new ResizeObserver(() => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+      frameId = window.requestAnimationFrame(handleLayoutResize);
+    });
+
+    observer.observe(scrollBox);
+    observer.observe(scrollContent);
+
+    return () => {
+      observer.disconnect();
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [activeConversationId, bubbleListThemeKey, messages.length, syncScrollToBottomVisibility]);
 
   // Scroll to bottom when streaming starts (user sent a message while scrolled up)
   const prevStreamingRef = useRef(false);
@@ -2547,9 +2667,14 @@ export function ChatView() {
         continue;
       }
       // Skip the actively streaming message — NodeRenderer handles incremental
-      // parsing internally via its `content` prop, avoiding full O(n) re-parse
-      // on every 16ms flush.
-      if (streaming && msg?.id === streamingMessageId) {
+      // parsing internally via its `content` prop. Keep that same renderer path
+      // after completion so the message does not switch from `content` to
+      // `nodes` and visibly re-render a second time.
+      const shouldRenderFromContent = shouldRenderAssistantMarkdownFromContent(
+        streaming && msg?.id === streamingMessageId,
+        Boolean(msg?.id && contentRendererMessageIdsRef.current.has(msg.id)),
+      );
+      if (shouldRenderFromContent) {
         continue;
       }
 
@@ -2761,8 +2886,14 @@ export function ChatView() {
     // bubbleData.key is parent_message_id for stable rendering
     const msg = assistantByParentId.get(String(bubbleData.key)) ?? messageById.get(String(bubbleData.key));
     const isStreaming = streaming && msg?.id === streamingMessageId;
+    const shouldRenderFromContent = shouldRenderAssistantMarkdownFromContent(
+      isStreaming,
+      Boolean(msg?.id && contentRendererMessageIdsRef.current.has(msg.id)),
+    );
     const assistantCopyText = stripAqbotTags(msg?.content ?? (typeof bubbleData.content === 'string' ? bubbleData.content : ''));
-    const parsedNodes = aiContentNodesById.get(String(bubbleData.key));
+    const parsedNodes = shouldRenderFromContent
+      ? undefined
+      : aiContentNodesById.get(String(bubbleData.key));
     const { bubbleLoading: rawBubbleLoading, footerLoading } = getStreamingLoadingState(isStreaming, bubbleData.content);
     // In multi-model mode, never hide the footer (which contains ModelTags) via
     // the Ant Design Bubble loading state — Bubble hides footer when loading=true.
@@ -2876,7 +3007,7 @@ export function ChatView() {
             {msgMarker}
             <AssistantMarkdown
               content={content}
-              nodes={isStreaming ? undefined : parsedNodes}
+              nodes={parsedNodes}
               isDarkMode={isDarkMode}
               isStreaming={isStreaming}
               codeBlockDarkTheme={codeBlockDarkTheme}

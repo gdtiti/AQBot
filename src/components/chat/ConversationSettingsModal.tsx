@@ -46,10 +46,10 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
     if (open && conversation) {
       setTitle(conversation.title);
       setSystemPrompt(conversation.system_prompt ?? '');
-      setTemperature(conversation.temperature ?? settings.default_temperature ?? 0.7);
-      setTopP(conversation.top_p ?? settings.default_top_p ?? 1.0);
-      setMaxTokens(conversation.max_tokens ?? settings.default_max_tokens ?? 4096);
-      setFrequencyPenalty(conversation.frequency_penalty ?? settings.default_frequency_penalty ?? 0);
+      setTemperature(conversation.temperature ?? null);
+      setTopP(conversation.top_p ?? null);
+      setMaxTokens(conversation.max_tokens ?? null);
+      setFrequencyPenalty(conversation.frequency_penalty ?? null);
 
       const stored = localStorage.getItem(CONTEXT_LIMIT_KEY(conversation.id));
       setContextLimit(stored ? Number(stored) : 50);
@@ -88,10 +88,10 @@ export function ConversationSettingsModal({ open, onClose }: ConversationSetting
       await updateConversation(conversation.id, {
         title,
         system_prompt: systemPrompt,
-        temperature: temperature ?? undefined,
-        max_tokens: maxTokens ?? undefined,
-        top_p: topP ?? undefined,
-        frequency_penalty: frequencyPenalty ?? undefined,
+        temperature,
+        max_tokens: maxTokens,
+        top_p: topP,
+        frequency_penalty: frequencyPenalty,
       });
       localStorage.setItem(CONTEXT_LIMIT_KEY(conversation.id), String(contextLimit));
       // Save icon

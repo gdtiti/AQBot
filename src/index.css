@@ -193,6 +193,40 @@ b, strong, th,
   scrollbar-width: none !important;
 }
 
+.aqbot-input-textarea {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+
+.aqbot-input-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.aqbot-input-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aqbot-input-textarea::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+}
+
+.aqbot-input-textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="dark"] .aqbot-input-textarea {
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+
+html[data-theme="dark"] .aqbot-input-textarea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+html[data-theme="dark"] .aqbot-input-textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.34);
+}
+
 /* ── OverlayScrollbars custom theme ──────────────────────────────── */
 .os-theme-aqbot {
   --os-size: 5px;

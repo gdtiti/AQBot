@@ -344,10 +344,14 @@ pub struct UpdateConversationInput {
     pub is_pinned: Option<bool>,
     pub is_archived: Option<bool>,
     pub system_prompt: Option<String>,
-    pub temperature: Option<f64>,
-    pub max_tokens: Option<i64>,
-    pub top_p: Option<f64>,
-    pub frequency_penalty: Option<f64>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub temperature: Option<Option<f64>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub max_tokens: Option<Option<i64>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub top_p: Option<Option<f64>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub frequency_penalty: Option<Option<f64>>,
     pub search_enabled: Option<bool>,
     #[serde(default, deserialize_with = "deserialize_double_option")]
     pub search_provider_id: Option<Option<String>>,

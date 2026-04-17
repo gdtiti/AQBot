@@ -136,17 +136,17 @@ pub async fn update_conversation(
             Some(sp.clone())
         });
     }
-    if let Some(temp) = input.temperature {
-        am.temperature = Set(Some(temp));
+    if let Some(temperature) = input.temperature {
+        am.temperature = Set(temperature);
     }
-    if let Some(mt) = input.max_tokens {
-        am.max_tokens = Set(Some(mt));
+    if let Some(max_tokens) = input.max_tokens {
+        am.max_tokens = Set(max_tokens);
     }
-    if let Some(tp) = input.top_p {
-        am.top_p = Set(Some(tp));
+    if let Some(top_p) = input.top_p {
+        am.top_p = Set(top_p);
     }
-    if let Some(fp) = input.frequency_penalty {
-        am.frequency_penalty = Set(Some(fp));
+    if let Some(frequency_penalty) = input.frequency_penalty {
+        am.frequency_penalty = Set(frequency_penalty);
     }
     if let Some(search_enabled) = input.search_enabled {
         am.search_enabled = Set(if search_enabled { 1 } else { 0 });

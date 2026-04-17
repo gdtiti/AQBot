@@ -1170,6 +1170,7 @@ export function InputArea() {
 
         {/* Textarea */}
         <textarea
+          className="aqbot-input-textarea"
           ref={textareaRef}
           value={value}
           onChange={handleInput}

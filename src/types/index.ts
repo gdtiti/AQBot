@@ -216,10 +216,10 @@ export interface UpdateConversationInput {
   is_pinned?: boolean;
   is_archived?: boolean;
   system_prompt?: string;
-  temperature?: number;
-  max_tokens?: number;
-  top_p?: number;
-  frequency_penalty?: number;
+  temperature?: number | null;
+  max_tokens?: number | null;
+  top_p?: number | null;
+  frequency_penalty?: number | null;
   search_enabled?: boolean;
   search_provider_id?: string | null;
   thinking_budget?: number | null;

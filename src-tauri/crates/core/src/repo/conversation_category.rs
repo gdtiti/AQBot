@@ -15,6 +15,12 @@ fn category_from_entity(m: conversation_categories::Model) -> ConversationCatego
         icon_type: m.icon_type,
         icon_value: m.icon_value,
         system_prompt: m.system_prompt,
+        default_provider_id: m.default_provider_id,
+        default_model_id: m.default_model_id,
+        default_temperature: m.default_temperature,
+        default_max_tokens: m.default_max_tokens,
+        default_top_p: m.default_top_p,
+        default_frequency_penalty: m.default_frequency_penalty,
         sort_order: m.sort_order,
         is_collapsed: m.is_collapsed != 0,
         created_at: m.created_at,
@@ -54,6 +60,12 @@ pub async fn create_conversation_category(
         icon_type: Set(input.icon_type),
         icon_value: Set(input.icon_value),
         system_prompt: Set(input.system_prompt),
+        default_provider_id: Set(input.default_provider_id),
+        default_model_id: Set(input.default_model_id),
+        default_temperature: Set(input.default_temperature),
+        default_max_tokens: Set(input.default_max_tokens),
+        default_top_p: Set(input.default_top_p),
+        default_frequency_penalty: Set(input.default_frequency_penalty),
         sort_order: Set(sort_order),
         is_collapsed: Set(1),
         created_at: Set(now),
@@ -78,13 +90,31 @@ pub async fn update_conversation_category(
         am.name = Set(name);
     }
     if let Some(icon_type) = input.icon_type {
-        am.icon_type = Set(Some(icon_type));
+        am.icon_type = Set(icon_type);
     }
     if let Some(icon_value) = input.icon_value {
-        am.icon_value = Set(Some(icon_value));
+        am.icon_value = Set(icon_value);
     }
-    if input.system_prompt.is_some() {
-        am.system_prompt = Set(input.system_prompt);
+    if let Some(system_prompt) = input.system_prompt {
+        am.system_prompt = Set(system_prompt);
+    }
+    if let Some(default_provider_id) = input.default_provider_id {
+        am.default_provider_id = Set(default_provider_id);
+    }
+    if let Some(default_model_id) = input.default_model_id {
+        am.default_model_id = Set(default_model_id);
+    }
+    if let Some(default_temperature) = input.default_temperature {
+        am.default_temperature = Set(default_temperature);
+    }
+    if let Some(default_max_tokens) = input.default_max_tokens {
+        am.default_max_tokens = Set(default_max_tokens);
+    }
+    if let Some(default_top_p) = input.default_top_p {
+        am.default_top_p = Set(default_top_p);
+    }
+    if let Some(default_frequency_penalty) = input.default_frequency_penalty {
+        am.default_frequency_penalty = Set(default_frequency_penalty);
     }
     am.updated_at = Set(now_ts());
     am.update(db).await?;

@@ -5,8 +5,10 @@ import { formatSearchContent, buildSearchTag } from '@/lib/searchUtils';
 import { buildKnowledgeTag, buildMemoryTag, type RagContextRetrievedEvent } from '@/lib/memoryUtils';
 import { useProviderStore } from '@/stores/providerStore';
 import { useSearchStore } from '@/stores/searchStore';
+import { useCategoryStore } from './categoryStore';
 import type {
   Conversation,
+  ConversationCategory,
   Message,
   MessagePage,
   AttachmentInput,
@@ -118,6 +120,31 @@ function conversationPreferenceUpdateFromState(
     enabled_mcp_server_ids: [...state.enabledMcpServerIds],
     enabled_knowledge_base_ids: [...state.enabledKnowledgeBaseIds],
     enabled_memory_namespace_ids: [...state.enabledMemoryNamespaceIds],
+  };
+}
+
+function categoryTemplateUpdateFromCategory(
+  category?: ConversationCategory | null,
+): Pick<
+  UpdateConversationInput,
+  | 'category_id'
+  | 'system_prompt'
+  | 'temperature'
+  | 'max_tokens'
+  | 'top_p'
+  | 'frequency_penalty'
+> {
+  if (!category) {
+    return {};
+  }
+
+  return {
+    category_id: category.id,
+    system_prompt: category.system_prompt ?? undefined,
+    temperature: category.default_temperature,
+    max_tokens: category.default_max_tokens,
+    top_p: category.default_top_p,
+    frequency_penalty: category.default_frequency_penalty,
   };
 }
 
@@ -315,7 +342,12 @@ interface ConversationState {
   deleteCompression: () => Promise<void>;
   fetchConversations: () => Promise<void>;
   setActiveConversation: (id: string | null) => void;
-  createConversation: (title: string, modelId: string, providerId: string) => Promise<Conversation>;
+  createConversation: (
+    title: string,
+    modelId: string,
+    providerId: string,
+    options?: { categoryId?: string | null },
+  ) => Promise<Conversation>;
   updateConversation: (id: string, input: UpdateConversationInput) => Promise<void>;
   renameConversation: (id: string, title: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
@@ -918,18 +950,27 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     });
   },
 
-  createConversation: async (title, modelId, providerId) => {
+  createConversation: async (title, modelId, providerId, options) => {
     try {
+      const category = options?.categoryId
+        ? useCategoryStore.getState().categories.find((item) => item.id === options.categoryId) ?? null
+        : null;
+      const templateProviderId = category?.default_provider_id ?? providerId;
+      const templateModelId = category?.default_model_id ?? modelId;
       const createdConversation = await invoke<Conversation>('create_conversation', {
         title,
-        modelId,
-        providerId,
+        modelId: templateModelId,
+        providerId: templateProviderId,
+        systemPrompt: category?.system_prompt ?? undefined,
       });
       let conversation = createdConversation;
       try {
         conversation = await invoke<Conversation>('update_conversation', {
           id: createdConversation.id,
-          input: conversationPreferenceUpdateFromState(get()),
+          input: {
+            ...categoryTemplateUpdateFromCategory(category),
+            ...conversationPreferenceUpdateFromState(get()),
+          },
         });
       } catch (preferenceError) {
         set({ error: String(preferenceError) });

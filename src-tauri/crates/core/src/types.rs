@@ -375,6 +375,12 @@ pub struct ConversationCategory {
     pub icon_type: Option<String>,
     pub icon_value: Option<String>,
     pub system_prompt: Option<String>,
+    pub default_provider_id: Option<String>,
+    pub default_model_id: Option<String>,
+    pub default_temperature: Option<f64>,
+    pub default_max_tokens: Option<i64>,
+    pub default_top_p: Option<f64>,
+    pub default_frequency_penalty: Option<f64>,
     pub sort_order: i32,
     pub is_collapsed: bool,
     pub created_at: i64,
@@ -387,14 +393,35 @@ pub struct CreateConversationCategoryInput {
     pub icon_type: Option<String>,
     pub icon_value: Option<String>,
     pub system_prompt: Option<String>,
+    pub default_provider_id: Option<String>,
+    pub default_model_id: Option<String>,
+    pub default_temperature: Option<f64>,
+    pub default_max_tokens: Option<i64>,
+    pub default_top_p: Option<f64>,
+    pub default_frequency_penalty: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateConversationCategoryInput {
     pub name: Option<String>,
-    pub icon_type: Option<String>,
-    pub icon_value: Option<String>,
-    pub system_prompt: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub icon_type: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub icon_value: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub system_prompt: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub default_provider_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub default_model_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub default_temperature: Option<Option<f64>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub default_max_tokens: Option<Option<i64>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub default_top_p: Option<Option<f64>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub default_frequency_penalty: Option<Option<f64>>,
 }
 
 // === Gateway System ===

@@ -484,6 +484,13 @@ export async function handleCommand<T>(cmd: string, args?: Record<string, unknow
         name: input.name,
         icon_type: input.icon_type ?? null,
         icon_value: input.icon_value ?? null,
+        system_prompt: input.system_prompt ?? null,
+        default_provider_id: input.default_provider_id ?? null,
+        default_model_id: input.default_model_id ?? null,
+        default_temperature: input.default_temperature ?? null,
+        default_max_tokens: input.default_max_tokens ?? null,
+        default_top_p: input.default_top_p ?? null,
+        default_frequency_penalty: input.default_frequency_penalty ?? null,
         sort_order: maxOrder + 1,
         is_collapsed: true,
         created_at: nowTs(),
@@ -501,6 +508,15 @@ export async function handleCommand<T>(cmd: string, args?: Record<string, unknow
         if (input.name !== undefined) cats[idx].name = input.name;
         if (input.icon_type !== undefined) cats[idx].icon_type = input.icon_type;
         if (input.icon_value !== undefined) cats[idx].icon_value = input.icon_value;
+        if (input.system_prompt !== undefined) cats[idx].system_prompt = input.system_prompt;
+        if (input.default_provider_id !== undefined) cats[idx].default_provider_id = input.default_provider_id;
+        if (input.default_model_id !== undefined) cats[idx].default_model_id = input.default_model_id;
+        if (input.default_temperature !== undefined) cats[idx].default_temperature = input.default_temperature;
+        if (input.default_max_tokens !== undefined) cats[idx].default_max_tokens = input.default_max_tokens;
+        if (input.default_top_p !== undefined) cats[idx].default_top_p = input.default_top_p;
+        if (input.default_frequency_penalty !== undefined) {
+          cats[idx].default_frequency_penalty = input.default_frequency_penalty;
+        }
         cats[idx].updated_at = nowTs();
         setStore('conversation_categories', cats);
         return cats[idx] as T;

@@ -14,7 +14,7 @@ import type { ShortcutAction } from '@/lib/shortcuts'
 import type { Conversation, Message, ConversationCategory } from '@/types'
 import { useResolvedAvatarSrc } from '@/hooks/useResolvedAvatarSrc'
 import type { AvatarType } from '@/stores/userProfileStore'
-import { CategoryEditModal } from './CategoryEditModal'
+import { CategoryEditModal, type CategoryEditFormData } from './CategoryEditModal'
 import {
   DndContext,
   closestCenter,
@@ -63,16 +63,20 @@ const CategoryIcon = memo(function CategoryIcon({ cat, size = 14 }: { cat: Conve
 
 function SortableCategoryLabel({
   cat,
+  onCreateConversation,
   onEdit,
   onDelete,
   menuActionRef,
+  newConversationLabel,
   editLabel,
   deleteLabel,
 }: {
   cat: ConversationCategory
+  onCreateConversation: () => void
   onEdit: () => void
   onDelete: () => void
   menuActionRef: React.MutableRefObject<boolean>
+  newConversationLabel: string
   editLabel: string
   deleteLabel: string
 }) {
@@ -88,6 +92,7 @@ function SortableCategoryLabel({
       trigger={['contextMenu']}
       menu={{
         items: [
+          { key: 'new', label: newConversationLabel, icon: <MessageSquarePlus size={14} /> },
           { key: 'edit', label: editLabel, icon: <Pencil size={14} /> },
           { key: 'delete', label: deleteLabel, icon: <Trash2 size={14} />, danger: true },
         ],
@@ -95,7 +100,8 @@ function SortableCategoryLabel({
           domEvent.stopPropagation()
           menuActionRef.current = true
           setTimeout(() => { menuActionRef.current = false }, 100)
-          if (key === 'edit') onEdit()
+          if (key === 'new') onCreateConversation()
+          else if (key === 'edit') onEdit()
           else if (key === 'delete') onDelete()
         },
       }}
@@ -259,7 +265,7 @@ export function ChatSidebar() {
 
   useEffect(() => { void fetchCategories() }, [fetchCategories])
 
-  const handleNewConversation = useCallback(async () => {
+  const handleNewConversation = useCallback(async (categoryId?: string | null) => {
     let provider: typeof providers[0] | undefined
     let model: typeof providers[0]['models'][0] | undefined
 
@@ -286,10 +292,13 @@ export function ChatSidebar() {
       return
     }
 
+    const activeConv = conversations.find((c) => c.id === activeConversationId)
+    const templateCategoryId = categoryId ?? activeConv?.category_id ?? null
     const conv = await createConversation(
       t('chat.newConversation'),
       model.model_id,
       provider.id,
+      { categoryId: templateCategoryId },
     )
     setActiveConversation(conv.id)
   }, [providers, settings, conversations, activeConversationId, createConversation, setActiveConversation, messageApi, t])
@@ -734,6 +743,8 @@ export function ChatSidebar() {
           <SortableCategoryLabel
             cat={cat}
             menuActionRef={menuActionRef}
+            onCreateConversation={() => { void handleNewConversation(cat.id) }}
+            newConversationLabel={t('chat.newConversation')}
             editLabel={t('chat.editCategory')}
             deleteLabel={t('chat.deleteCategory')}
             onEdit={() => {
@@ -746,29 +757,41 @@ export function ChatSidebar() {
       }
       return groupLabels[group] ?? group
     },
-    [categories, groupLabels, t, handleDeleteCategory],
+    [categories, groupLabels, t, handleDeleteCategory, handleNewConversation],
   )
 
   const handleCreateCategory = useCallback(
-    async (data: { name: string; icon_type: string | null; icon_value: string | null; system_prompt: string | null }) => {
+    async (data: CategoryEditFormData) => {
       await createCategory({
         name: data.name,
         icon_type: data.icon_type,
         icon_value: data.icon_value,
         system_prompt: data.system_prompt,
+        default_provider_id: data.default_provider_id,
+        default_model_id: data.default_model_id,
+        default_temperature: data.default_temperature,
+        default_max_tokens: data.default_max_tokens,
+        default_top_p: data.default_top_p,
+        default_frequency_penalty: data.default_frequency_penalty,
       })
     },
     [createCategory],
   )
 
   const handleUpdateCategory = useCallback(
-    async (data: { name: string; icon_type: string | null; icon_value: string | null; system_prompt: string | null }) => {
+    async (data: CategoryEditFormData) => {
       if (!editingCategory) return
       await updateCategory(editingCategory.id, {
         name: data.name,
         icon_type: data.icon_type,
         icon_value: data.icon_value,
         system_prompt: data.system_prompt,
+        default_provider_id: data.default_provider_id,
+        default_model_id: data.default_model_id,
+        default_temperature: data.default_temperature,
+        default_max_tokens: data.default_max_tokens,
+        default_top_p: data.default_top_p,
+        default_frequency_penalty: data.default_frequency_penalty,
       })
       setEditingCategory(null)
     },
@@ -1110,7 +1133,7 @@ export function ChatSidebar() {
                   type="text"
                   icon={<MessageSquarePlus size={16} />}
                   size="small"
-                  onClick={handleNewConversation}
+                  onClick={() => { void handleNewConversation() }}
                 />
               </Tooltip>
             </>
@@ -1325,6 +1348,12 @@ export function ChatSidebar() {
         initialIconType={editingCategory?.icon_type}
         initialIconValue={editingCategory?.icon_value}
         initialSystemPrompt={editingCategory?.system_prompt}
+        initialDefaultProviderId={editingCategory?.default_provider_id}
+        initialDefaultModelId={editingCategory?.default_model_id}
+        initialDefaultTemperature={editingCategory?.default_temperature}
+        initialDefaultMaxTokens={editingCategory?.default_max_tokens}
+        initialDefaultTopP={editingCategory?.default_top_p}
+        initialDefaultFrequencyPenalty={editingCategory?.default_frequency_penalty}
         title={editingCategory ? t('chat.editCategory') : t('chat.createCategory')}
       />
 

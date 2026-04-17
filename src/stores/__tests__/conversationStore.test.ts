@@ -359,4 +359,96 @@ describe('conversationStore pagination', () => {
 
     vi.useRealTimers();
   });
+
+  it('creates a new conversation from a category template when a category id is supplied', async () => {
+    invokeMock.mockImplementation((cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === 'create_conversation') {
+        expect(args).toEqual({
+          title: 'template-conversation',
+          modelId: 'template-model',
+          providerId: 'template-provider',
+          systemPrompt: 'Category prompt',
+        });
+        return Promise.resolve(makeConversation('conv-template', {
+          provider_id: 'template-provider',
+          model_id: 'template-model',
+          system_prompt: 'Category prompt',
+        }));
+      }
+
+      if (cmd === 'update_conversation') {
+        expect(args).toEqual({
+          id: 'conv-template',
+          input: {
+            category_id: 'cat-template',
+            system_prompt: 'Category prompt',
+            temperature: 0.2,
+            max_tokens: 8192,
+            top_p: 0.95,
+            frequency_penalty: 0.4,
+            search_enabled: false,
+            search_provider_id: null,
+            thinking_budget: null,
+            enabled_mcp_server_ids: [],
+            enabled_knowledge_base_ids: [],
+            enabled_memory_namespace_ids: [],
+          },
+        });
+
+        return Promise.resolve(makeConversation('conv-template', {
+          provider_id: 'template-provider',
+          model_id: 'template-model',
+          category_id: 'cat-template',
+          system_prompt: 'Category prompt',
+          temperature: 0.2,
+          max_tokens: 8192,
+          top_p: 0.95,
+          frequency_penalty: 0.4,
+        }));
+      }
+
+      if (cmd === 'list_messages_page') {
+        return Promise.resolve(makePage([], false));
+      }
+
+      throw new Error(`unexpected command: ${cmd}`);
+    });
+
+    const { useConversationStore } = await import('../conversationStore');
+    const { useCategoryStore } = await import('../categoryStore');
+
+    useCategoryStore.setState({
+      categories: [{
+        id: 'cat-template',
+        name: 'Template',
+        icon_type: null,
+        icon_value: null,
+        system_prompt: 'Category prompt',
+        default_provider_id: 'template-provider',
+        default_model_id: 'template-model',
+        default_temperature: 0.2,
+        default_max_tokens: 8192,
+        default_top_p: 0.95,
+        default_frequency_penalty: 0.4,
+        sort_order: 0,
+        is_collapsed: false,
+        created_at: 1,
+        updated_at: 1,
+      }] as never[],
+      loading: false,
+    });
+
+    const conversation = await useConversationStore.getState().createConversation(
+      'template-conversation',
+      'fallback-model',
+      'fallback-provider',
+      { categoryId: 'cat-template' },
+    );
+
+    expect(conversation.category_id).toBe('cat-template');
+    expect(conversation.provider_id).toBe('template-provider');
+    expect(conversation.model_id).toBe('template-model');
+    expect(conversation.temperature).toBe(0.2);
+    expect(conversation.max_tokens).toBe(8192);
+  });
 });

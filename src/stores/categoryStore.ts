@@ -11,6 +11,12 @@ interface CategoryState {
     icon_type?: string | null;
     icon_value?: string | null;
     system_prompt?: string | null;
+    default_provider_id?: string | null;
+    default_model_id?: string | null;
+    default_temperature?: number | null;
+    default_max_tokens?: number | null;
+    default_top_p?: number | null;
+    default_frequency_penalty?: number | null;
   }) => Promise<ConversationCategory>;
   updateCategory: (
     id: string,
@@ -19,6 +25,12 @@ interface CategoryState {
       icon_type?: string | null;
       icon_value?: string | null;
       system_prompt?: string | null;
+      default_provider_id?: string | null;
+      default_model_id?: string | null;
+      default_temperature?: number | null;
+      default_max_tokens?: number | null;
+      default_top_p?: number | null;
+      default_frequency_penalty?: number | null;
     },
   ) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;

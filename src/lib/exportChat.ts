@@ -1,4 +1,5 @@
 import { isTauri } from '@/lib/invoke'
+import { stripAqbotTags } from '@/lib/chatMarkdown'
 import type { Message } from '@/types'
 
 function browserDownload(filename: string, content: string, mimeType: string) {
@@ -49,22 +50,42 @@ async function saveFile(
   return true
 }
 
-export async function exportAsMarkdown(messages: Message[], title: string) {
+async function writeToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager')
+    await writeText(text)
+  }
+}
+
+export interface TranscriptExportOptions {
+  includeThinking?: boolean;
+}
+
+function getExportMessageContent(message: Message, options?: TranscriptExportOptions) {
+  if (options?.includeThinking === false) {
+    return stripAqbotTags(message.content)
+  }
+  return message.content
+}
+
+export function buildMarkdownTranscript(messages: Message[], title: string, options?: TranscriptExportOptions) {
   const lines: string[] = [`# ${title}`, '']
   for (const m of messages) {
     const role = m.role === 'user' ? 'User' : m.role === 'system' ? 'System' : 'Assistant'
-    lines.push(`## ${role}`, '', m.content, '', '---', '')
+    lines.push(`## ${role}`, '', getExportMessageContent(m, options), '', '---', '')
   }
-  return saveFile(`${title}.md`, lines.join('\n'), [{ name: 'Markdown', extensions: ['md'] }])
+  return lines.join('\n')
 }
 
-export async function exportAsText(messages: Message[], title: string) {
+export function buildTextTranscript(messages: Message[], title: string, options?: TranscriptExportOptions) {
   const lines: string[] = [title, '='.repeat(title.length), '']
   for (const m of messages) {
     const role = m.role === 'user' ? 'User' : m.role === 'system' ? 'System' : 'Assistant'
-    lines.push(`[${role}]`, '', m.content, '', '---', '')
+    lines.push(`[${role}]`, '', getExportMessageContent(m, options), '', '---', '')
   }
-  return saveFile(`${title}.txt`, lines.join('\n'), [{ name: 'Text', extensions: ['txt'] }])
+  return lines.join('\n')
 }
 
 export async function exportAsPNG(element: HTMLElement | null, title: string) {
@@ -87,16 +108,41 @@ export async function exportAsPNG(element: HTMLElement | null, title: string) {
   return true
 }
 
-export async function exportAsJSON(messages: Message[], title: string) {
+export function buildJsonTranscript(messages: Message[], title: string, options?: TranscriptExportOptions) {
   const data = {
     title,
     exported_at: new Date().toISOString(),
     messages: messages.map((m) => ({
       role: m.role,
-      content: m.content,
-      thinking: m.thinking,
+      content: getExportMessageContent(m, options),
+      ...(options?.includeThinking === false ? {} : { thinking: m.thinking }),
       created_at: m.created_at,
     })),
   }
-  return saveFile(`${title}.json`, JSON.stringify(data, null, 2), [{ name: 'JSON', extensions: ['json'] }])
+  return JSON.stringify(data, null, 2)
+}
+
+export async function copyTranscript(
+  messages: Message[],
+  title: string,
+  format: 'markdown' | 'text',
+  options?: TranscriptExportOptions,
+) {
+  const content = format === 'markdown'
+    ? buildMarkdownTranscript(messages, title, options)
+    : buildTextTranscript(messages, title, options)
+  await writeToClipboard(content)
+  return true
+}
+
+export async function exportAsMarkdown(messages: Message[], title: string, options?: TranscriptExportOptions) {
+  return saveFile(`${title}.md`, buildMarkdownTranscript(messages, title, options), [{ name: 'Markdown', extensions: ['md'] }])
+}
+
+export async function exportAsText(messages: Message[], title: string, options?: TranscriptExportOptions) {
+  return saveFile(`${title}.txt`, buildTextTranscript(messages, title, options), [{ name: 'Text', extensions: ['txt'] }])
+}
+
+export async function exportAsJSON(messages: Message[], title: string, options?: TranscriptExportOptions) {
+  return saveFile(`${title}.json`, buildJsonTranscript(messages, title, options), [{ name: 'JSON', extensions: ['json'] }])
 }

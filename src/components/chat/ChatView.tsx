@@ -1451,6 +1451,7 @@ function AssistantFooter({
   conversationId,
   assistantCopyText,
   getModelDisplayInfo,
+  onEditMessage,
   isStreaming = false,
   displayMode,
   onDisplayModeChange,
@@ -1460,6 +1461,7 @@ function AssistantFooter({
   conversationId: string;
   assistantCopyText: string;
   getModelDisplayInfo: (modelId?: string | null, providerId?: string | null) => { modelName: string; providerName: string };
+  onEditMessage: (messageId: string, content: string, role: 'user' | 'assistant') => void;
   isStreaming?: boolean;
   displayMode?: MultiModelDisplayMode;
   onDisplayModeChange?: (parentMsgId: string, mode: MultiModelDisplayMode) => void;
@@ -1541,6 +1543,7 @@ function AssistantFooter({
       messageApi.error(String(e));
     }
   }, [msg.id, msg.provider_id, msg.model_id, regenerateMessage, regenerateWithModel, messageApi]);
+  const totalTokens = (msg.prompt_tokens ?? 0) + (msg.completion_tokens ?? 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1556,6 +1559,12 @@ function AssistantFooter({
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
               <ArrowDown size={10} />
               {formatTokenCount(msg.completion_tokens)} tokens
+            </span>
+          )}
+          {totalTokens > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+              <Coins size={10} />
+              {t('chat.totalTokens', '总 tokens')}: {formatTokenCount(totalTokens)}
             </span>
           )}
           {msg.tokens_per_second != null && (
@@ -1599,6 +1608,14 @@ function AssistantFooter({
                 }
               },
             },
+            ...(msg.role === 'assistant' ? [{
+              key: 'edit',
+              icon: <Pencil size={14} />,
+              label: t('chat.editMessage'),
+              onItemClick: () => {
+                onEditMessage(msg.id, msg.content, 'assistant');
+              },
+            }] : []),
             {
               key: 'model',
               actionRender: () => (
@@ -1762,7 +1779,7 @@ function AssistantFooter({
 
 // ── Export helpers ──────────────────────────────────────────────────────
 
-import { exportAsPNG, exportAsMarkdown, exportAsJSON, exportAsText } from '@/lib/exportChat';
+import { copyTranscript, exportAsPNG, exportAsMarkdown, exportAsJSON, exportAsText } from '@/lib/exportChat';
 
 // ── Stats Popover ──────────────────────────────────────────────────────
 
@@ -2015,6 +2032,7 @@ export function ChatView() {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [stickToBottom, setStickToBottom] = useState(true);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessageRole, setEditingMessageRole] = useState<'user' | 'assistant' | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -2328,6 +2346,18 @@ export function ChatView() {
   const exportMenuItems = useMemo(
     () => [
       {
+        key: 'copy-md',
+        label: t('chat.copyMarkdown', '复制 Markdown'),
+        icon: <Copy size={14} />,
+        onClick: async () => {
+          if (messages.length === 0) { messageApi.warning(t('chat.noMessages')); return; }
+          try {
+            const ok = await copyTranscript(messages, activeConversation?.title ?? 'chat', 'markdown', { includeThinking: false });
+            if (ok) messageApi.success(t('chat.copied'));
+          } catch (e) { console.error('Copy MD failed:', e); messageApi.error(t('chat.exportFailed')); }
+        },
+      },
+      {
         key: 'png',
         label: t('chat.exportPng'),
         icon: <FileImage size={14} />,
@@ -2351,6 +2381,18 @@ export function ChatView() {
         },
       },
       {
+        key: 'export-md-no-thinking',
+        label: t('chat.exportMdNoThinking', '导出 Markdown（不含思维链）'),
+        icon: <FileCode size={14} />,
+        onClick: async () => {
+          if (messages.length === 0) { messageApi.warning(t('chat.noMessages')); return; }
+          try {
+            const ok = await exportAsMarkdown(messages, activeConversation?.title ?? 'chat', { includeThinking: false });
+            if (ok) messageApi.success(t('chat.exportSuccess'));
+          } catch (e) { console.error('Export MD (no thinking) failed:', e); messageApi.error(t('chat.exportFailed')); }
+        },
+      },
+      {
         key: 'txt',
         label: t('chat.exportTxt'),
         icon: <FileType size={14} />,
@@ -2363,6 +2405,18 @@ export function ChatView() {
         },
       },
       {
+        key: 'export-txt-no-thinking',
+        label: t('chat.exportTxtNoThinking', '导出文本（不含思维链）'),
+        icon: <FileType size={14} />,
+        onClick: async () => {
+          if (messages.length === 0) { messageApi.warning(t('chat.noMessages')); return; }
+          try {
+            const ok = await exportAsText(messages, activeConversation?.title ?? 'chat', { includeThinking: false });
+            if (ok) messageApi.success(t('chat.exportSuccess'));
+          } catch (e) { console.error('Export TXT (no thinking) failed:', e); messageApi.error(t('chat.exportFailed')); }
+        },
+      },
+      {
         key: 'json',
         label: t('chat.exportJson'),
         icon: <FileText size={14} />,
@@ -2372,6 +2426,18 @@ export function ChatView() {
             const ok = await exportAsJSON(messages, activeConversation?.title ?? 'chat');
             if (ok) messageApi.success(t('chat.exportSuccess'));
           } catch (e) { console.error('Export JSON failed:', e); messageApi.error(t('chat.exportFailed')); }
+        },
+      },
+      {
+        key: 'export-json-no-thinking',
+        label: t('chat.exportJsonNoThinking', '导出 JSON（不含思维链）'),
+        icon: <FileText size={14} />,
+        onClick: async () => {
+          if (messages.length === 0) { messageApi.warning(t('chat.noMessages')); return; }
+          try {
+            const ok = await exportAsJSON(messages, activeConversation?.title ?? 'chat', { includeThinking: false });
+            if (ok) messageApi.success(t('chat.exportSuccess'));
+          } catch (e) { console.error('Export JSON (no thinking) failed:', e); messageApi.error(t('chat.exportFailed')); }
         },
       },
     ],
@@ -2717,8 +2783,9 @@ export function ChatView() {
     return { modelName: model?.name ?? mid, providerName: provider?.name ?? '' };
   }, [activeConversation, providers]);
 
-  const handleEditMessage = useCallback((messageId: string, content: string) => {
+  const handleEditMessage = useCallback((messageId: string, content: string, role: 'user' | 'assistant') => {
     setEditingMessageId(messageId);
+    setEditingMessageRole(role);
     setEditingContent(content);
   }, []);
 
@@ -2728,6 +2795,7 @@ export function ChatView() {
     try {
       await updateMessageContent(editingMessageId, editingContent);
       setEditingMessageId(null);
+      setEditingMessageRole(null);
       setEditingContent('');
     } catch (e) {
       messageApi.error(String(e));
@@ -2745,6 +2813,7 @@ export function ChatView() {
       const msgs = useConversationStore.getState().messages;
       const aiMsg = msgs.find(m => m.parent_message_id === editingMessageId && m.is_active);
       setEditingMessageId(null);
+      setEditingMessageRole(null);
       setEditingContent('');
       await regenerateMessage(aiMsg?.id);
     } catch (e) {
@@ -2838,7 +2907,7 @@ export function ChatView() {
               label: t('chat.editMessage'),
               onItemClick: () => {
                 if (msg) {
-                  handleEditMessage(msg.id, msg.content);
+                  handleEditMessage(msg.id, msg.content, 'user');
                 }
               },
             },
@@ -3103,6 +3172,7 @@ export function ChatView() {
             conversationId={activeConversationId}
             assistantCopyText={assistantCopyText}
             getModelDisplayInfo={getModelDisplayInfo}
+            onEditMessage={handleEditMessage}
             isStreaming={isStreaming}
             displayMode={effectiveDisplayMode}
             onDisplayModeChange={handleDisplayModeOverride}
@@ -3126,7 +3196,7 @@ export function ChatView() {
         </div>
       ) : null,
     };
-  }, [activeConversation, activeConversationId, activeMessages, agentPendingPermissions, agentToolCalls, aiContentNodesById, assistantByParentId, codeBlockDarkTheme, codeBlockLightTheme, codeBlockThemes, deleteMessage, displayModeOverrides, formatTime, getBubbleVariant, getModelDisplayInfo, handleDisplayModeOverride, handleMultiModelDetected, isDarkMode, messageById, messages, multiModelDoneMessageIds, multiModelParentId, multiModelResponseParents, renderConvIconForChat, settings, streaming, streamingMessageId, switchMessageVersion, t, token.colorPrimary, token.colorTextDescription]);
+  }, [activeConversation, activeConversationId, activeMessages, agentPendingPermissions, agentToolCalls, aiContentNodesById, assistantByParentId, codeBlockDarkTheme, codeBlockLightTheme, codeBlockThemes, deleteMessage, displayModeOverrides, formatTime, getBubbleVariant, getModelDisplayInfo, handleDisplayModeOverride, handleEditMessage, handleMultiModelDetected, isDarkMode, messageById, messages, multiModelDoneMessageIds, multiModelParentId, multiModelResponseParents, renderConvIconForChat, settings, streaming, streamingMessageId, switchMessageVersion, t, token.colorPrimary, token.colorTextDescription]);
 
   const contextClearRole = useCallback((bubbleData: BubbleItemType) => {
     const msgId = String(bubbleData.content ?? '');
@@ -3542,18 +3612,21 @@ export function ChatView() {
         open={!!editingMessageId}
         onCancel={() => {
           setEditingMessageId(null);
+          setEditingMessageRole(null);
           setEditingContent('');
         }}
         footer={[
-          <Button key="cancel" onClick={() => { setEditingMessageId(null); setEditingContent(''); }}>
+          <Button key="cancel" onClick={() => { setEditingMessageId(null); setEditingMessageRole(null); setEditingContent(''); }}>
             {t('common.cancel')}
           </Button>,
           <Button key="save" onClick={handleEditSaveOnly} loading={editSaving}>
             {t('chat.saveOnly')}
           </Button>,
-          <Button key="saveResend" type="primary" onClick={handleEditSaveAndResend} loading={editSaving}>
-            {t('chat.saveAndResend')}
-          </Button>,
+          ...(editingMessageRole === 'assistant' ? [] : [
+            <Button key="saveResend" type="primary" onClick={handleEditSaveAndResend} loading={editSaving}>
+              {t('chat.saveAndResend')}
+            </Button>,
+          ]),
         ]}
         width={640}
       >

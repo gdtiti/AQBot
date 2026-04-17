@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseChatMarkdown } from '../chatMarkdown';
+import { parseChatMarkdown, stripAqbotTags } from '../chatMarkdown';
 
 describe('parseChatMarkdown', () => {
   it('parses fenced code blocks into markdown nodes', () => {
@@ -42,5 +42,17 @@ UI -> App: 携带token访问
       type: 'code_block',
       language: 'd2',
     });
+  });
+
+  it('strips think and aqbot-only tags when preparing export-safe transcript text', () => {
+    const cleaned = stripAqbotTags(`Final answer
+<think>Hidden reasoning</think>
+<knowledge-retrieval data-aqbot="1">retrieved</knowledge-retrieval>
+:::mcp tool
+payload
+:::
+Visible tail`);
+
+    expect(cleaned).toBe('Final answer\nVisible tail');
   });
 });

@@ -212,8 +212,70 @@ pub async fn update_message_usage(
     Ok(())
 }
 
+fn compare_version_priority(left: &messages::Model, right: &messages::Model) -> std::cmp::Ordering {
+    right
+        .version_index
+        .cmp(&left.version_index)
+        .then_with(|| right.created_at.cmp(&left.created_at))
+        .then_with(|| right.id.cmp(&left.id))
+}
+
+fn select_next_active_version(
+    deleted: &messages::Model,
+    versions: &[messages::Model],
+) -> Option<messages::Model> {
+    let remaining: Vec<messages::Model> = versions
+        .iter()
+        .filter(|version| version.id != deleted.id)
+        .cloned()
+        .collect();
+    if remaining.is_empty() {
+        return None;
+    }
+
+    let same_model: Vec<messages::Model> = if let Some(model_id) = deleted.model_id.as_ref() {
+        remaining
+            .iter()
+            .filter(|version| version.model_id.as_ref() == Some(model_id))
+            .cloned()
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    let mut candidates = if same_model.is_empty() { remaining } else { same_model };
+    candidates.sort_by(compare_version_priority);
+    candidates.into_iter().next()
+}
+
 pub async fn delete_message(db: &DatabaseConnection, id: &str) -> Result<()> {
-    let result = messages::Entity::delete_by_id(id).exec(db).await?;
+    let target = messages::Entity::find_by_id(id)
+        .one(db)
+        .await?
+        .ok_or_else(|| AQBotError::NotFound(format!("Message {}", id)))?;
+
+    let txn = db.begin().await?;
+
+    if target.role == "assistant" && target.is_active == 1 {
+        if let Some(parent_message_id) = target.parent_message_id.as_ref() {
+            let sibling_versions = messages::Entity::find()
+                .filter(messages::Column::ConversationId.eq(&target.conversation_id))
+                .filter(messages::Column::ParentMessageId.eq(parent_message_id))
+                .filter(messages::Column::Role.eq("assistant"))
+                .filter(messages::Column::VersionIndex.gte(0))
+                .all(&txn)
+                .await?;
+
+            if let Some(next_version) = select_next_active_version(&target, &sibling_versions) {
+                let mut next_active: messages::ActiveModel = next_version.into();
+                next_active.is_active = Set(1);
+                next_active.update(&txn).await?;
+            }
+        }
+    }
+
+    let result = messages::Entity::delete_by_id(id).exec(&txn).await?;
+    txn.commit().await?;
 
     if result.rows_affected == 0 {
         return Err(AQBotError::NotFound(format!("Message {}", id)));
@@ -510,5 +572,66 @@ mod tests {
         assert_eq!(msg.attachments[0].file_type, "image/png");
         assert_eq!(msg.attachments[0].file_path, "conv-1/image.png");
         assert_eq!(msg.attachments[0].file_size, 3);
+    }
+
+    #[tokio::test]
+    async fn delete_active_assistant_version_promotes_remaining_version() {
+        let h = create_test_pool().await.unwrap();
+        let db = &h.conn;
+
+        let conv = conversation::create_conversation(db, "Version Chat", "model-1", "prov-1", None)
+            .await
+            .unwrap();
+
+        let user_msg = create_message(db, &conv.id, MessageRole::User, "Hello!", &[], None, 0)
+            .await
+            .unwrap();
+
+        let version_a = create_message(
+            db,
+            &conv.id,
+            MessageRole::Assistant,
+            "Reply A",
+            &[],
+            Some(&user_msg.id),
+            0,
+        )
+        .await
+        .unwrap();
+
+        let version_b = create_message(
+            db,
+            &conv.id,
+            MessageRole::Assistant,
+            "Reply B",
+            &[],
+            Some(&user_msg.id),
+            1,
+        )
+        .await
+        .unwrap();
+
+        set_active_version(db, &conv.id, &user_msg.id, &version_a.id)
+            .await
+            .unwrap();
+
+        delete_message(db, &version_a.id).await.unwrap();
+
+        let visible_messages = list_messages(db, &conv.id).await.unwrap();
+        assert_eq!(visible_messages.len(), 2);
+
+        let active_reply = visible_messages
+            .iter()
+            .find(|message| message.role == MessageRole::Assistant)
+            .expect("assistant reply should remain visible");
+        assert_eq!(active_reply.id, version_b.id);
+        assert!(active_reply.is_active);
+
+        let versions = list_message_versions(db, &conv.id, &user_msg.id)
+            .await
+            .unwrap();
+        assert_eq!(versions.len(), 1);
+        assert_eq!(versions[0].id, version_b.id);
+        assert!(versions[0].is_active);
     }
 }

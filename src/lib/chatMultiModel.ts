@@ -22,6 +22,38 @@ export function getLatestVersionsByModel(versions: Message[]): Message[] {
   return Array.from(modelMap.values());
 }
 
+export function hasMultipleModelVersions(versions: Message[]): boolean {
+  return getLatestVersionsByModel(versions).length > 1;
+}
+
+function compareVersionDesc(left: Message, right: Message): number {
+  return right.version_index - left.version_index
+    || right.created_at - left.created_at
+    || right.id.localeCompare(left.id);
+}
+
+export function selectNextAssistantVersion(
+  versions: Message[],
+  deletedMessageId: string,
+): Message | null {
+  const deletedVersion = versions.find((version) => version.id === deletedMessageId);
+  if (!deletedVersion) {
+    return null;
+  }
+
+  const remainingVersions = versions.filter((version) => version.id !== deletedMessageId);
+  if (remainingVersions.length === 0) {
+    return null;
+  }
+
+  const sameModelVersions = deletedVersion.model_id
+    ? remainingVersions.filter((version) => version.model_id === deletedVersion.model_id)
+    : [];
+  const candidates = sameModelVersions.length > 0 ? sameModelVersions : remainingVersions;
+
+  return [...candidates].sort(compareVersionDesc)[0] ?? null;
+}
+
 export function shouldRenderStandaloneAssistantError(
   status: Message['status'] | null | undefined,
   isNonTabsMultiModel: boolean,

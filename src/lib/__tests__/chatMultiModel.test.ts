@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import type { Message } from '@/types';
 import {
   getLatestVersionsByModel,
+  hasMultipleModelVersions,
   insertModelVersionPlaceholder,
   mergeAssistantVersionsAfterSwitch,
+  selectNextAssistantVersion,
   shouldRenderStandaloneAssistantError,
 } from '../chatMultiModel';
 
@@ -77,5 +79,23 @@ describe('chatMultiModel helpers', () => {
 
     expect(next.map((message) => message.id)).toEqual(['good-version', 'other-parent']);
     expect(next.find((message) => message.id === 'good-version')?.is_active).toBe(true);
+  });
+
+  it('detects when cached versions are no longer multi-model', () => {
+    expect(hasMultipleModelVersions([
+      makeMessage({ id: 'model-a', model_id: 'model-a' }),
+      makeMessage({ id: 'model-b', model_id: 'model-b' }),
+    ])).toBe(true);
+
+    expect(hasMultipleModelVersions([
+      makeMessage({ id: 'single', model_id: 'model-a' }),
+    ])).toBe(false);
+  });
+
+  it('picks a remaining fallback version after deleting the active one', () => {
+    const fallback = makeMessage({ id: 'fallback', model_id: 'model-b', version_index: 0, created_at: 1 });
+    const deleted = makeMessage({ id: 'deleted', model_id: 'model-a', version_index: 1, created_at: 2, status: 'error' });
+
+    expect(selectNextAssistantVersion([fallback, deleted], deleted.id)?.id).toBe('fallback');
   });
 });

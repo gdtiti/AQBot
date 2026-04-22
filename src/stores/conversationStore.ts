@@ -4,6 +4,7 @@ import { supportsReasoning, findModelByIds } from '@/lib/modelCapabilities';
 import {
   insertModelVersionPlaceholder,
   mergeAssistantVersionsAfterSwitch,
+  selectNextAssistantVersion,
 } from '@/lib/chatMultiModel';
 import { formatSearchContent, buildSearchTag } from '@/lib/searchUtils';
 import { buildKnowledgeTag, buildMemoryTag, type RagContextRetrievedEvent } from '@/lib/memoryUtils';
@@ -2098,18 +2099,60 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   deleteMessage: async (messageId) => {
     const conversationId = get().activeConversationId;
     if (!conversationId) return;
+
+    const targetMessage = get().messages.find((message) => message.id === messageId) ?? null;
+    let nextActiveVersion: Message | null = null;
+    if (targetMessage?.role === 'assistant' && targetMessage.parent_message_id && targetMessage.is_active) {
+      try {
+        const versions = await get().listMessageVersions(conversationId, targetMessage.parent_message_id);
+        nextActiveVersion = selectNextAssistantVersion(versions, messageId);
+      } catch {
+        nextActiveVersion = selectNextAssistantVersion(
+          get().messages.filter((message) =>
+            message.parent_message_id === targetMessage.parent_message_id && message.role === 'assistant'
+          ),
+          messageId,
+        );
+      }
+    }
+
+    const applyLocalDelete = () => {
+      set((s) => {
+        const messages = s.messages
+          .filter((message) => message.id !== messageId)
+          .map((message) => {
+            if (!targetMessage?.parent_message_id || !nextActiveVersion) {
+              return message;
+            }
+            if (message.parent_message_id !== targetMessage.parent_message_id || message.role !== 'assistant') {
+              return message;
+            }
+            return { ...message, is_active: message.id === nextActiveVersion.id };
+          });
+        return { messages };
+      });
+    };
+
     // Client-only messages (temp IDs) — just remove locally
     if (messageId.startsWith('temp-')) {
-      set((s) => ({
-        messages: s.messages.filter((m) => m.id !== messageId),
-      }));
+      applyLocalDelete();
       return;
     }
     try {
       await invoke('delete_message', { id: messageId });
-      set((s) => ({
-        messages: s.messages.filter((m) => m.id !== messageId),
-      }));
+      if (targetMessage?.parent_message_id && nextActiveVersion && !nextActiveVersion.id.startsWith('temp-')) {
+        await get().switchMessageVersion(
+          conversationId,
+          targetMessage.parent_message_id,
+          nextActiveVersion.id,
+        );
+        return;
+      }
+      if (targetMessage?.role === 'assistant') {
+        await get().fetchMessages(conversationId);
+        return;
+      }
+      applyLocalDelete();
     } catch (e) {
       set({ error: String(e) });
     }

@@ -27,7 +27,7 @@ import { InputArea } from './InputArea';
 import { ModelSelector } from './ModelSelector';
 import { parseSearchContent } from '@/lib/searchUtils';
 import { CHAT_CUSTOM_HTML_TAGS, parseChatMarkdown, stripAqbotTags, type ChatMarkdownNode } from '@/lib/chatMarkdown';
-import { shouldRenderStandaloneAssistantError } from '@/lib/chatMultiModel';
+import { hasMultipleModelVersions, shouldRenderStandaloneAssistantError } from '@/lib/chatMultiModel';
 import { WebSearchNode } from './WebSearchNode';
 import { MemoryRetrievalNode } from './MemoryRetrievalNode';
 import { KnowledgeRetrievalNode } from './KnowledgeRetrievalNode';
@@ -1369,12 +1369,14 @@ function ModelTags({
 function DeleteLastVersionPopover({
   msg,
   conversationId,
+  deleteMessage,
   deleteMessageGroup,
   messageApi,
   token,
 }: {
   msg: Message;
   conversationId: string;
+  deleteMessage: (messageId: string) => Promise<void>;
   deleteMessageGroup: (convId: string, parentMsgId: string) => Promise<void>;
   messageApi: ReturnType<typeof App.useApp>['message'];
   token: ReturnType<typeof theme.useToken>['token'];
@@ -1385,14 +1387,7 @@ function DeleteLastVersionPopover({
   const handleDeleteThisOnly = async () => {
     setOpen(false);
     try {
-      if (msg.id.startsWith('temp-')) {
-        useConversationStore.setState((s) => ({
-          messages: s.messages.filter((m) => m.id !== msg.id),
-        }));
-        return;
-      }
-      await invoke('delete_message', { id: msg.id });
-      useConversationStore.getState().fetchMessages(conversationId);
+      await deleteMessage(msg.id);
     } catch (e) {
       messageApi.error(String(e));
     }
@@ -1478,7 +1473,7 @@ function AssistantFooter({
   const regenerateMessage = useConversationStore((s) => s.regenerateMessage);
   const regenerateWithModel = useConversationStore((s) => s.regenerateWithModel);
   const deleteMessageGroup = useConversationStore((s) => s.deleteMessageGroup);
-  const switchMessageVersion = useConversationStore((s) => s.switchMessageVersion);
+  const deleteMessage = useConversationStore((s) => s.deleteMessage);
   const branchConversation = useConversationStore((s) => s.branchConversation);
   const { copy: copyAssistant, isCopied: assistantCopied } = useCopyToClipboard();
   // Branch modal state
@@ -1510,20 +1505,15 @@ function AssistantFooter({
   }, [allVersions, storeMessages, msg.parent_message_id]);
 
   // Check if this message has multiple model versions
-  const hasMultiModels = useMemo(() => {
-    const models = new Set<string>();
-    for (const v of mergedVersions) {
-      if (v.model_id) models.add(v.model_id);
-    }
-    return models.size > 1;
-  }, [mergedVersions]);
+  const hasMultiModels = useMemo(() => hasMultipleModelVersions(mergedVersions), [mergedVersions]);
 
-  // Report multi-model status to parent for aiRole rendering
+  // Report the latest version snapshot to parent so cached multi-model state
+  // can be updated or cleared after deletes/switches.
   useEffect(() => {
-    if (hasMultiModels && msg.parent_message_id && onMultiModelDetected) {
+    if (msg.parent_message_id && onMultiModelDetected) {
       onMultiModelDetected(msg.parent_message_id, mergedVersions);
     }
-  }, [hasMultiModels, msg.parent_message_id, mergedVersions, onMultiModelDetected]);
+  }, [msg.parent_message_id, mergedVersions, onMultiModelDetected]);
 
   // Current message's model for ModelSelector highlight
   const currentModelOverride = useMemo(() => {
@@ -1682,6 +1672,7 @@ function AssistantFooter({
                     <DeleteLastVersionPopover
                       msg={msg}
                       conversationId={conversationId}
+                      deleteMessage={deleteMessage}
                       deleteMessageGroup={deleteMessageGroup}
                       messageApi={messageApi}
                       token={token}
@@ -1695,21 +1686,7 @@ function AssistantFooter({
                     title={t('chat.confirmDeleteVersion')}
                     onConfirm={async () => {
                       try {
-                        const remaining = mergedVersions.filter((v) => v.id !== msg.id);
-                        const sameModel = remaining.filter((v) => v.model_id === msg.model_id);
-                        const nextActive = sameModel.length > 0
-                          ? sameModel.sort((a, b) => b.version_index - a.version_index)[0]
-                          : remaining.sort((a, b) => b.version_index - a.version_index)[0];
-                        if (msg.id.startsWith('temp-')) {
-                          useConversationStore.setState((s) => ({
-                            messages: s.messages.filter((m) => m.id !== msg.id),
-                          }));
-                        } else {
-                          await invoke('delete_message', { id: msg.id });
-                        }
-                        if (msg.parent_message_id && nextActive) {
-                          await switchMessageVersion(conversationId, msg.parent_message_id, nextActive.id);
-                        }
+                        await deleteMessage(msg.id);
                       } catch (e) {
                         messageApi.error(String(e));
                       }
@@ -2550,10 +2527,17 @@ export function ChatView() {
   // loads all versions from DB (which includes inactive versions not in store).
   const multiModelVersionsRef = useRef<Map<string, Message[]>>(new Map());
   const handleMultiModelDetected = useCallback((parentMsgId: string, versions: Message[]) => {
-    multiModelVersionsRef.current.set(parentMsgId, versions);
-    // If this parent wasn't detected from store (DB only returns active), force a re-check
-    if (!multiModelResponseParents.has(parentMsgId)) {
-      // Trigger re-render so aiRole picks up the new data
+    const hadCached = multiModelVersionsRef.current.has(parentMsgId);
+    const stillMultiModel = hasMultipleModelVersions(versions);
+
+    if (stillMultiModel) {
+      multiModelVersionsRef.current.set(parentMsgId, versions);
+    } else {
+      multiModelVersionsRef.current.delete(parentMsgId);
+    }
+
+    if (hadCached !== stillMultiModel || !multiModelResponseParents.has(parentMsgId)) {
+      // Trigger re-render so aiRole picks up the updated cache state.
       setDisplayModeOverrides((prev) => new Map(prev));
     }
   }, [multiModelResponseParents]);

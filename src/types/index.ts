@@ -375,6 +375,7 @@ export interface AppSettings {
   shortcut_toggle_all_windows: string;
   shortcut_close_window: string;
   shortcut_new_conversation: string;
+  shortcut_send_message: string;
   shortcut_open_settings: string;
   shortcut_toggle_model_selector: string;
   shortcut_fill_last_message: string;

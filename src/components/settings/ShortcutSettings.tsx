@@ -5,7 +5,7 @@ import { AlertTriangle, RotateCcw } from 'lucide-react';
 import { useSettingsStore } from '@/stores';
 import { SettingsGroup } from './SettingsGroup';
 import {
-  SHORTCUT_ACTIONS,
+  SHORTCUT_SETTING_ACTIONS,
   DEFAULT_SHORTCUT_BINDINGS,
   SHORTCUT_DESCRIPTORS,
   SHORTCUT_SETTING_KEYS,
@@ -34,7 +34,7 @@ export function ShortcutSettings() {
 
   const effectiveBindings = useMemo(() => {
     const result: Partial<Record<ShortcutAction, string>> = {};
-    for (const action of SHORTCUT_ACTIONS) {
+    for (const action of SHORTCUT_SETTING_ACTIONS) {
       result[action] = draftBindings[action] || getShortcutBindingByKey(settings, SHORTCUT_SETTING_KEYS[action]);
     }
     return result;
@@ -102,7 +102,7 @@ export function ShortcutSettings() {
 
   const handleResetDefaults = useCallback(async () => {
     const update: ShortcutSettingsUpdate = {};
-    for (const action of SHORTCUT_ACTIONS) {
+    for (const action of SHORTCUT_SETTING_ACTIONS) {
       const key = SHORTCUT_SETTING_KEYS[action];
       update[key] = DEFAULT_SHORTCUT_BINDINGS[action];
     }

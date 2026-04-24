@@ -445,6 +445,7 @@
       "toggleAllWindows": "すべてのウィンドウを表示/非表示",
       "closeWindow": "ウィンドウを閉じる",
       "newConversation": "新しい会話",
+      "sendMessage": "メッセージを送信",
       "openSettings": "設定を開く/閉じる",
       "toggleModelSelector": "モデルセレクターを切り替え",
       "fillLastMessage": "前のメッセージを入力",

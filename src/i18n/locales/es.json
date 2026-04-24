@@ -445,6 +445,7 @@
       "toggleAllWindows": "Mostrar/Ocultar todas las ventanas",
       "closeWindow": "Cerrar ventana",
       "newConversation": "Nueva conversación",
+      "sendMessage": "Enviar mensaje",
       "openSettings": "Abrir/Cerrar configuración",
       "toggleModelSelector": "Alternar selector de modelo",
       "fillLastMessage": "Rellenar mensaje anterior",

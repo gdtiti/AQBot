@@ -48,6 +48,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   shortcut_toggle_all_windows: DEFAULT_SHORTCUT_BINDINGS.toggleAllWindows,
   shortcut_close_window: DEFAULT_SHORTCUT_BINDINGS.closeWindow,
   shortcut_new_conversation: DEFAULT_SHORTCUT_BINDINGS.newConversation,
+  shortcut_send_message: DEFAULT_SHORTCUT_BINDINGS.sendMessage,
   shortcut_open_settings: DEFAULT_SHORTCUT_BINDINGS.openSettings,
   shortcut_toggle_model_selector: DEFAULT_SHORTCUT_BINDINGS.toggleModelSelector,
   shortcut_fill_last_message: DEFAULT_SHORTCUT_BINDINGS.fillLastMessage,

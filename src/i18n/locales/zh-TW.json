@@ -445,6 +445,7 @@
       "toggleAllWindows": "顯示/隱藏所有視窗",
       "closeWindow": "關閉視窗",
       "newConversation": "新建對話",
+      "sendMessage": "傳送訊息",
       "openSettings": "開啟/關閉設定",
       "toggleModelSelector": "切換模型選擇",
       "fillLastMessage": "填入上一則訊息",

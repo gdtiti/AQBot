@@ -445,6 +445,7 @@
       "toggleAllWindows": "Показать/скрыть все окна",
       "closeWindow": "Закрыть окно",
       "newConversation": "Новый чат",
+      "sendMessage": "Отправить сообщение",
       "openSettings": "Открыть/закрыть настройки",
       "toggleModelSelector": "Переключить выбор модели",
       "fillLastMessage": "Вставить предыдущее сообщение",

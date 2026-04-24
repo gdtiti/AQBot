@@ -445,6 +445,7 @@
       "toggleAllWindows": "모든 창 표시/숨기기",
       "closeWindow": "창 닫기",
       "newConversation": "새 대화",
+      "sendMessage": "메시지 보내기",
       "openSettings": "설정 열기/닫기",
       "toggleModelSelector": "모델 선택기 전환",
       "fillLastMessage": "이전 메시지 채우기",

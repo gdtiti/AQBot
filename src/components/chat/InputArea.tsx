@@ -10,7 +10,7 @@ import { estimateMessageTokens, estimateTokens } from '@/lib/tokenEstimator';
 import { McpServerIcon } from '@/components/shared/McpServerIcon';
 import { NamespaceIcon } from '@/components/shared/NamespaceIcon';
 import { KnowledgeBaseIcon } from '@/components/shared/KnowledgeBaseIcon';
-import { getShortcutBinding, formatShortcutForDisplay } from '@/lib/shortcuts';
+import { getShortcutBinding, formatShortcutForDisplay, matchesShortcutEvent } from '@/lib/shortcuts';
 import type { ShortcutAction } from '@/lib/shortcuts';
 import { VoiceCall } from './VoiceCall';
 import { ConversationSettingsModal } from './ConversationSettingsModal';
@@ -928,12 +928,14 @@ export function InputArea() {
       if (e.nativeEvent.isComposing || e.key === 'Process' || e.keyCode === 229) {
         return;
       }
-      if (e.key === 'Enter' && !e.shiftKey) {
+      const sendShortcut = getShortcutBinding(settings, 'sendMessage');
+      if (matchesShortcutEvent(e.nativeEvent, sendShortcut)) {
         e.preventDefault();
+        e.stopPropagation();
         handleSend();
       }
     },
-    [handleSend],
+    [handleSend, settings],
   );
 
   // Auto-resize textarea: height = max(userMinHeight, contentHeight), capped at ABSOLUTE_MAX

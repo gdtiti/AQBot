@@ -445,6 +445,7 @@
       "toggleAllWindows": "Show/Hide All Windows",
       "closeWindow": "Close Window",
       "newConversation": "New Conversation",
+      "sendMessage": "Send Message",
       "openSettings": "Open/Close Settings",
       "toggleModelSelector": "Toggle Model Selector",
       "fillLastMessage": "Fill Previous Message",

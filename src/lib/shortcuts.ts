@@ -5,6 +5,7 @@ export type ShortcutAction =
   | 'toggleAllWindows'
   | 'closeWindow'
   | 'newConversation'
+  | 'sendMessage'
   | 'openSettings'
   | 'toggleModelSelector'
   | 'fillLastMessage'
@@ -33,11 +34,17 @@ export const SHORTCUT_ACTIONS: ShortcutAction[] = [
   'toggleMode',
 ];
 
+export const SHORTCUT_SETTING_ACTIONS: ShortcutAction[] = [
+  ...SHORTCUT_ACTIONS,
+  'sendMessage',
+];
+
 export const SHORTCUT_DESCRIPTORS: ShortcutDescriptor[] = [
   { action: 'toggleCurrentWindow', labelKey: 'settings.shortcutAction.toggleCurrentWindow', supportsGlobal: true },
   { action: 'toggleAllWindows', labelKey: 'settings.shortcutAction.toggleAllWindows', supportsGlobal: true },
   { action: 'closeWindow', labelKey: 'settings.shortcutAction.closeWindow', supportsGlobal: true },
   { action: 'newConversation', labelKey: 'settings.shortcutAction.newConversation', supportsGlobal: false },
+  { action: 'sendMessage', labelKey: 'settings.shortcutAction.sendMessage', supportsGlobal: false },
   { action: 'openSettings', labelKey: 'settings.shortcutAction.openSettings', supportsGlobal: false },
   { action: 'toggleModelSelector', labelKey: 'settings.shortcutAction.toggleModelSelector', supportsGlobal: false },
   { action: 'fillLastMessage', labelKey: 'settings.shortcutAction.fillLastMessage', supportsGlobal: false },
@@ -52,6 +59,7 @@ export const SHORTCUT_ACTION_LABEL_KEYS: Record<ShortcutAction, string> = {
   toggleAllWindows: 'settings.shortcutAction.toggleAllWindows',
   closeWindow: 'settings.shortcutAction.closeWindow',
   newConversation: 'settings.shortcutAction.newConversation',
+  sendMessage: 'settings.shortcutAction.sendMessage',
   openSettings: 'settings.shortcutAction.openSettings',
   toggleModelSelector: 'settings.shortcutAction.toggleModelSelector',
   fillLastMessage: 'settings.shortcutAction.fillLastMessage',
@@ -78,6 +86,7 @@ export const SHORTCUT_SETTING_KEYS = {
   toggleAllWindows: 'shortcut_toggle_all_windows',
   closeWindow: 'shortcut_close_window',
   newConversation: 'shortcut_new_conversation',
+  sendMessage: 'shortcut_send_message',
   openSettings: 'shortcut_open_settings',
   toggleModelSelector: 'shortcut_toggle_model_selector',
   fillLastMessage: 'shortcut_fill_last_message',
@@ -94,6 +103,7 @@ export const DEFAULT_SHORTCUT_BINDINGS: Record<ShortcutAction, string> = {
   toggleAllWindows: 'CmdOrCtrl+Shift+Alt+A',
   closeWindow: 'CmdOrCtrl+Shift+W',
   newConversation: 'CmdOrCtrl+N',
+  sendMessage: 'Enter',
   openSettings: 'CmdOrCtrl+,',
   toggleModelSelector: 'CmdOrCtrl+Shift+M',
   fillLastMessage: 'CmdOrCtrl+Shift+ArrowUp',
@@ -163,7 +173,7 @@ export function getShortcutBinding(settings: AppSettings, action: ShortcutAction
 }
 
 export function getShortcutBindingByKey(settings: AppSettings, key: ShortcutSettingKey): string {
-  const action = SHORTCUT_ACTIONS.find((item) => SHORTCUT_SETTING_KEYS[item] === key);
+  const action = SHORTCUT_SETTING_ACTIONS.find((item) => SHORTCUT_SETTING_KEYS[item] === key);
   if (!action) {
     throw new Error(`Unknown shortcut setting key: ${key}`);
   }
@@ -237,7 +247,7 @@ export function matchesShortcutEvent(event: KeyboardEvent, binding: string): boo
 
 export function detectShortcutConflicts(bindings: Partial<Record<ShortcutAction, string>>): ShortcutConflictMap {
   const grouped = new Map<string, ShortcutAction[]>();
-  for (const action of SHORTCUT_ACTIONS) {
+  for (const action of SHORTCUT_SETTING_ACTIONS) {
     const raw = String(bindings[action] ?? '').trim();
     if (!raw) continue;
     const canonical = toTauriAccelerator(raw).toLowerCase();
